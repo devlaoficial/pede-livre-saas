@@ -880,9 +880,9 @@
                                 <span x-text="testandoPix ? 'Gerando PIX...' : '🧪 Testar PIX Real (R$ 1,00)'"></span>
                             </button>
                         </template>
-                        <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
-                            🔑 Pegar Token no Mercado Pago ↗
-                        </a>
+                        <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
+                            🔗 Conectar com Mercado Pago (Login 1 Clique)
+                        </button>
                         <template x-if="mpStatus?.conectado">
                             <button @click="desconectarMercadoPago()" class="bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl transition">
                                 Desconectar
@@ -1143,9 +1143,9 @@
                                 <span x-text="testandoPix ? 'Gerando...' : '🧪 Testar PIX Real'"></span>
                             </button>
                         </template>
-                        <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-3.5 py-2.5 rounded-xl">
-                            🔑 Pegar Token no MP ↗
-                        </a>
+                        <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-3.5 py-2.5 rounded-xl">
+                            🔗 Conectar com Mercado Pago
+                        </button>
                         <template x-if="mpStatus?.conectado">
                             <button @click="desconectarMercadoPago()" class="bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700 font-bold text-xs px-3 py-2.5 rounded-xl">
                                 Desconectar
@@ -1771,6 +1771,11 @@
                             this.carregarEntregas();
                             this.carregarChamadosGarcom();
                             this.carregarStatusMp();
+                            if (new URLSearchParams(window.location.search).get('mp_oauth') === 'sucesso') {
+                                this.toastMsg = 'Conta Mercado Pago conectada com sucesso via login!';
+                                this.moduloAtivo = 'config';
+                                window.history.replaceState({}, '', '/painel');
+                            }
                             setInterval(() => {
                                 this.carregarPedidos();
                                 this.carregarChamadosGarcom();
