@@ -53,9 +53,10 @@ Route::prefix('auth')->group(function (): void {
     Route::post('2fa/verificar', [TwoFactorController::class, 'verify'])->middleware('auth:sanctum');
 });
 
-// 2. Cryptographically Verified External Webhooks (Mercado Pago & Meta Cloud API)
+// 2. Cryptographically Verified External Webhooks & OAuth Callback (Mercado Pago & Meta Cloud API)
 Route::get('webhooks/mercadopago', fn () => response()->json(['status' => 'ok', 'webhook' => 'mercadopago']));
 Route::post('webhooks/mercadopago', [MercadoPagoWebhookController::class, 'processar']);
+Route::get('pagamentos/mercadopago/callback', [MercadoPagoOAuthController::class, 'callback']);
 Route::post('webhooks/whatsapp', [WhatsAppWebhookController::class, 'processar']);
 
 // 3. Public Menu, Table QR & 3-Step Checkout API (Tenant-isolated)
@@ -162,10 +163,10 @@ Route::middleware([
         Route::post('fechar', [CaixaController::class, 'fechar']);
     });
 
-    // Mercado Pago OAuth2 Connect & Status (Phase 8)
+    // Mercado Pago OAuth2 Connect, Direct Token Authorization & Status (Phase 8)
     Route::prefix('pagamentos/mercadopago')->group(function (): void {
         Route::get('conectar', [MercadoPagoOAuthController::class, 'conectar']);
-        Route::get('callback', [MercadoPagoOAuthController::class, 'callback']);
+        Route::post('salvar-token', [MercadoPagoOAuthController::class, 'salvarTokenManual']);
         Route::post('desconectar', [MercadoPagoOAuthController::class, 'desconectar']);
         Route::get('status', [MercadoPagoOAuthController::class, 'status']);
     });

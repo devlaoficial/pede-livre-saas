@@ -858,20 +858,74 @@
                 </div>
             </div>
 
-            <!-- Status da Integração PIX Mercado Pago Não-Custodial -->
-            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div class="space-y-1">
-                    <div class="flex items-center gap-2">
-                        <span class="text-base font-extrabold text-white">⚡ Integração PIX Mercado Pago (0% Custódia)</span>
-                        <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            ✓ Conta Conectada (Produção)
-                        </span>
+            <!-- Central Completa de Cadastro e Autorização PIX Mercado Pago (0% Custódia) -->
+            <div class="bg-slate-900 border-2 rounded-3xl p-6 space-y-5"
+                 :class="mpStatus?.conectado ? 'border-emerald-500/40' : 'border-amber-500/40'">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div class="space-y-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-base font-black text-white">⚡ Cadastro e Autorização da Conta Mercado Pago (PIX 0% Taxa)</span>
+                            <span class="text-xs font-black px-3 py-0.5 rounded-full border"
+                                  :class="mpStatus?.conectado ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'"
+                                  x-text="mpStatus?.conectado ? '✓ Conta Conectada (' + (mpStatus.mp_conta_nome || mpStatus.mp_user_id || 'Ativa') + ')' : '⚠️ Conta Ainda Não Vinculada'">
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400">
+                            Os pagamentos PIX dos seus clientes geram QR Code dinâmico do Banco Central e o dinheiro cai <strong>100% direto na sua conta Mercado Pago</strong> em segundos.
+                        </p>
                     </div>
-                    <p class="text-xs text-slate-400">Os pagamentos PIX dos seus clientes geram QR Code dinâmico do Banco Central e caem direto na sua conta Mercado Pago.</p>
+                    <div class="flex flex-wrap gap-2 shrink-0">
+                        <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
+                            🔗 Autorizar c/ 1 Clique (OAuth)
+                        </button>
+                        <template x-if="mpStatus?.conectado">
+                            <button @click="desconectarMercadoPago()" class="bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl transition">
+                                Desconectar
+                            </button>
+                        </template>
+                    </div>
                 </div>
-                <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-5 py-3 rounded-xl shrink-0">
-                    🔗 Reconectar via OAuth
-                </button>
+
+                <!-- Formulário Direto de Credenciais do Lojista (Access Token APP_USR-...) -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <form @submit.prevent="salvarTokenMercadoPago()" class="lg:col-span-7 space-y-3 text-xs">
+                        <div class="font-extrabold text-sm text-white">🔐 Cadastrar / Autorizar via Credencial Oficial (Access Token)</div>
+                        <div>
+                            <label class="font-bold text-slate-300 block mb-1">Access Token de Produção do Mercado Pago (<code class="text-emerald-400">APP_USR-...</code>) *</label>
+                            <input type="password" x-model="formMp.access_token" required placeholder="Cole aqui seu token APP_USR-..."
+                                   class="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-white font-mono">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="font-bold text-slate-400 block mb-1">Public Key (Opcional)</label>
+                                <input type="text" x-model="formMp.public_key" placeholder="APP_USR-..."
+                                       class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono">
+                            </div>
+                            <div>
+                                <label class="font-bold text-slate-400 block mb-1">Sua Chave PIX Principal (Opcional)</label>
+                                <input type="text" x-model="formMp.chave_pix" placeholder="CNPJ, CPF, E-mail ou Celular"
+                                       class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white">
+                            </div>
+                        </div>
+                        <button type="submit" :disabled="salvandoMp" class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black py-3 rounded-xl text-sm shadow-lg transition">
+                            <span x-text="salvandoMp ? 'Validando conta no Mercado Pago...' : '✓ Validar e Autorizar Minha Conta Mercado Pago'"></span>
+                        </button>
+                    </form>
+
+                    <!-- Passo a Passo Rápido para o Lojista -->
+                    <div class="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs">
+                        <div class="font-black text-sky-400 uppercase tracking-wider text-[11px]">📖 Como pegar seu Access Token em 1 minuto:</div>
+                        <ol class="list-decimal list-inside space-y-1.5 text-slate-300 leading-relaxed">
+                            <li>Acesse o <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" class="text-sky-400 underline font-bold">Painel Mercado Pago Developers ↗</a> com a conta da sua loja.</li>
+                            <li>Clique em <strong>Criar aplicação</strong> (ou abra a sua) e vá em <strong>Credenciais de Produção</strong> no menu lateral.</li>
+                            <li>Copie o <strong>Access Token</strong> (começa com <code class="text-emerald-400">APP_USR-</code>) e cole no campo ao lado.</li>
+                        </ol>
+                        <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                            <span>🔒 Criptografado em AES-256-GCM</span>
+                            <span class="text-emerald-400 font-bold">0% Taxa do SaaS</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1047,6 +1101,51 @@
                         📲 Copiar Link do Cardápio p/ WhatsApp &amp; Bio
                     </button>
                 </div>
+            </div>
+
+            <!-- Card de Cadastro e Autorização da Conta Mercado Pago também dentro de Loja/Config (acessível no Celular e PC) -->
+            <div class="bg-slate-900 border-2 rounded-3xl p-6 space-y-5"
+                 :class="mpStatus?.conectado ? 'border-emerald-500/40' : 'border-amber-500/40'">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-base font-black text-white">⚡ Conta Mercado Pago para Receber PIX (0% Comissão)</h3>
+                            <span class="text-xs font-black px-3 py-0.5 rounded-full border"
+                                  :class="mpStatus?.conectado ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'"
+                                  x-text="mpStatus?.conectado ? '✓ Conectada (' + (mpStatus.mp_conta_nome || mpStatus.mp_user_id || 'Ativa') + ')' : '⚠️ Pendente de Autorização'">
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Cadastre seu Access Token do Mercado Pago ou autorize via OAuth para receber os pagamentos PIX direto na sua conta bancária.</p>
+                    </div>
+                    <div class="flex gap-2 shrink-0">
+                        <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl">
+                            🔗 Autorizar via OAuth
+                        </button>
+                        <template x-if="mpStatus?.conectado">
+                            <button @click="desconectarMercadoPago()" class="bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700 font-bold text-xs px-3 py-2.5 rounded-xl">
+                                Desconectar
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <form @submit.prevent="salvarTokenMercadoPago()" class="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs items-end">
+                    <div class="md:col-span-5">
+                        <label class="font-bold text-slate-300 block mb-1">Access Token Mercado Pago (<code class="text-emerald-400">APP_USR-...</code>) *</label>
+                        <input type="password" x-model="formMp.access_token" required placeholder="APP_USR-0000000000000000-..."
+                               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono">
+                    </div>
+                    <div class="md:col-span-4">
+                        <label class="font-bold text-slate-400 block mb-1">Sua Chave PIX Principal (Opcional)</label>
+                        <input type="text" x-model="formMp.chave_pix" placeholder="CNPJ, CPF, E-mail ou Celular"
+                               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white">
+                    </div>
+                    <div class="md:col-span-3">
+                        <button type="submit" :disabled="salvandoMp" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl text-xs shadow-lg transition">
+                            <span x-text="salvandoMp ? 'Validando...' : '✓ Autorizar Conta MP'"></span>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -1518,7 +1617,9 @@
                 entregadores: [],
                 areasEntrega: [],
                 relatorio: {},
-                mpStatus: { conectado: true },
+                mpStatus: { conectado: false, mp_conta_nome: '', mp_user_id: '', chave_pix: '', public_key: '' },
+                salvandoMp: false,
+                formMp: { access_token: '', public_key: '', chave_pix: '' },
                 modalNovoProduto: false,
                 modalNovaCategoria: false,
                 modalNovoCupom: false,
@@ -1627,6 +1728,7 @@
                             this.carregarCatalogo();
                             this.carregarEntregas();
                             this.carregarChamadosGarcom();
+                            this.carregarStatusMp();
                             setInterval(() => {
                                 this.carregarPedidos();
                                 this.carregarChamadosGarcom();
@@ -2090,9 +2192,56 @@
                     fetch('/api/relatorios/vendas', { headers: this.headersAuth() })
                         .then(r => r.json())
                         .then(d => { this.relatorio = d || {}; });
+                    this.carregarStatusMp();
+                },
+
+                carregarStatusMp() {
                     fetch('/api/pagamentos/mercadopago/status', { headers: this.headersAuth() })
-                        .then(r => r.json())
-                        .then(d => { this.mpStatus = d || { conectado: true }; });
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                            if (d) {
+                                this.mpStatus = d;
+                                if (d.chave_pix && !this.formMp.chave_pix) this.formMp.chave_pix = d.chave_pix;
+                                if (d.public_key && !this.formMp.public_key) this.formMp.public_key = d.public_key;
+                            }
+                        })
+                        .catch(() => {});
+                },
+
+                salvarTokenMercadoPago() {
+                    if (!this.formMp.access_token.trim()) return;
+                    this.salvandoMp = true;
+                    fetch('/api/pagamentos/mercadopago/salvar-token', {
+                        method: 'POST',
+                        headers: this.headersAuth(),
+                        body: JSON.stringify(this.formMp)
+                    })
+                    .then(async r => {
+                        const d = await r.json();
+                        this.salvandoMp = false;
+                        if (r.ok) {
+                            this.toastMsg = d.message || 'Conta Mercado Pago autorizada com sucesso!';
+                            this.formMp.access_token = '';
+                            this.carregarStatusMp();
+                        } else {
+                            alert(d.message || 'Erro ao validar o Access Token do Mercado Pago.');
+                        }
+                    })
+                    .catch(() => {
+                        this.salvandoMp = false;
+                    });
+                },
+
+                desconectarMercadoPago() {
+                    fetch('/api/pagamentos/mercadopago/desconectar', {
+                        method: 'POST',
+                        headers: this.headersAuth()
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        this.toastMsg = d.message || 'Conta Mercado Pago desconectada.';
+                        this.carregarStatusMp();
+                    });
                 },
 
                 abrirCaixa() {
@@ -2108,7 +2257,13 @@
                 conectarMercadoPago() {
                     fetch('/api/pagamentos/mercadopago/conectar', { headers: this.headersAuth() })
                         .then(r => r.json())
-                        .then(d => { if (d.oauth_url || d.authorization_url) window.location.href = d.oauth_url || d.authorization_url; });
+                        .then(d => {
+                            if (d.oauth_url || d.authorization_url) {
+                                window.location.href = d.oauth_url || d.authorization_url;
+                            } else {
+                                this.toastMsg = d.message || 'Informe seu Access Token (APP_USR-...) no campo abaixo para conectar sua conta.';
+                            }
+                        });
                 },
 
                 abrirModalPdv() {
