@@ -63,30 +63,21 @@ final class MercadoPagoOAuthController
         ]);
 
         $token = trim($dados['access_token']);
-        $mpUserId = 'MP_' . $loja->id;
-        $mpNickname = $loja->nome;
 
-        // Try validating the token in real time against Mercado Pago's /users/me endpoint
-        try {
-            $resp = Http::withToken($token)->timeout(8)->get('https://api.mercadopago.com/users/me');
-            if ($resp->successful()) {
-                $userJson = $resp->json();
-                $mpUserId = (string) ($userJson['id'] ?? $mpUserId);
-                $mpNickname = (string) ($userJson['nickname'] ?? $userJson['email'] ?? $mpNickname);
-            } elseif (!str_starts_with($token, 'APP_USR-') && !str_starts_with($token, 'TEST-')) {
-                return response()->json([
-                    'error' => 'TOKEN_INVALIDO',
-                    'message' => 'O Access Token informado foi recusado pelo Mercado Pago. Copie o Access Token (iniciado por APP_USR- ou TEST-) em Seu Negócio > Configurações > Credenciais.',
-                ], Response::HTTP_UNPROCESSABLE_ENTITY);
-            }
-        } catch (\Throwable) {
-            if (!str_starts_with($token, 'APP_USR-') && !str_starts_with($token, 'TEST-')) {
-                return response()->json([
-                    'error' => 'TOKEN_INVALIDO',
-                    'message' => 'Formato de token inválido. O Access Token do Mercado Pago deve começar com APP_USR- (Produção) ou TEST- (Teste).',
-                ], Response::HTTP_UNPROCESSABLE_ENTITY);
-            }
+        // Validate the token in real time against Mercado Pago's official /users/me endpoint
+        $resp = Http::withToken($token)->timeout(10)->get('https://api.mercadopago.com/users/me');
+        if ($resp->failed()) {
+            return response()->json([
+                'error' => 'TOKEN_INVALIDO',
+                'message' => 'O Access Token informado foi recusado pela API do Mercado Pago. Copie o Access Token oficial (iniciado por APP_USR-) em Seu Negócio > Configurações > Credenciais.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+
+        $userJson = $resp->json();
+        $mpUserId = (string) ($userJson['id'] ?? ('MP_' . $loja->id));
+        $mpEmail = (string) ($userJson['email'] ?? '');
+        $mpNickname = (string) ($userJson['nickname'] ?? $mpEmail ?: $loja->nome);
+        $contaLabel = $mpEmail !== '' ? "{$mpNickname} ({$mpEmail})" : $mpNickname;
 
         $configAtual = is_array($loja->config_json) ? $loja->config_json : [];
         if (!empty($dados['public_key'])) {
@@ -95,7 +86,7 @@ final class MercadoPagoOAuthController
         if (!empty($dados['chave_pix'])) {
             $configAtual['chave_pix'] = trim((string) $dados['chave_pix']);
         }
-        $configAtual['mp_conta_nome'] = $mpNickname;
+        $configAtual['mp_conta_nome'] = $contaLabel;
         $configAtual['mp_conectado_em'] = now()->format('d/m/Y H:i');
 
         $loja->update([
@@ -105,11 +96,60 @@ final class MercadoPagoOAuthController
         ]);
 
         return response()->json([
-            'message' => "Conta Mercado Pago ({$mpNickname}) autorizada e criptografada com sucesso!",
+            'message' => "Conta Mercado Pago [{$contaLabel}] validada, autorizada e criptografada com sucesso!",
             'conectado' => true,
             'mp_user_id' => $mpUserId,
-            'mp_conta_nome' => $mpNickname,
+            'mp_conta_nome' => $contaLabel,
             'modo' => str_starts_with($token, 'TEST-') ? 'sandbox' : 'producao',
+        ]);
+    }
+
+    /**
+     * Generates a R$ 1,00 live test PIX QR Code on the merchant's connected Mercado Pago account
+     * so they can verify their PIX integration immediately.
+     */
+    public function testarPix(): JsonResponse
+    {
+        $loja = $this->context->getLoja();
+        Gate::authorize('update', $loja);
+
+        $token = $loja?->mp_access_token;
+        if (empty($token)) {
+            return response()->json([
+                'error' => 'CONTA_NAO_CONECTADA',
+                'message' => 'Cadastre seu Access Token do Mercado Pago primeiro para testar a geração de PIX.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $resp = Http::withHeaders([
+            'Authorization' => "Bearer {$token}",
+            'X-Idempotency-Key' => 'test_pix_' . $loja->id . '_' . time(),
+        ])->timeout(12)->post('https://api.mercadopago.com/v1/payments', [
+            'transaction_amount' => 1.00,
+            'description' => "Teste de Conexao PIX - {$loja->nome}",
+            'payment_method_id' => 'pix',
+            'payer' => [
+                'email' => "teste_{$loja->id}@pedelivre.com.br",
+                'first_name' => 'Teste',
+                'last_name' => 'PedeLivre',
+            ],
+        ]);
+
+        if ($resp->failed()) {
+            return response()->json([
+                'error' => 'FALHA_PIX_MP',
+                'message' => 'O Mercado Pago recusou a emissão do PIX: ' . ($resp->json('message') ?? $resp->body()),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $dados = $resp->json();
+        $txData = $dados['point_of_interaction']['transaction_data'] ?? [];
+
+        return response()->json([
+            'message' => 'QR Code PIX real do Banco Central gerado com sucesso na sua conta Mercado Pago!',
+            'mp_payment_id' => (string) ($dados['id'] ?? ''),
+            'pix_copia_cola' => (string) ($txData['qr_code'] ?? ''),
+            'pix_qr_base64' => (string) ($txData['qr_code_base64'] ?? ''),
         ]);
     }
 

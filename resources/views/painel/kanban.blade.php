@@ -875,9 +875,14 @@
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2 shrink-0">
-                        <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
-                            🔗 Autorizar c/ 1 Clique (OAuth)
-                        </button>
+                        <template x-if="mpStatus?.conectado">
+                            <button @click="testarPixMercadoPago()" :disabled="testandoPix" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
+                                <span x-text="testandoPix ? 'Gerando PIX...' : '🧪 Testar PIX Real (R$ 1,00)'"></span>
+                            </button>
+                        </template>
+                        <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
+                            🔑 Pegar Token no Mercado Pago ↗
+                        </a>
                         <template x-if="mpStatus?.conectado">
                             <button @click="desconectarMercadoPago()" class="bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl transition">
                                 Desconectar
@@ -885,6 +890,21 @@
                         </template>
                     </div>
                 </div>
+
+                <!-- Resultado do Teste de Emissão PIX Ao Vivo -->
+                <template x-if="pixTesteResultado">
+                    <div class="bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4">
+                        <template x-if="pixTesteResultado.pix_qr_base64">
+                            <img :src="'data:image/png;base64,' + pixTesteResultado.pix_qr_base64" class="w-28 h-28 rounded-xl bg-white p-1.5 shrink-0">
+                        </template>
+                        <div class="space-y-2 text-xs flex-1 min-w-0">
+                            <div class="font-black text-emerald-400 text-sm" x-text="'✓ ' + pixTesteResultado.message"></div>
+                            <div class="text-slate-300">ID da Transação Mercado Pago: <strong class="text-white" x-text="pixTesteResultado.mp_payment_id"></strong></div>
+                            <input type="text" readonly :value="pixTesteResultado.pix_copia_cola" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[11px] text-emerald-300 font-mono">
+                        </div>
+                        <button @click="pixTesteResultado = null" class="text-slate-400 font-bold text-sm self-start">✕</button>
+                    </div>
+                </template>
 
                 <!-- Formulário Direto de Credenciais do Lojista (Access Token APP_USR-...) -->
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -1117,10 +1137,15 @@
                         </div>
                         <p class="text-xs text-slate-400 mt-1">Cadastre seu Access Token do Mercado Pago ou autorize via OAuth para receber os pagamentos PIX direto na sua conta bancária.</p>
                     </div>
-                    <div class="flex gap-2 shrink-0">
-                        <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl">
-                            🔗 Autorizar via OAuth
-                        </button>
+                    <div class="flex flex-wrap gap-2 shrink-0">
+                        <template x-if="mpStatus?.conectado">
+                            <button @click="testarPixMercadoPago()" :disabled="testandoPix" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-3.5 py-2.5 rounded-xl">
+                                <span x-text="testandoPix ? 'Gerando...' : '🧪 Testar PIX Real'"></span>
+                            </button>
+                        </template>
+                        <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-3.5 py-2.5 rounded-xl">
+                            🔑 Pegar Token no MP ↗
+                        </a>
                         <template x-if="mpStatus?.conectado">
                             <button @click="desconectarMercadoPago()" class="bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700 font-bold text-xs px-3 py-2.5 rounded-xl">
                                 Desconectar
@@ -1128,6 +1153,21 @@
                         </template>
                     </div>
                 </div>
+
+                <!-- Resultado do Teste de Emissão PIX Ao Vivo (Mobile/Config) -->
+                <template x-if="pixTesteResultado">
+                    <div class="bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4">
+                        <template x-if="pixTesteResultado.pix_qr_base64">
+                            <img :src="'data:image/png;base64,' + pixTesteResultado.pix_qr_base64" class="w-28 h-28 rounded-xl bg-white p-1.5 shrink-0">
+                        </template>
+                        <div class="space-y-2 text-xs flex-1 min-w-0 w-full">
+                            <div class="font-black text-emerald-400 text-sm" x-text="'✓ ' + pixTesteResultado.message"></div>
+                            <div class="text-slate-300">ID Mercado Pago: <strong class="text-white" x-text="pixTesteResultado.mp_payment_id"></strong></div>
+                            <input type="text" readonly :value="pixTesteResultado.pix_copia_cola" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[11px] text-emerald-300 font-mono">
+                        </div>
+                        <button @click="pixTesteResultado = null" class="text-slate-400 font-bold text-sm self-start">✕</button>
+                    </div>
+                </template>
 
                 <form @submit.prevent="salvarTokenMercadoPago()" class="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs items-end">
                     <div class="md:col-span-5">
@@ -1619,6 +1659,8 @@
                 relatorio: {},
                 mpStatus: { conectado: false, mp_conta_nome: '', mp_user_id: '', chave_pix: '', public_key: '' },
                 salvandoMp: false,
+                testandoPix: false,
+                pixTesteResultado: null,
                 formMp: { access_token: '', public_key: '', chave_pix: '' },
                 modalNovoProduto: false,
                 modalNovaCategoria: false,
@@ -2239,8 +2281,31 @@
                     })
                     .then(r => r.json())
                     .then(d => {
+                        this.pixTesteResultado = null;
                         this.toastMsg = d.message || 'Conta Mercado Pago desconectada.';
                         this.carregarStatusMp();
+                    });
+                },
+
+                testarPixMercadoPago() {
+                    this.testandoPix = true;
+                    this.pixTesteResultado = null;
+                    fetch('/api/pagamentos/mercadopago/testar-pix', {
+                        method: 'POST',
+                        headers: this.headersAuth()
+                    })
+                    .then(async r => {
+                        const d = await r.json();
+                        this.testandoPix = false;
+                        if (r.ok) {
+                            this.pixTesteResultado = d;
+                            this.toastMsg = 'QR Code PIX real emitido com sucesso!';
+                        } else {
+                            alert(d.message || 'Erro ao emitir PIX de teste.');
+                        }
+                    })
+                    .catch(() => {
+                        this.testandoPix = false;
                     });
                 },
 

@@ -167,6 +167,7 @@ Route::middleware([
     Route::prefix('pagamentos/mercadopago')->group(function (): void {
         Route::get('conectar', [MercadoPagoOAuthController::class, 'conectar']);
         Route::post('salvar-token', [MercadoPagoOAuthController::class, 'salvarTokenManual']);
+        Route::post('testar-pix', [MercadoPagoOAuthController::class, 'testarPix']);
         Route::post('desconectar', [MercadoPagoOAuthController::class, 'desconectar']);
         Route::get('status', [MercadoPagoOAuthController::class, 'status']);
     });
