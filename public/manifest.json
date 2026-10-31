@@ -1,0 +1,18 @@
+{
+  "name": "PedeLivre — Cardápio Digital & PDV 0% Comissão",
+  "short_name": "PedeLivre",
+  "description": "Sistema de Delivery, Cardápio Digital, QR Code de Mesa, KDS e PIX 0% Taxa",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#E11D48",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3075/3075977.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
