@@ -129,6 +129,9 @@
             </div>
 
             <div class="flex items-center gap-2 shrink-0">
+                <button @click="tocarChime()" class="hidden sm:inline-flex items-center text-xs bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl font-bold transition" title="Testar toque de campainha">
+                    📞 Testar Toque
+                </button>
                 <button @click="copiarLinkCardapio()" class="hidden md:inline-flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl font-bold transition">
                     <span>🔗 Copiar Link</span>
                 </button>
@@ -2438,30 +2441,68 @@
                     try {
                         const AudioContext = window.AudioContext || window.webkitAudioContext;
                         this.audioCtx = new AudioContext();
+                        // Navegadores bloqueiam áudio até o 1º toque do usuário: destrava no primeiro clique/toque
+                        const destravar = () => {
+                            if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
+                        };
+                        ['click', 'touchstart', 'keydown'].forEach(ev => document.addEventListener(ev, destravar, { passive: true }));
                     } catch (e) {}
                 },
 
+                // Toque de telefone/campainha de cozinha: "trrrrrring-trrrrrring" (2 toques de ~0,9s) + pausa
                 tocarChime() {
                     if (!this.somHabilitado || !this.audioCtx) return;
-                    if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-                    const osc = this.audioCtx.createOscillator();
-                    const gain = this.audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(880, this.audioCtx.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(1320, this.audioCtx.currentTime + 0.3);
-                    gain.gain.setValueAtTime(0.3, this.audioCtx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.6);
-                    osc.connect(gain);
-                    gain.connect(this.audioCtx.destination);
-                    osc.start();
-                    osc.stop(this.audioCtx.currentTime + 0.6);
+                    const ctx = this.audioCtx;
+                    if (ctx.state === 'suspended') ctx.resume();
+
+                    const inicio = ctx.currentTime + 0.05;
+                    const mestre = ctx.createGain();
+                    mestre.gain.value = 0.9;
+                    mestre.connect(ctx.destination);
+
+                    // Cada "toque" = duas notas (1400 Hz + 1800 Hz, timbre de sino metálico) com tremolo rápido de martelo (~22 Hz)
+                    const toque = (t0, duracao) => {
+                        [1400, 1800, 2800].forEach((freq, i) => {
+                            const osc = ctx.createOscillator();
+                            const ganho = ctx.createGain();
+                            const tremolo = ctx.createOscillator();
+                            const tremoloGanho = ctx.createGain();
+
+                            osc.type = i === 2 ? 'sine' : 'square';
+                            osc.frequency.setValueAtTime(freq, t0);
+
+                            tremolo.type = 'square';
+                            tremolo.frequency.setValueAtTime(22, t0);
+                            tremoloGanho.gain.setValueAtTime(i === 2 ? 0.05 : 0.22, t0);
+
+                            ganho.gain.setValueAtTime(0.0001, t0);
+                            ganho.gain.exponentialRampToValueAtTime(i === 2 ? 0.08 : 0.28, t0 + 0.02);
+                            ganho.gain.setValueAtTime(i === 2 ? 0.08 : 0.28, t0 + duracao - 0.05);
+                            ganho.gain.exponentialRampToValueAtTime(0.0001, t0 + duracao);
+
+                            tremolo.connect(tremoloGanho);
+                            tremoloGanho.connect(ganho.gain);
+                            osc.connect(ganho);
+                            ganho.connect(mestre);
+
+                            osc.start(t0);
+                            tremolo.start(t0);
+                            osc.stop(t0 + duracao + 0.02);
+                            tremolo.stop(t0 + duracao + 0.02);
+                        });
+                    };
+
+                    toque(inicio, 0.85);
+                    toque(inicio + 1.05, 0.85);
+
+                    if (navigator.vibrate) navigator.vibrate([400, 150, 400]);
                 },
 
                 verificarAlertaSonoro() {
                     const temNovos = this.colunas.novo.length > 0 || this.chamadosGarcom.length > 0;
                     if (temNovos && !this.somInterval) {
                         this.tocarChime();
-                        this.somInterval = setInterval(() => this.tocarChime(), 4000);
+                        this.somInterval = setInterval(() => this.tocarChime(), 3200);
                     } else if (!temNovos && this.somInterval) {
                         clearInterval(this.somInterval);
                         this.somInterval = null;
@@ -2470,6 +2511,9 @@
 
                 alternarSom() {
                     this.somHabilitado = !this.somHabilitado;
+                    if (this.somHabilitado) {
+                        this.tocarChime();
+                    }
                     if (!this.somHabilitado && this.somInterval) {
                         clearInterval(this.somInterval);
                         this.somInterval = null;
