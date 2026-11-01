@@ -35,7 +35,12 @@ final class AiChatService
             }
 
             $model = (string) config('services.groq.whisper_model', 'whisper-large-v3-turbo');
-            $extensao = str_contains($mimetype, 'mp4') ? 'm4a' : 'ogg';
+            $extensao = match (true) {
+                str_contains($mimetype, 'mp4') || str_contains($mimetype, 'm4a') => 'm4a',
+                str_contains($mimetype, 'mp3') || str_contains($mimetype, 'mpeg') => 'mp3',
+                str_contains($mimetype, 'wav') => 'wav',
+                default => 'ogg',
+            };
 
             $response = Http::withToken($apiKey)
                 ->withHeaders([
@@ -79,7 +84,6 @@ final class AiChatService
         }
 
         try {
-            $chatModel = (string) config('services.groq.chat_model', 'openai/gpt-oss-120b');
             $cardapioResumo = $this->obterResumoCardapio($loja);
             $linkCardapio = url("/p/{$loja->slug}");
 
@@ -116,33 +120,45 @@ PROMPT;
                 'content' => trim($pergunta),
             ];
 
-            $response = Http::withToken($apiKey)
-                ->withHeaders([
-                    'User-Agent' => 'PedeLivre-Bot/1.0',
-                    'Content-Type' => 'application/json',
-                ])
-                ->timeout(10)
-                ->post(self::GROQ_CHAT_URL, [
-                    'model' => $chatModel,
-                    'messages' => $messages,
-                    'temperature' => 0.4,
-                    'max_tokens' => 600,
-                ]);
+            $modelos = array_unique(array_filter([
+                (string) config('services.groq.chat_model', 'openai/gpt-oss-120b'),
+                'openai/gpt-oss-20b',
+                'qwen/qwen3.8-27b',
+            ]));
 
-            if ($response->successful()) {
-                $dados = $response->json();
-                $conteudo = (string) ($dados['choices'][0]['message']['content'] ?? '');
-                $textoLimpo = trim($conteudo);
+            foreach ($modelos as $chatModel) {
+                try {
+                    $response = Http::withToken($apiKey)
+                        ->withHeaders([
+                            'User-Agent' => 'PedeLivre-Bot/1.0',
+                            'Content-Type' => 'application/json',
+                        ])
+                        ->timeout(9)
+                        ->post(self::GROQ_CHAT_URL, [
+                            'model' => $chatModel,
+                            'messages' => $messages,
+                            'temperature' => 0.4,
+                            'max_tokens' => 700,
+                        ]);
 
-                if (!empty($textoLimpo)) {
-                    // Garante que o link do cardápio está presente para conversão
-                    if (!str_contains($textoLimpo, $loja->slug) && !str_contains($textoLimpo, 'http')) {
-                        $textoLimpo .= "\n\n👉 *Acesse nosso cardápio completo:* {$linkCardapio}";
+                    if ($response->successful()) {
+                        $dados = $response->json();
+                        $conteudo = (string) ($dados['choices'][0]['message']['content'] ?? '');
+                        $textoLimpo = trim($conteudo);
+
+                        if (!empty($textoLimpo)) {
+                            // Garante que o link do cardápio está presente para conversão
+                            if (!str_contains($textoLimpo, $loja->slug) && !str_contains($textoLimpo, 'http')) {
+                                $textoLimpo .= "\n\n👉 *Acesse nosso cardápio completo:* {$linkCardapio}";
+                            }
+                            return $textoLimpo;
+                        }
+                    } else {
+                        Log::warning("[AiChatService] Groq Chat com {$chatModel} falhou (HTTP {$response->status()}): " . $response->body());
                     }
-                    return $textoLimpo;
+                } catch (Exception $callEx) {
+                    Log::warning("[AiChatService] Falha ao consultar {$chatModel}: " . $callEx->getMessage());
                 }
-            } else {
-                Log::warning("[AiChatService] Groq Chat HTTP {$response->status()}: " . $response->body());
             }
         } catch (Exception $e) {
             Log::error("[AiChatService] Exceção no chat de IA: " . $e->getMessage());

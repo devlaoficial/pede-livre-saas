@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Domain\Bot\Services;
 
 use App\Domain\Assinaturas\Models\Loja;
+use App\Domain\Catalogo\Models\Produto;
 use App\Domain\Clientes\Models\Cliente;
 use App\Domain\Pagamentos\Models\Pagamento;
 use App\Domain\Pagamentos\Services\MercadoPagoPixService;
+use App\Domain\Pedidos\Events\PedidoAtualizado;
 use App\Domain\Pedidos\Events\PedidoCriado;
 use App\Domain\Pedidos\Models\Pedido;
 use App\Domain\Pedidos\Models\PedidoEvento;
 use App\Domain\Pedidos\Models\PedidoItem;
 use App\Domain\Pedidos\Services\FluxoStatusPedidoService;
+use DomainException;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -134,19 +137,6 @@ final class RecuperadorVendasService
                 );
 
                 $cancelados++;
-
-                // Notifica o cliente educadamente com o link para pedir novamente caso queira
-                if ($loja !== null && $cliente?->telefone) {
-                    $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
-                    $primeiroNome = explode(' ', trim($cliente->nome ?? 'Cliente'))[0];
-                    $linkCardapio = url("/p/{$loja->slug}");
-
-                    $msgAviso = "Oi, *{$primeiroNome}*! Como a confirmação do PIX do pedido *#{$codigo}* não foi realizada em 40 minutos, ele precisou ser cancelado para liberar os itens do estoque.\n\n"
-                        . "Quando quiser pedir algo delicioso, estamos de portas abertas! 👇😋\n"
-                        . "👉 {$linkCardapio}";
-
-                    $this->evolutionApi->enviarMensagem($instancia, (string) $cliente->telefone, $msgAviso);
-                }
             } catch (Exception $e) {
                 Log::warning("[RecuperadorVendas] Erro ao cancelar pedido expirado #{$codigo}: " . $e->getMessage());
             }
@@ -160,8 +150,22 @@ final class RecuperadorVendasService
      */
     public function recriarPedidoAnterior(Loja $loja, Cliente $cliente, Pedido $pedidoAnterior): Pedido
     {
+        // Verifica previamente se todos os produtos do pedido anterior ainda estão disponíveis
+        foreach ($pedidoAnterior->itens as $item) {
+            /** @var Produto|null $prod */
+            $prod = Produto::where('loja_id', $loja->id)->find($item->produto_id);
+            if ($prod === null || !$prod->ativo || $prod->esgotado) {
+                $nomeItem = $item->nome_snapshot;
+                throw new DomainException("O item '{$nomeItem}' está esgotado ou indisponível no momento.");
+            }
+        }
+
         return DB::transaction(function () use ($loja, $cliente, $pedidoAnterior): Pedido {
-            $codigoPublico = strtoupper(Str::random(4));
+            // Gera código público único de 4 caracteres (sem ambiguidades)
+            do {
+                $codigoPublico = strtoupper(Str::random(4));
+            } while (Pedido::where('loja_id', $loja->id)->where('codigo_publico', $codigoPublico)->where('created_at', '>=', now()->subHours(24))->exists());
+
             $tokenHash = hash_hmac('sha256', bin2hex(random_bytes(24)), (string) config('app.blind_index_key'));
             $idempotencyKey = 'recompra_' . $loja->id . '_' . $cliente->id . '_' . time();
 
@@ -267,6 +271,9 @@ final class RecuperadorVendasService
             'status_para' => 'novo',
             'observacao' => "Forma de pagamento alterada para [{$novaForma}] via WhatsApp pelo cliente.",
         ]);
+
+        // Dispara atualização em tempo real para o Kanban do lojista
+        event(new PedidoAtualizado($pedido, 'novo'));
 
         return true;
     }

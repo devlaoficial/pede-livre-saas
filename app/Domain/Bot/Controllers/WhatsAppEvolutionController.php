@@ -257,6 +257,13 @@ final class WhatsAppEvolutionController
                 if (!empty($transcricao)) {
                     $textoMensagem = $transcricao;
                     $isAudio = true;
+                } else {
+                    $linkCardapio = url("/p/{$loja->slug}");
+                    $msgFallback = "Olá! Não consegui ouvir seu áudio com clareza. 🎙️😅\n\nPoderia enviar sua mensagem por texto ou tentar gravar novamente? Se preferir ver nossos produtos e fazer um pedido direto, acesse:\n👉 {$linkCardapio}";
+                    return response()->json([
+                        'status' => 'audio_nao_compreendido',
+                        'replyText' => $msgFallback,
+                    ]);
                 }
             }
 

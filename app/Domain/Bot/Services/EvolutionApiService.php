@@ -318,33 +318,47 @@ final class EvolutionApiService
     /**
      * Envia alerta gentil de atraso quando detectada alta demanda na cozinha.
      */
-    public function notificarAtraso(Pedido $pedido, int $minutosDecorridos): void
+    public function notificarAtraso(Pedido $pedido, int $minutosDecorridos): bool
     {
         try {
             /** @var Loja|null $loja */
             $loja = $pedido->loja ?? Loja::find($pedido->loja_id);
             if ($loja === null) {
-                return;
+                return false;
             }
 
             $instancia = $this->obterNomeInstanciaLoja($loja);
+
+            // Verifica se a instância está conectada antes de disparar
+            $statusInstancia = $this->obterStatusInstancia($instancia);
+            if (!$statusInstancia['connected']) {
+                return false;
+            }
+
             $cliente = $pedido->cliente;
             $telCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
             if (empty($telCliente)) {
-                return;
+                return false;
             }
 
             $primeiroNome = explode(' ', trim($cliente->nome ?? 'Cliente'))[0];
             $codigo = $pedido->codigo_publico;
 
+            if ($pedido->canal === 'retirada' || $pedido->canal === 'balcao') {
+                $msgProntidao = "Seu pedido *#{$codigo}* já é o **próximo da fila para ser finalizado**! 🍳🔥 Já estamos nos preparativos finais para você poder retirar quentinho no balcão.";
+            } else {
+                $msgProntidao = "Seu pedido *#{$codigo}* já é o **próximo da fila para ser embalado**! 🍳🔥 Nosso entregador já está de prontidão aguardando a saída para levar até você.";
+            }
+
             $msg = "Oi, *{$primeiroNome}*! Passando aqui rapidinho para te dar uma satisfação! 🙏\n\n"
                 . "Hoje nossa cozinha está com uma procura super alta e todos os pedidos estão sendo feitos com muito carinho para saírem com a máxima qualidade.\n\n"
-                . "Seu pedido *#{$codigo}* já é o **próximo da fila para ser embalado**! 🍳🔥 Nosso entregador já está de prontidão na loja só aguardando a saída.\n\n"
+                . "{$msgProntidao}\n\n"
                 . "Agradecemos imensamente pela sua paciência e compreensão! ❤️";
 
-            $this->enviarMensagem($instancia, $telCliente, $msg);
+            return $this->enviarMensagem($instancia, $telCliente, $msg);
         } catch (Exception $e) {
             Log::error("[EvolutionApi] Falha ao notificar atraso: " . $e->getMessage());
+            return false;
         }
     }
 }

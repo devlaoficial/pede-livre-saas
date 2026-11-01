@@ -57,13 +57,14 @@ final class VerificarPedidosAtrasadosCommand extends Command
             }
 
             // Dispara aviso gentil e tranquilizador para o cliente
-            $evolutionApi->notificarAtraso($pedido, $minutosDecorridos);
+            $enviado = $evolutionApi->notificarAtraso($pedido, $minutosDecorridos);
 
-            // Marca cache por 24 horas para nunca reenviar no mesmo pedido
-            Cache::put($cacheKey, now()->toIso8601String(), now()->addDay());
-            $totalNotificados++;
-
-            $this->line("✓ Alerta proativo enviado para Pedido #{$pedido->codigo_publico} da loja [{$loja->nome}] ({$minutosDecorridos} min decorridos).");
+            if ($enviado) {
+                // Marca cache por 24 horas para nunca reenviar no mesmo pedido
+                Cache::put($cacheKey, now()->toIso8601String(), now()->addDay());
+                $totalNotificados++;
+                $this->line("✓ Alerta proativo enviado para Pedido #{$pedido->codigo_publico} da loja [{$loja->nome}] ({$minutosDecorridos} min decorridos).");
+            }
         }
 
         $this->info("Total de alertas proativos enviados: {$totalNotificados}.");

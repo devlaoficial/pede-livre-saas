@@ -2928,7 +2928,14 @@
                         const r = await fetch('/api/painel/whatsapp/status', { headers: this.headersAuth() });
                         if (r.ok) {
                             const d = await r.json();
-                            this.whatsappStatus = d;
+                            this.whatsappStatus = {
+                                ...this.whatsappStatus,
+                                ...d,
+                                config: {
+                                    ...this.whatsappStatus.config,
+                                    ...(d.config || {})
+                                }
+                            };
                         }
                     } catch (e) {
                         console.error('Erro ao consultar status do WhatsApp:', e);
