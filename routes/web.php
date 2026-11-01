@@ -116,6 +116,76 @@ Route::get('/painel/pedidos/{id}/imprimir', function (int $id, Request $request)
     ]);
 })->name('painel.pedidos.imprimir');
 
+Route::get('/painel/caixa/{id}/imprimir', function (int $id, Request $request) {
+    $rawToken = $request->bearerToken() ?: (string) $request->query('token', '');
+    abort_if($rawToken === '', 403, 'Autenticação obrigatória para impressão.');
+
+    $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($rawToken);
+    $usuario = $accessToken?->tokenable;
+    abort_if(!$usuario instanceof \App\Domain\Autenticacao\Models\Usuario || !$usuario->ativo, 403, 'Token inválido.');
+
+    $sessao = \App\Domain\Operacao\Models\CaixaSessao::withoutGlobalScopes()->with(['usuario', 'movimentos'])->findOrFail($id);
+    abort_unless($usuario->isSuperAdmin() || (int) $usuario->loja_id === (int) $sessao->loja_id, 403, 'Acesso negado.');
+
+    $loja = \App\Domain\Assinaturas\Models\Loja::findOrFail($sessao->loja_id);
+
+    $pedidos = Pedido::where('loja_id', $loja->id)
+        ->where('created_at', '>=', $sessao->aberto_em)
+        ->when($sessao->fechado_em, fn($q) => $q->where('created_at', '<=', $sessao->fechado_em))
+        ->where('status', '!=', 'cancelado')
+        ->get();
+
+    $vendasDinheiro = (int) $pedidos->where('forma_pagamento', 'dinheiro')->sum('total');
+    $vendasPix = (int) $pedidos->where('forma_pagamento', 'pix')->sum('total');
+    $vendasCartao = (int) $pedidos->whereIn('forma_pagamento', ['cartao_maquina', 'cartao_online', 'voucher'])->sum('total');
+
+    return view('impressao.caixa', [
+        'sessao' => $sessao,
+        'loja' => $loja,
+        'vendasDinheiro' => $vendasDinheiro,
+        'vendasPix' => $vendasPix,
+        'vendasCartao' => $vendasCartao,
+        'totalPedidos' => $pedidos->count(),
+    ]);
+})->name('painel.caixa.imprimir');
+
+Route::get('/painel/entregadores/{id}/imprimir-acerto', function (int $id, Request $request) {
+    $rawToken = $request->bearerToken() ?: (string) $request->query('token', '');
+    abort_if($rawToken === '', 403, 'Autenticação obrigatória para impressão.');
+
+    $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($rawToken);
+    $usuario = $accessToken?->tokenable;
+    abort_if(!$usuario instanceof \App\Domain\Autenticacao\Models\Usuario || !$usuario->ativo, 403, 'Token inválido.');
+
+    $entregador = \App\Domain\Entregas\Models\Entregador::withoutGlobalScopes()->findOrFail($id);
+    abort_unless($usuario->isSuperAdmin() || (int) $usuario->loja_id === (int) $entregador->loja_id, 403, 'Acesso negado.');
+
+    $loja = \App\Domain\Assinaturas\Models\Loja::findOrFail($entregador->loja_id);
+
+    $pedidosHoje = Pedido::where('loja_id', $loja->id)
+        ->where('canal', 'delivery')
+        ->where('entregador_id', $entregador->id)
+        ->where('created_at', '>=', now()->startOfDay())
+        ->where('status', '!=', 'cancelado')
+        ->get();
+
+    $concluidas = $pedidosHoje->whereIn('status', ['entregue', 'finalizado', 'retirado', 'servido']);
+    $taxaUnit = (int) ($entregador->valor_por_entrega_centavos ?? 700);
+    $totalTaxas = $concluidas->count() * $taxaUnit;
+    $dinheiroColetado = (int) $concluidas->where('forma_pagamento', 'dinheiro')->sum('total');
+    $saldoAcerto = $totalTaxas - $dinheiroColetado;
+
+    return view('impressao.motoboy', [
+        'entregador' => $entregador,
+        'loja' => $loja,
+        'concluidas' => $concluidas,
+        'taxaUnit' => $taxaUnit,
+        'totalTaxas' => $totalTaxas,
+        'dinheiroColetado' => $dinheiroColetado,
+        'saldoAcerto' => $saldoAcerto,
+    ]);
+})->name('painel.entregadores.imprimir');
+
 Route::get('/status', fn () => response()->json([
     'status' => 'online',
     'app' => 'PedeLivre SaaS',

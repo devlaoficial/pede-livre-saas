@@ -69,9 +69,17 @@ final class CaixaService
         }
 
         return DB::transaction(function () use ($sessao, $valorFinalInformadoCentavos): CaixaSessao {
-            $vendas = (int) CaixaMovimento::where('sessao_id', $sessao->id)
+            $vendasDinheiroPedidos = (int) \App\Domain\Pedidos\Models\Pedido::where('loja_id', $sessao->loja_id)
+                ->where('forma_pagamento', 'dinheiro')
+                ->where('status', '!=', 'cancelado')
+                ->where('created_at', '>=', $sessao->aberto_em)
+                ->sum('total');
+
+            $vendasMovimentos = (int) CaixaMovimento::where('sessao_id', $sessao->id)
                 ->where('tipo', 'venda')
                 ->sum('valor_centavos');
+
+            $vendas = max($vendasDinheiroPedidos, $vendasMovimentos);
 
             $suprimentos = (int) CaixaMovimento::where('sessao_id', $sessao->id)
                 ->where('tipo', 'suprimento')

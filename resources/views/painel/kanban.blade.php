@@ -50,6 +50,9 @@
     @include('painel.modals.modal-novo-entregador')
     @include('painel.modals.modal-nova-area')
     @include('painel.modals.modal-pdv')
+    @include('painel.modals.modal-abrir-caixa')
+    @include('painel.modals.modal-movimento-caixa')
+    @include('painel.modals.modal-fechar-caixa')
 
     {{-- 5. Lógica Reativa Alpine.js (State & APIs) --}}
     @include('painel.partials.scripts')

@@ -137,6 +137,7 @@ Route::middleware([
 
     // Logistics: Delivery Zones & Couriers
     Route::apiResource('areas-entrega', AreaEntregaController::class);
+    Route::get('entregadores/fechamento-dia', [EntregadorController::class, 'fechamentoDia']);
     Route::apiResource('entregadores', EntregadorController::class);
 
     // On-Premise Operations: Tables, Open Tabs (Comandas) & Bill Splitting (Phase 4 & Phase 10)
@@ -160,6 +161,7 @@ Route::middleware([
 
     // Cash Register (Caixa - Phase 10)
     Route::prefix('caixa')->group(function (): void {
+        Route::get('status', [CaixaController::class, 'status']);
         Route::post('abrir', [CaixaController::class, 'abrir']);
         Route::post('movimento', [CaixaController::class, 'movimento']);
         Route::post('fechar', [CaixaController::class, 'fechar']);

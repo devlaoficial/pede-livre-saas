@@ -18,19 +18,148 @@
                 </div>
             </div>
 
-            <!-- Controle de Frente de Caixa -->
-            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <h3 class="font-bold text-base text-white">💵 Controle de Frente de Caixa (Abertura, Sangria e Suprimento)</h3>
-                        <p class="text-xs text-slate-400">Registre abertura de turno e movimentações em espécie da gaveta.</p>
+            <!-- Controle de Frente de Caixa (Etapa 3) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black">💵</span>
+                            <h3 class="font-extrabold text-base text-white">Controle de Frente de Caixa &amp; Turnos</h3>
+                            <span class="text-xs font-black px-2.5 py-0.5 rounded-full border uppercase"
+                                  :class="caixaStatus.aberto ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse' : 'bg-slate-800 text-slate-400 border-slate-700'"
+                                  x-text="caixaStatus.aberto ? '● Caixa Aberto' : '○ Caixa Fechado'"></span>
+                        </div>
+                        <p class="text-xs text-slate-400">
+                            Gestão de fundo de troco, sangrias, suprimentos e conciliação física de gaveta com extrato térmico 80mm.
+                        </p>
                     </div>
-                    <div class="flex gap-2">
-                        <button @click="abrirCaixa()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl">
-                            Abrir Turno de Caixa
-                        </button>
+
+                    <!-- Botões de Ação do Caixa -->
+                    <div class="flex flex-wrap gap-2 shrink-0">
+                        <template x-if="!caixaStatus.aberto">
+                            <button @click="abrirModalAberturaCaixa()"
+                                class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center gap-1.5">
+                                <span>🟢</span> Abrir Turno de Caixa
+                            </button>
+                        </template>
+
+                        <template x-if="caixaStatus.aberto">
+                            <div class="flex flex-wrap gap-2">
+                                <button @click="abrirModalMovimento('sangria')"
+                                    class="bg-slate-800 hover:bg-rose-950/60 text-rose-300 border border-rose-500/30 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+                                    <span>💸</span> Registrar Sangria
+                                </button>
+                                <button @click="abrirModalMovimento('suprimento')"
+                                    class="bg-slate-800 hover:bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+                                    <span>📥</span> Registrar Suprimento
+                                </button>
+                                <button @click="abrirModalFechamentoCaixa()"
+                                    class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-lg shadow-amber-600/25 transition flex items-center gap-1.5">
+                                    <span>🔒</span> Fechar Turno
+                                </button>
+                            </div>
+                        </template>
                     </div>
                 </div>
+
+                <!-- Estado Quando o Caixa está FECHADO -->
+                <template x-if="!caixaStatus.aberto">
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-6 text-center space-y-3">
+                        <div class="text-3xl">🔒</div>
+                        <h4 class="font-extrabold text-white text-sm">O caixa está fechado no momento</h4>
+                        <p class="text-xs text-slate-400 max-w-md mx-auto">
+                            Abra um novo turno de caixa informando o valor do fundo de troco inicial para registrar movimentações em dinheiro.
+                        </p>
+                        <template x-if="caixaStatus.ultima_sessao">
+                            <div class="pt-3 border-t border-slate-800/80 text-xs text-slate-400 space-y-1">
+                                <span>Último turno encerrado em <strong class="text-white" x-text="caixaStatus.ultima_sessao.fechado_em"></strong> por <strong class="text-white" x-text="caixaStatus.ultima_sessao.operador_nome"></strong>.</span>
+                                <div>Diferença apurada na contagem física: <strong :class="caixaStatus.ultima_sessao.diferenca_centavos >= 0 ? 'text-emerald-400' : 'text-rose-400'" x-text="formatarCentavos(caixaStatus.ultima_sessao.diferenca_centavos)"></strong></div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- Estado Quando o Caixa está ABERTO -->
+                <template x-if="caixaStatus.aberto && caixaStatus.sessao">
+                    <div class="space-y-4">
+                        <!-- Cards de Métricas do Turno Aberto -->
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1">
+                                <span class="text-slate-400 font-bold uppercase text-[10px]">Fundo Inicial</span>
+                                <div class="text-sm sm:text-base font-black text-white" x-text="formatarCentavos(caixaStatus.sessao.valor_inicial_centavos)"></div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1">
+                                <span class="text-slate-400 font-bold uppercase text-[10px]">(+) Vendas Dinheiro</span>
+                                <div class="text-sm sm:text-base font-black text-emerald-400" x-text="formatarCentavos(caixaStatus.sessao.total_vendas_dinheiro_centavos)"></div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1">
+                                <span class="text-slate-400 font-bold uppercase text-[10px]">(+) Suprimentos</span>
+                                <div class="text-sm sm:text-base font-black text-emerald-400" x-text="formatarCentavos(caixaStatus.sessao.total_suprimentos_centavos)"></div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1">
+                                <span class="text-slate-400 font-bold uppercase text-[10px]">(-) Sangrias</span>
+                                <div class="text-sm sm:text-base font-black text-rose-400" x-text="formatarCentavos(caixaStatus.sessao.total_sangrias_centavos)"></div>
+                            </div>
+                            <div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 space-y-1 sm:col-span-2 lg:col-span-2">
+                                <span class="text-emerald-300 font-extrabold uppercase text-[10px]">💵 Saldo Esperado na Gaveta</span>
+                                <div class="text-base sm:text-xl font-black text-emerald-400" x-text="formatarCentavos(caixaStatus.sessao.saldo_esperado_gaveta_centavos)"></div>
+                            </div>
+                        </div>
+
+                        <!-- Resumo Outras Formas + Lista de Movimentações -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+                            <!-- Outros Meios de Pagamento -->
+                            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+                                <h4 class="font-extrabold text-white text-xs uppercase tracking-wider">Outras Entradas do Turno</h4>
+                                <div class="flex justify-between items-center text-slate-300 border-b border-slate-800/80 pb-1.5">
+                                    <span>Vendas no PIX:</span>
+                                    <span class="font-bold text-emerald-400" x-text="formatarCentavos(caixaStatus.sessao.total_vendas_pix_centavos)"></span>
+                                </div>
+                                <div class="flex justify-between items-center text-slate-300 border-b border-slate-800/80 pb-1.5">
+                                    <span>Vendas em Cartão / Maquininha:</span>
+                                    <span class="font-bold text-sky-400" x-text="formatarCentavos(caixaStatus.sessao.total_vendas_cartao_centavos)"></span>
+                                </div>
+                                <div class="flex justify-between items-center pt-1 font-extrabold text-white">
+                                    <span>Faturamento Total do Turno:</span>
+                                    <span class="text-emerald-400 text-sm font-black" x-text="formatarCentavos(caixaStatus.sessao.faturamento_total_centavos)"></span>
+                                </div>
+                            </div>
+
+                            <!-- Movimentações Manuais Registradas -->
+                            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="font-extrabold text-white text-xs uppercase tracking-wider">Sangrias e Suprimentos</h4>
+                                    <span class="text-[10px] text-slate-500" x-text="(caixaStatus.sessao.movimentos || []).length + ' lançamentos'"></span>
+                                </div>
+
+                                <div class="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                                    <template x-if="(caixaStatus.sessao.movimentos || []).length === 0">
+                                        <div class="text-center py-6 text-slate-500 text-xs">
+                                            Nenhuma sangria ou suprimento lançado neste turno
+                                        </div>
+                                    </template>
+
+                                    <template x-for="m in (caixaStatus.sessao.movimentos || [])" :key="m.id">
+                                        <div class="flex justify-between items-center p-2 rounded-xl bg-slate-900 border border-slate-800">
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-[10px] font-black uppercase px-1.5 py-0.2 rounded"
+                                                          :class="m.tipo === 'sangria' ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'"
+                                                          x-text="m.tipo"></span>
+                                                    <span class="text-slate-400 text-[10px]" x-text="m.horario"></span>
+                                                </div>
+                                                <div class="text-slate-300 text-[11px] truncate mt-0.5" x-text="m.observacao || 'Sem observação'"></div>
+                                            </div>
+                                            <span class="font-extrabold text-xs shrink-0 pl-2"
+                                                  :class="m.tipo === 'sangria' ? 'text-rose-400' : 'text-emerald-400'"
+                                                  x-text="(m.tipo === 'sangria' ? '- ' : '+ ') + formatarCentavos(m.valor_centavos)"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </div>
 
             <!-- Central Completa de Cadastro e Autorização PIX Mercado Pago (0% Custódia) -->

@@ -113,6 +113,21 @@
                 motivoCancelamento: 'Cliente solicitou o cancelamento',
                 motivoCancelamentoOutro: '',
 
+                // Estado Caixa Profissional & Fechamento (Etapa 3)
+                caixaStatus: { aberto: false, sessao: null, ultima_sessao: null },
+                modalAbrirCaixa: false,
+                modalMovimentoCaixa: false,
+                modalFecharCaixa: false,
+                formAbrirCaixa: { valor_inicial_reais: '100,00' },
+                formMovimentoCaixa: { tipo: 'sangria', valor_reais: '', observacao: '' },
+                formFecharCaixa: { valor_final_reais: '', imprimir_80mm: true },
+                salvandoCaixa: false,
+
+                // Fechamento Diário de Motoboys (Etapa 3)
+                fechamentoMotoboys: [],
+                totaisFechamentoMotoboys: { total_entregas: 0, total_taxas_centavos: 0, total_dinheiro_recebido_centavos: 0, saldo_geral_centavos: 0 },
+                carregandoFechamentoMotoboys: false,
+
                 // Estado Completo do PDV Balcão (Etapa 2)
                 buscaPdvProduto: '',
                 filtroPdvCategoria: '',
@@ -135,6 +150,19 @@
                     status_inicial: 'aceito',
                     observacao: '',
                     itens: []
+                },
+
+                diferencaFechamentoCaixa() {
+                    const finalCent = this.centavos(this.formFecharCaixa.valor_final_reais || '0');
+                    const espCent = this.caixaStatus?.sessao?.saldo_esperado_gaveta_centavos || 0;
+                    return finalCent - espCent;
+                },
+
+                rotuloDiferencaFechamentoCaixa() {
+                    const diff = this.diferencaFechamentoCaixa();
+                    if (diff === 0) return 'Gaveta Exata (R$ 0,00)';
+                    if (diff > 0) return 'Sobra no Caixa: +' + this.formatarCentavos(diff);
+                    return 'Falta / Quebra no Caixa: ' + this.formatarCentavos(diff);
                 },
 
                 get pedidosFiltrados() {
@@ -290,6 +318,7 @@
                             this.carregarStatusMp();
                             this.carregarStatusWhatsapp();
                             this.carregarConversasWhatsapp(true);
+                            this.carregarCaixa();
                             if (new URLSearchParams(window.location.search).get('mp_oauth') === 'sucesso') {
                                 this.toastMsg = 'Conta Mercado Pago conectada com sucesso via login!';
                                 this.moduloAtivo = 'config';
@@ -376,8 +405,8 @@
                     if (mod === 'catalogo') { this.carregarCatalogo(); this.carregarCupons(); }
                     if (mod === 'kds') this.carregarKds();
                     if (mod === 'mesas') { this.carregarMesas(); this.carregarChamadosGarcom(); }
-                    if (mod === 'entregas') this.carregarEntregas();
-                    if (mod === 'crm' || mod === 'financeiro') { this.carregarFinanceiro(); this.carregarCupons(); }
+                    if (mod === 'entregas') { this.carregarEntregas(); this.carregarFechamentoMotoboys(); }
+                    if (mod === 'crm' || mod === 'financeiro') { this.carregarFinanceiro(); this.carregarCupons(); this.carregarCaixa(); }
                     if (mod === 'config') this.carregarLoja();
                     if (mod === 'whatsapp') { this.carregarStatusWhatsapp(); this.carregarConversasWhatsapp(); }
                 },
@@ -388,8 +417,8 @@
                     if (this.moduloAtivo === 'catalogo') { this.carregarCatalogo(); this.carregarCupons(); }
                     if (this.moduloAtivo === 'kds') this.carregarKds();
                     if (this.moduloAtivo === 'mesas') this.carregarMesas();
-                    if (this.moduloAtivo === 'entregas') this.carregarEntregas();
-                    if (this.moduloAtivo === 'crm' || this.moduloAtivo === 'financeiro') this.carregarFinanceiro();
+                    if (this.moduloAtivo === 'entregas') { this.carregarEntregas(); this.carregarFechamentoMotoboys(); }
+                    if (this.moduloAtivo === 'crm' || this.moduloAtivo === 'financeiro') { this.carregarFinanceiro(); this.carregarCaixa(); }
                 },
 
                 headersAuth() {
@@ -852,14 +881,180 @@
                     });
                 },
 
-                abrirCaixa() {
+                // === GESTÃO PROFISSIONAL DE CAIXA & TURNOS (ETAPA 3) ===
+                carregarCaixa() {
+                    fetch('/api/caixa/status', { headers: this.headersAuth() })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                            if (d) {
+                                this.caixaStatus = d;
+                            }
+                        })
+                        .catch(() => {});
+                },
+
+                abrirModalAberturaCaixa() {
+                    this.formAbrirCaixa = { valor_inicial_reais: '100,00' };
+                    this.modalAbrirCaixa = true;
+                },
+
+                abrirModalMovimento(tipo) {
+                    this.formMovimentoCaixa = {
+                        tipo: tipo || 'sangria',
+                        valor_reais: '',
+                        observacao: ''
+                    };
+                    this.modalMovimentoCaixa = true;
+                },
+
+                abrirModalFechamentoCaixa() {
+                    const esperadoCent = this.caixaStatus?.sessao?.saldo_esperado_gaveta_centavos || 0;
+                    this.formFecharCaixa = {
+                        valor_final_reais: (esperadoCent / 100).toFixed(2).replace('.', ','),
+                        imprimir_80mm: true
+                    };
+                    this.modalFecharCaixa = true;
+                },
+
+                abrirTurnoCaixa() {
+                    const centavosInicial = this.centavos(this.formAbrirCaixa.valor_inicial_reais);
+                    if (centavosInicial < 0) {
+                        alert('Informe um valor válido para o fundo inicial.');
+                        return;
+                    }
+
+                    this.salvandoCaixa = true;
                     fetch('/api/caixa/abrir', {
                         method: 'POST',
                         headers: this.headersAuth(),
-                        body: JSON.stringify({ saldo_inicial: 10000 })
-                    }).then(() => {
-                        this.toastMsg = 'Turno de Caixa aberto com R$ 100,00 de fundo de troco!';
+                        body: JSON.stringify({ valor_inicial_centavos: centavosInicial })
+                    })
+                    .then(async r => {
+                        const d = await r.json();
+                        this.salvandoCaixa = false;
+                        if (r.ok) {
+                            this.modalAbrirCaixa = false;
+                            this.toastMsg = 'Turno de caixa aberto com sucesso!';
+                            this.carregarCaixa();
+                        } else {
+                            alert(d.message || 'Erro ao abrir o turno de caixa.');
+                        }
+                    })
+                    .catch(() => {
+                        this.salvandoCaixa = false;
+                        alert('Falha na comunicação com o servidor ao abrir o caixa.');
                     });
+                },
+
+                registrarMovimentoCaixa() {
+                    const centavosMov = this.centavos(this.formMovimentoCaixa.valor_reais);
+                    if (centavosMov <= 0) {
+                        alert('Informe um valor maior que zero.');
+                        return;
+                    }
+                    if (!this.formMovimentoCaixa.observacao.trim()) {
+                        alert('Informe uma descrição ou motivo para a movimentação.');
+                        return;
+                    }
+
+                    this.salvandoCaixa = true;
+                    fetch('/api/caixa/movimento', {
+                        method: 'POST',
+                        headers: this.headersAuth(),
+                        body: JSON.stringify({
+                            tipo: this.formMovimentoCaixa.tipo,
+                            valor_centavos: centavosMov,
+                            observacao: this.formMovimentoCaixa.observacao.trim()
+                        })
+                    })
+                    .then(async r => {
+                        const d = await r.json();
+                        this.salvandoCaixa = false;
+                        if (r.ok) {
+                            this.modalMovimentoCaixa = false;
+                            this.toastMsg = (this.formMovimentoCaixa.tipo === 'sangria' ? 'Sangria' : 'Suprimento') + ' registrado com sucesso!';
+                            this.carregarCaixa();
+                        } else {
+                            alert(d.message || 'Erro ao registrar movimentação no caixa.');
+                        }
+                    })
+                    .catch(() => {
+                        this.salvandoCaixa = false;
+                        alert('Falha na comunicação ao registrar movimentação.');
+                    });
+                },
+
+                fecharTurnoCaixa() {
+                    const centavosFinal = this.centavos(this.formFecharCaixa.valor_final_reais);
+                    if (centavosFinal < 0) {
+                        alert('Informe o valor físico contado na gaveta.');
+                        return;
+                    }
+
+                    if (!confirm('Deseja realmente encerrar este turno de caixa?')) {
+                        return;
+                    }
+
+                    this.salvandoCaixa = true;
+                    fetch('/api/caixa/fechar', {
+                        method: 'POST',
+                        headers: this.headersAuth(),
+                        body: JSON.stringify({ valor_final_centavos: centavosFinal })
+                    })
+                    .then(async r => {
+                        const d = await r.json();
+                        this.salvandoCaixa = false;
+                        if (r.ok) {
+                            const sessaoId = d.data?.id || this.caixaStatus?.sessao?.id;
+                            if (this.formFecharCaixa.imprimir_80mm && sessaoId) {
+                                this.imprimirFechamentoCaixa(sessaoId);
+                            }
+                            this.modalFecharCaixa = false;
+                            this.toastMsg = 'Turno de caixa encerrado com sucesso!';
+                            this.carregarCaixa();
+                        } else {
+                            alert(d.message || 'Erro ao fechar o turno de caixa.');
+                        }
+                    })
+                    .catch(() => {
+                        this.salvandoCaixa = false;
+                        alert('Falha na comunicação ao encerrar o turno.');
+                    });
+                },
+
+                imprimirFechamentoCaixa(sessaoId) {
+                    const id = sessaoId || this.caixaStatus?.sessao?.id || this.caixaStatus?.ultima_sessao?.id;
+                    if (!id) return;
+                    const token = localStorage.getItem('pl_token') || '';
+                    window.open(`/painel/caixa/${id}/imprimir?token=${encodeURIComponent(token)}`, '_blank', 'width=420,height=600');
+                },
+
+                // === FECHAMENTO DIÁRIO DE MOTOBOYS (ETAPA 3) ===
+                carregarFechamentoMotoboys() {
+                    this.carregandoFechamentoMotoboys = true;
+                    fetch('/api/entregadores/fechamento-dia', { headers: this.headersAuth() })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                            this.carregandoFechamentoMotoboys = false;
+                            if (d) {
+                                this.fechamentoMotoboys = d.data || [];
+                                this.totaisFechamentoMotoboys = d.totais || {
+                                    total_entregas: 0,
+                                    total_taxas_centavos: 0,
+                                    total_dinheiro_recebido_centavos: 0,
+                                    saldo_geral_centavos: 0
+                                };
+                            }
+                        })
+                        .catch(() => {
+                            this.carregandoFechamentoMotoboys = false;
+                        });
+                },
+
+                imprimirAcertoMotoboy(entregadorId) {
+                    if (!entregadorId) return;
+                    const token = localStorage.getItem('pl_token') || '';
+                    window.open(`/painel/entregadores/${entregadorId}/imprimir-acerto?token=${encodeURIComponent(token)}`, '_blank', 'width=420,height=600');
                 },
 
                 conectarMercadoPago() {
