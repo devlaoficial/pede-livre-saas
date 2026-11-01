@@ -88,23 +88,35 @@ final class EntregadorController
                 'tipo' => $ent->tipo,
                 'ativo' => $ent->ativo,
                 'taxa_por_entrega_centavos' => $taxaUnit,
+                'valor_por_entrega_centavos' => $taxaUnit,
                 'entregas_concluidas' => $qtdEntregas,
+                'total_entregas' => $qtdEntregas,
                 'entregas_em_rota' => $emRota->count(),
                 'total_taxas_centavos' => $totalTaxas,
                 'total_dinheiro_recebido_centavos' => $dinheiroColetado,
                 'saldo_acerto_centavos' => $saldoAcerto,
                 'direcao_acerto' => $saldoAcerto >= 0 ? 'loja_paga_motoboy' : 'motoboy_repassa_loja',
                 'whatsapp_url' => $wppUrl,
+                'whatsapp_link' => $wppUrl,
             ];
         });
+
+        $totalEntregas = (int) $relatorio->sum('entregas_concluidas');
+        $totalTaxas = (int) $relatorio->sum('total_taxas_centavos');
+        $totalDinheiro = (int) $relatorio->sum('total_dinheiro_recebido_centavos');
+        $saldoGeral = $totalTaxas - $totalDinheiro;
 
         return response()->json([
             'data' => $relatorio,
             'totais' => [
-                'total_entregas_hoje' => $relatorio->sum('entregas_concluidas'),
-                'total_taxas_frete_centavos' => $relatorio->sum('total_taxas_centavos'),
-                'total_dinheiro_recebido_centavos' => $relatorio->sum('total_dinheiro_recebido_centavos'),
+                'total_entregas' => $totalEntregas,
+                'total_entregas_hoje' => $totalEntregas,
+                'total_taxas_centavos' => $totalTaxas,
+                'total_taxas_frete_centavos' => $totalTaxas,
+                'total_dinheiro_recebido_centavos' => $totalDinheiro,
+                'saldo_geral_centavos' => $saldoGeral,
             ],
+            'data_consulta' => now()->format('Y-m-d'),
         ]);
     }
 

@@ -1,30 +1,28 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="utf-8">
-    <title>Acerto Diário de Motoboy - {{ $entregador->nome }}</title>
+    <meta charset="UTF-8">
+    <title>Acerto Diário - {{ $entregador->nome }}</title>
     <style>
         @page {
             size: 80mm auto;
             margin: 0;
         }
         body {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            color: #000;
+            background: #fff;
             margin: 0;
             padding: 4mm;
             width: 72mm;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 11px;
-            color: #000;
-            background: #fff;
-            line-height: 1.25;
         }
         .center { text-align: center; }
-        .right { text-align: right; }
         .bold { font-weight: bold; }
-        .title { font-size: 14px; font-weight: bold; margin-bottom: 2mm; }
-        .divider { border-top: 1px dashed #000; margin: 2mm 0; }
-        .double-divider { border-top: 2px solid #000; margin: 2mm 0; }
-        .flex { display: flex; justify-content: space-between; }
+        .divider { border-top: 1px dashed #000; margin: 3mm 0; }
+        .double-divider { border-top: 2px solid #000; margin: 3mm 0; }
+        .flex { display: flex; justify-content: space-between; margin-bottom: 1.5mm; }
+        .title { font-size: 15px; font-weight: bold; }
         @media screen {
             body { margin: 20px auto; border: 1px solid #ccc; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
             .print-btn { display: block; margin: 10px auto; padding: 8px 16px; background: #e11d48; color: #fff; border: none; font-weight: bold; cursor: pointer; border-radius: 6px; }
@@ -45,6 +43,14 @@
     <div>Entregador: <b>{{ $entregador->nome }}</b></div>
     <div>Telefone: {{ $entregador->telefone }}</div>
     <div>Tipo: {{ strtoupper($entregador->tipo ?? 'proprio') }}</div>
+
+    @php
+        $concluidas = $concluidas ?? ($pedidos ?? collect([]));
+        $taxaUnit = $taxaUnit ?? (int) ($entregador->valor_por_entrega_centavos ?? 700);
+        $totalTaxas = $totalTaxas ?? ($totalTaxasCentavos ?? ($concluidas->count() * $taxaUnit));
+        $dinheiroColetado = $dinheiroColetado ?? ($totalDinheiroCentavos ?? 0);
+        $saldoAcerto = $saldoAcerto ?? ($saldoCentavos ?? ($totalTaxas - $dinheiroColetado));
+    @endphp
 
     <div class="double-divider"></div>
     <div class="bold">RESUMO DE CORRIDAS (FRETES)</div>
@@ -114,11 +120,11 @@
     <div class="divider" style="margin-top: 6mm;"></div>
     <div class="center" style="font-size: 10px;">
         _____________________________________<br>
-        Assinatura do Operador / Caixa
+        Assinatura do Responsável (Caixa)
     </div>
 
-    <div class="center" style="margin-top: 4mm; font-size: 9px;">
-        PedeLivre OS • Sistema de Gestão para Restaurantes
+    <div class="center" style="font-size: 9px; margin-top: 4mm; color: #666;">
+        PedeLivre • Sistema de Gestão Gastronômica
     </div>
 </body>
 </html>

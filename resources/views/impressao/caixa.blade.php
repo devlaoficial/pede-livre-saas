@@ -52,9 +52,13 @@
     <div class="divider"></div>
 
     @php
-        $inicial = $sessao->valor_inicial_centavos;
-        $suprimentos = (int) $sessao->movimentos->where('tipo', 'suprimento')->sum('valor_centavos');
-        $sangrias = (int) $sessao->movimentos->where('tipo', 'sangria')->sum('valor_centavos');
+        $vendasDinheiro = $vendasDinheiro ?? ($totais['vendas_dinheiro'] ?? 0);
+        $vendasPix = $vendasPix ?? ($totais['vendas_pix'] ?? 0);
+        $vendasCartao = $vendasCartao ?? ($totais['vendas_cartao'] ?? 0);
+        $totalPedidos = $totalPedidos ?? ($totais['total_pedidos'] ?? 0);
+        $inicial = $sessao->valor_inicial_centavos ?? 0;
+        $suprimentos = (int) ($sessao->movimentos ? $sessao->movimentos->where('tipo', 'suprimento')->sum('valor_centavos') : 0);
+        $sangrias = (int) ($sessao->movimentos ? $sessao->movimentos->where('tipo', 'sangria')->sum('valor_centavos') : 0);
         $esperado = $inicial + $vendasDinheiro + $suprimentos - $sangrias;
         $final = $sessao->valor_final_centavos ?? $esperado;
         $dif = $sessao->diferenca_centavos ?? ($final - $esperado);
