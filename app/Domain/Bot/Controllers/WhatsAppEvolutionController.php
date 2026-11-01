@@ -49,6 +49,8 @@ final class WhatsAppEvolutionController
                 'notificar_pedidos' => (bool) ($configWpp['notificar_pedidos'] ?? true),
                 'notificar_motoboy' => (bool) ($configWpp['notificar_motoboy'] ?? true),
                 'bot_ativo' => (bool) ($configWpp['bot_ativo'] ?? true),
+                'recuperar_carrinho' => (bool) ($configWpp['recuperar_carrinho'] ?? true),
+                'recompra_um_clique' => (bool) ($configWpp['recompra_um_clique'] ?? true),
             ],
         ]);
     }
@@ -124,6 +126,8 @@ final class WhatsAppEvolutionController
             'notificar_pedidos' => ['required', 'boolean'],
             'notificar_motoboy' => ['required', 'boolean'],
             'bot_ativo' => ['required', 'boolean'],
+            'recuperar_carrinho' => ['nullable', 'boolean'],
+            'recompra_um_clique' => ['nullable', 'boolean'],
         ]);
 
         $config = $loja->config_json ?? [];
@@ -132,6 +136,8 @@ final class WhatsAppEvolutionController
         $wpp['notificar_pedidos'] = $request->boolean('notificar_pedidos');
         $wpp['notificar_motoboy'] = $request->boolean('notificar_motoboy');
         $wpp['bot_ativo'] = $request->boolean('bot_ativo');
+        $wpp['recuperar_carrinho'] = $request->boolean('recuperar_carrinho', true);
+        $wpp['recompra_um_clique'] = $request->boolean('recompra_um_clique', true);
 
         $config['whatsapp'] = $wpp;
         $loja->config_json = $config;

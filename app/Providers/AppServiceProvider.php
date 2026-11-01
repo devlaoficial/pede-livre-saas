@@ -90,5 +90,13 @@ final class AppServiceProvider extends ServiceProvider
         GrupoAdicional::observe(CatalogoCacheObserver::class);
         OpcaoAdicional::observe(CatalogoCacheObserver::class);
         Combo::observe(CatalogoCacheObserver::class);
+
+        // 3. Custom Domain CLI Commands
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \App\Domain\Pedidos\Commands\RecuperarCarrinhosCommand::class,
+                \App\Domain\Pedidos\Commands\VerificarPedidosAtrasadosCommand::class,
+            ]);
+        }
     }
 }

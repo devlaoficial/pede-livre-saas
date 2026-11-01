@@ -23,10 +23,15 @@ final class EvolutionBotService
     private const STATUS_KEYWORDS = ['STATUS', 'ONDE ESTA', 'ONDE ESTÁ', 'DEMORA', 'DEMORANDO', 'CADÊ', 'CADE', 'MEU PEDIDO', 'FALTA MUITO', 'ATRASOU', 'ATRASADO', 'TEMPO', 'CHEGAR', 'PREVISAO', 'PREVISÃO', 'RASTREAR'];
     private const MENU_KEYWORDS = ['CARDAPIO', 'CARDÁPIO', 'PEDIR', 'MENU', 'VALOR', 'PREÇO', 'PRECO', 'LANCHE', 'PIZZA', 'BURGER', 'HAMBURGUER', 'ACAI', 'AÇAÍ', 'QUERO COMPRAR', 'CATALOGO', 'CATÁLOGO'];
     private const THANKS_KEYWORDS = ['OBRIGADO', 'OBRIGADA', 'VALEU', 'TOP', 'OBG', 'TMJ', 'SHOW', 'MUITO BOM', 'DELICIA', 'DELÍCIA', 'MARAVILHA', 'EXCELENTE'];
+    private const PIX_KEYWORDS = ['PIX', 'MANDA O PIX', 'CHAVE PIX', 'CODIGO PIX', 'CÓDIGO PIX', 'QR CODE', 'QRCODE', 'COPIA E COLA'];
+    private const CARTAO_KEYWORDS = ['CARTAO', 'CARTÃO', 'MAQUININHA', 'MAQUINA', 'MÁQUINA', 'DEBITO', 'DÉBITO', 'CREDITO', 'CRÉDITO'];
+    private const DINHEIRO_KEYWORDS = ['DINHEIRO', 'NOTA', 'TROCO'];
+    private const RECOMPRA_KEYWORDS = ['REPETIR', 'DE SEMPRE', 'O DE SEMPRE', 'PEDIR O DE SEMPRE', 'QUERO O DE SEMPRE', 'REPETIR PEDIDO'];
 
     public function __construct(
         private readonly BlindIndexService $blindIndex,
-        private readonly EvolutionApiService $evolutionApi
+        private readonly EvolutionApiService $evolutionApi,
+        private readonly RecuperadorVendasService $recuperadorService
     ) {}
 
     /**
@@ -107,7 +112,65 @@ final class EvolutionBotService
                 }
             }
 
-            // 4. Pergunta sobre STATUS / ONDE ESTÁ MEU PEDIDO / DEMORA / ATRASO
+            /** @var Cliente|null $cliente */
+            $cliente = Cliente::where('loja_id', $loja->id)->where('telefone_bidx', $telefoneBidx)->first();
+
+            // 4. Alteração de Pagamento para Pedidos com PIX Pendente (Recuperação no Chat)
+            $pedidoPixPendente = null;
+            if ($cliente !== null) {
+                $pedidoPixPendente = Pedido::where('loja_id', $loja->id)
+                    ->where('cliente_id', $cliente->id)
+                    ->where('status', 'novo')
+                    ->where('forma_pagamento', 'pix')
+                    ->where('pagamento_status', 'pendente')
+                    ->where('created_at', '>=', now()->subHours(2))
+                    ->orderByDesc('created_at')
+                    ->first();
+            }
+
+            if ($pedidoPixPendente !== null) {
+                // Cliente quer mudar para Cartão na Entrega
+                foreach (self::CARTAO_KEYWORDS as $kw) {
+                    if (str_contains($textoUpper, $kw)) {
+                        $this->recuperadorService->alterarFormaPagamento($pedidoPixPendente, 'cartao_maquina');
+                        $codigo = $pedidoPixPendente->codigo_publico;
+                        $resposta = "✅ *Combinado!* Alteramos a forma de pagamento do seu pedido *#{$codigo}* para *CARTÃO NA ENTREGA*! 💳\n\n"
+                            . "Nosso entregador levará a maquininha. O seu pedido já foi liberado e está entrando na fila da cozinha! 👨‍🍳🔥";
+                        $this->registrarResposta($loja, $conversa, $resposta);
+                        return $resposta;
+                    }
+                }
+
+                // Cliente quer mudar para Dinheiro na Entrega
+                foreach (self::DINHEIRO_KEYWORDS as $kw) {
+                    if (str_contains($textoUpper, $kw)) {
+                        $this->recuperadorService->alterarFormaPagamento($pedidoPixPendente, 'dinheiro');
+                        $codigo = $pedidoPixPendente->codigo_publico;
+                        $resposta = "✅ *Combinado!* Alteramos a forma de pagamento do seu pedido *#{$codigo}* para *DINHEIRO NA ENTREGA*! 💵\n\n"
+                            . "Se precisar de troco, basta nos avisar o valor. Seu pedido já foi liberado para preparo na cozinha! 👨‍🍳🔥";
+                        $this->registrarResposta($loja, $conversa, $resposta);
+                        return $resposta;
+                    }
+                }
+
+                // Cliente pede o código PIX novamente
+                foreach (self::PIX_KEYWORDS as $kw) {
+                    if (str_contains($textoUpper, $kw)) {
+                        $codigo = $pedidoPixPendente->codigo_publico;
+                        $totalFmt = number_format($pedidoPixPendente->total / 100, 2, ',', '.');
+                        $copiaCola = (string) ($pedidoPixPendente->pagamento?->pix_copia_cola ?? '');
+
+                        $resposta = "Aqui está o código PIX Copia e Cola do seu pedido *#{$codigo}*:\n\n"
+                            . "💵 *Valor:* R$ {$totalFmt}\n\n"
+                            . "```{$copiaCola}```\n\n"
+                            . "Basta copiar o código acima e colar no seu aplicativo bancário! Assim que você pagar, o pedido é confirmado automaticamente! ⚡";
+                        $this->registrarResposta($loja, $conversa, $resposta);
+                        return $resposta;
+                    }
+                }
+            }
+
+            // 5. Pergunta sobre STATUS / ONDE ESTÁ MEU PEDIDO / DEMORA / ATRASO
             $pedeStatus = false;
             foreach (self::STATUS_KEYWORDS as $termo) {
                 if (str_contains($textoUpper, $termo)) {
@@ -122,7 +185,56 @@ final class EvolutionBotService
                 return $respostaStatus;
             }
 
-            // 5. Pergunta sobre CARDÁPIO / FAZER PEDIDO / PRODUTOS
+            // 6. Re-compra em 1-Clique ("Pedir o de Sempre")
+            $ultimoPedidoFinalizado = null;
+            if ($cliente !== null) {
+                $ultimoPedidoFinalizado = Pedido::where('loja_id', $loja->id)
+                    ->where('cliente_id', $cliente->id)
+                    ->whereIn('status', ['entregue', 'retirado'])
+                    ->with(['itens', 'pagamento'])
+                    ->orderByDesc('created_at')
+                    ->first();
+            }
+
+            $querRecomprar = false;
+            if ($textoUpper === '1' || in_array($textoUpper, self::RECOMPRA_KEYWORDS, true)) {
+                $querRecomprar = ($ultimoPedidoFinalizado !== null);
+            }
+
+            if ($querRecomprar && $ultimoPedidoFinalizado !== null && $cliente !== null) {
+                $novoPedido = $this->recuperadorService->recriarPedidoAnterior($loja, $cliente, $ultimoPedidoFinalizado);
+                $novoCodigo = $novoPedido->codigo_publico;
+                $totalFmt = number_format($novoPedido->total / 100, 2, ',', '.');
+
+                $trackingSig = hash_hmac('sha256', (string) $novoPedido->tracking_token_hash, (string) config('app.key'));
+                $trackingUrl = url("/p/{$loja->slug}/pedidos/{$novoCodigo}?t={$trackingSig}");
+
+                $end = $novoPedido->endereco_json ?? [];
+                $endTexto = !empty($end['rua']) ? "{$end['rua']}, {$end['numero']} ({$end['bairro']})" : 'Mesmo endereço anterior';
+
+                if ($novoPedido->forma_pagamento === 'pix') {
+                    $copiaCola = (string) ($novoPedido->pagamento?->pix_copia_cola ?? '');
+                    $resposta = "🚀 *Show de bola, {$cliente->nome}!* Seu pedido *#{$novoCodigo}* foi confirmado e já entrou na fila da cozinha! 👨‍🍳🔥\n\n"
+                        . "💵 *Total:* R$ {$totalFmt}\n"
+                        . "📍 *Entrega:* {$endTexto}\n\n"
+                        . "Copie o PIX abaixo para pagar no seu banco:\n\n"
+                        . "```{$copiaCola}```\n\n"
+                        . "⏱️ *Previsão estimada:* 30 a 45 min\n"
+                        . "👉 Acompanhe ao vivo pelo GPS:\n{$trackingUrl}";
+                } else {
+                    $formaFmt = strtoupper(str_replace('_', ' ', $novoPedido->forma_pagamento));
+                    $resposta = "🚀 *Show de bola, {$cliente->nome}!* Seu pedido *#{$novoCodigo}* foi confirmado e já entrou na fila da cozinha! 👨‍🍳🔥\n\n"
+                        . "💵 *Total:* R$ {$totalFmt} ({$formaFmt})\n"
+                        . "📍 *Entrega:* {$endTexto}\n"
+                        . "⏱️ *Previsão estimada:* 30 a 45 min\n"
+                        . "👉 Acompanhe ao vivo pelo GPS:\n{$trackingUrl}";
+                }
+
+                $this->registrarResposta($loja, $conversa, $resposta);
+                return $resposta;
+            }
+
+            // 7. Pergunta sobre CARDÁPIO / FAZER PEDIDO
             $pedeCardapio = false;
             foreach (self::MENU_KEYWORDS as $termo) {
                 if (str_contains($textoUpper, $termo)) {
@@ -131,7 +243,7 @@ final class EvolutionBotService
                 }
             }
 
-            if ($pedeCardapio) {
+            if ($pedeCardapio || $textoUpper === '2') {
                 $linkCardapio = url("/p/{$loja->slug}");
                 $resposta = "Que maravilha falar com você! 🍔🍕😋\n\n"
                     . "Aqui está o link do nosso cardápio digital completo com fotos, combos, adicionais e promoções:\n"
@@ -141,38 +253,41 @@ final class EvolutionBotService
                 return $resposta;
             }
 
-            // 6. Opção Numérica Rápida
-            if ($textoUpper === '1') {
-                $linkCardapio = url("/p/{$loja->slug}");
-                $resposta = "Perfeito! Acesse nosso cardápio completo no link abaixo:\n👉 {$linkCardapio}";
-                $this->registrarResposta($loja, $conversa, $resposta);
-                return $resposta;
-            }
-
-            if ($textoUpper === '2') {
-                $respostaStatus = $this->tratarConsultaStatus($loja, $telefoneBidx);
-                $this->registrarResposta($loja, $conversa, $respostaStatus);
-                return $respostaStatus;
-            }
-
-            if ($textoUpper === '3') {
+            // 8. Opção Numérica: Humano
+            if ($textoUpper === '3' || $textoUpper === '4') {
                 $conversa->update(['estado' => 'humano']);
                 $resposta = "Chamando nossa equipe agora mesmo! 👨‍💼 Em instantes alguém do nosso time vai te responder.";
                 $this->registrarResposta($loja, $conversa, $resposta);
                 return $resposta;
             }
 
-            // 7. Saudação Inicial Padrão & Menu Amigável
-            $cliente = Cliente::where('loja_id', $loja->id)->where('telefone_bidx', $telefoneBidx)->first();
-            $nomeCliente = $cliente?->nome ? explode(' ', trim($cliente->nome))[0] : 'amigo(a)';
+            // 9. Saudação Inteligente (com Re-compra em 1-Clique se cliente recorrente)
+            $primeiroNome = $cliente?->nome ? explode(' ', trim($cliente->nome))[0] : 'amigo(a)';
             $linkCardapio = url("/p/{$loja->slug}");
 
-            $resposta = "Olá, *{$nomeCliente}*! Seja muito bem-vindo(a) ao *{$loja->nome}*! 👋🍔\n\n"
-                . "Como posso te ajudar agora? Escolha uma das opções:\n\n"
-                . "1️⃣ *CARDÁPIO* — Ver itens e fazer pedido\n"
-                . "2️⃣ *STATUS* — Acompanhar pedido em andamento\n"
-                . "3️⃣ *HUMANO* — Falar com um atendente da loja\n\n"
-                . "Ou clique direto no nosso cardápio online:\n👉 {$linkCardapio}";
+            if ($ultimoPedidoFinalizado !== null && $cliente !== null) {
+                $itensResumo = $ultimoPedidoFinalizado->itens->map(fn ($it) => "{$it->qtd}x {$it->nome_snapshot}")->join(', ');
+                $totalFmt = number_format($ultimoPedidoFinalizado->total / 100, 2, ',', '.');
+                $end = $ultimoPedidoFinalizado->endereco_json ?? [];
+                $endTexto = !empty($end['rua']) ? "{$end['rua']}, {$end['numero']}" : 'Endereço cadastrado';
+
+                $resposta = "Olá, *{$primeiroNome}*! Que alegria falar com você de novo no *{$loja->nome}*! 👋🍔\n\n"
+                    . "Quer repetir seu último pedido favorito?\n"
+                    . "📦 *Itens:* {$itensResumo}\n"
+                    . "📍 *Entrega:* {$endTexto}\n"
+                    . "💵 *Total:* R$ {$totalFmt}\n\n"
+                    . "1️⃣ Digite *1* para *REPETIR O MESMO PEDIDO* agora mesmo! ⚡\n"
+                    . "2️⃣ Digite *2* para ver o cardápio completo e escolher outros itens\n"
+                    . "3️⃣ Digite *STATUS* para acompanhar pedidos em andamento\n"
+                    . "4️⃣ Digite *HUMANO* para falar com um atendente";
+            } else {
+                $resposta = "Olá, *{$primeiroNome}*! Seja muito bem-vindo(a) ao *{$loja->nome}*! 👋🍔\n\n"
+                    . "Como posso te ajudar agora? Escolha uma das opções:\n\n"
+                    . "1️⃣ *CARDÁPIO* — Ver itens e fazer pedido\n"
+                    . "2️⃣ *STATUS* — Acompanhar pedido em andamento\n"
+                    . "3️⃣ *HUMANO* — Falar com um atendente da loja\n\n"
+                    . "Ou clique direto no nosso cardápio online:\n👉 {$linkCardapio}";
+            }
 
             $this->registrarResposta($loja, $conversa, $resposta);
             return $resposta;
@@ -184,10 +299,8 @@ final class EvolutionBotService
      */
     private function tratarConsultaStatus(Loja $loja, string $telefoneBidx): string
     {
-        // Localiza cliente
         $cliente = Cliente::where('loja_id', $loja->id)->where('telefone_bidx', $telefoneBidx)->first();
 
-        // Busca pedidos recentes deste cliente nas últimas 12 horas
         $pedido = null;
         if ($cliente !== null) {
             $pedido = Pedido::where('loja_id', $loja->id)
@@ -197,7 +310,6 @@ final class EvolutionBotService
                 ->first();
         }
 
-        // Se não houver cliente cadastrado, tenta buscar por telefone nos pedidos delivery caso não logado
         if ($pedido === null) {
             $linkCardapio = url("/p/{$loja->slug}");
             return "Oi! Tudo bem? 😊\n\n"
@@ -238,7 +350,6 @@ final class EvolutionBotService
 
         // Cenário 3: Em preparo na cozinha
         if (in_array($status, ['aceito', 'em_preparo'], true)) {
-            // Se estiver demorando mais de 35 minutos -> Acalma com empatia máxima e prioriza
             if ($minutosDecorridos > 35) {
                 return "Oi, *{$primeiroNome}*! Poxa, te peço mil desculpas pela espera! 🙏❤️\n\n"
                     . "Hoje estamos com uma demanda altíssima de pedidos na cozinha, mas o time está caprichando ao máximo para manter a qualidade e o sabor impecáveis que você merece.\n\n"
@@ -246,7 +357,6 @@ final class EvolutionBotService
                     . "Agradeço demais pelo carinho e paciência. Se preferir falar com a gente, basta digitar *HUMANO*!";
             }
 
-            // Tempo normal de preparo
             $restante = max(10, 40 - $minutosDecorridos);
             return "Oi, *{$primeiroNome}*! 👨‍🍳🔥\n\n"
                 . "O seu pedido *#{$codigo}* está sendo preparado com muito carinho e cuidado pelo nosso time de cozinha para chegar perfeito para você!\n\n"
@@ -255,8 +365,15 @@ final class EvolutionBotService
                 . "👉 Acompanhe ao vivo: {$trackingUrl}";
         }
 
-        // Cenário 4: Pedido acabou de entrar (novo)
+        // Cenário 4: Pedido novo (aguardando confirmação ou PIX)
         if ($status === 'novo') {
+            if ($pedido->forma_pagamento === 'pix' && $pedido->pagamento_status === 'pendente') {
+                $copiaCola = (string) ($pedido->pagamento?->pix_copia_cola ?? '');
+                return "Oi, *{$primeiroNome}*! Seu pedido *#{$codigo}* está aguardando a confirmação do pagamento via PIX para entrar na chapa.\n\n"
+                    . "Copie o código PIX abaixo:\n```{$copiaCola}```\n\n"
+                    . "Se desejar pagar em Cartão ou Dinheiro na entrega, basta me responder aqui dizendo *CARTÃO* ou *DINHEIRO*!";
+            }
+
             return "Oi, *{$primeiroNome}*! Seu pedido *#{$codigo}* foi recebido pelo nosso sistema e nossa equipe já está conferindo para iniciar o preparo imediatamente! 🕒✨";
         }
 
@@ -281,10 +398,9 @@ final class EvolutionBotService
             ->first();
 
         if ($motoboy === null) {
-            return null; // Não é motoboy cadastrado
+            return null;
         }
 
-        // Motoboy pedindo lista de entregas
         if (in_array($textoUpper, ['ENTREGAS', 'PEDIDOS', 'ROTAS', 'MINHAS ENTREGAS', 'FILA'], true)) {
             $pedidosProntos = Pedido::where('loja_id', $loja->id)
                 ->where('canal', 'delivery')
@@ -310,7 +426,6 @@ final class EvolutionBotService
             return implode("\n", $linhas);
         }
 
-        // Motoboy informando entrega concluída: "ENTREGUE A7K2" ou "OK A7K2"
         if (str_starts_with($textoUpper, 'ENTREGUE ') || str_starts_with($textoUpper, 'OK ')) {
             $partes = explode(' ', $textoUpper);
             $codigo = trim($partes[1] ?? '');

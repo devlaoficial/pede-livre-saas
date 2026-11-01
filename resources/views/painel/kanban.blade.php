@@ -1408,6 +1408,68 @@
                     </div>
                 </div>
 
+                <!-- Card 4: Recuperador Automático de PIX Abandonado -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl">💰</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="whatsappStatus.config.recuperar_carrinho" @change="salvarConfigWhatsapp()" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                            </label>
+                        </div>
+                        <h3 class="font-extrabold text-sm text-white">Recuperador de PIX Abandonado</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Resgata clientes que geraram o PIX e esqueceram de pagar antes que desistam:
+                        </p>
+                        <div class="space-y-1.5 text-[11px]">
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                ⏱️ <strong>Disparo aos 6 a 15 min:</strong> Lembra com carinho que os itens estão reservados na chapa.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                📋 <strong>Código PIX Pronto:</strong> Envia a chave Copia e Cola para pagamento em 1 toque no banco.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                💳 <strong>Flexibilidade:</strong> Permite ao cliente responder "CARTÃO" para pagar na maquininha!
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-emerald-400 font-bold pt-2 border-t border-slate-800 flex items-center gap-1.5">
+                        <span>🔥</span> Aumento médio de +18% a +25% no faturamento
+                    </div>
+                </div>
+
+                <!-- Card 5: Re-compra em 1-Clique ("Pedir o de Sempre") -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl">⚡</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="whatsappStatus.config.recompra_um_clique" @change="salvarConfigWhatsapp()" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                            </label>
+                        </div>
+                        <h3 class="font-extrabold text-sm text-white">Re-compra 1-Clique ("O de Sempre")</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Fideliza clientes recorrentes permitindo pedir novamente sem preencher nada:
+                        </p>
+                        <div class="space-y-1.5 text-[11px]">
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                🍔 <strong>Memória do Pedido Favorito:</strong> Lembra os itens e endereço do último pedido do cliente.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                1️⃣ <strong>Basta Digitar "1":</strong> Clona o pedido, gera o PIX e avisa a cozinha na hora.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                🚀 <strong>Zero Fricção:</strong> O cliente não precisa nem abrir o navegador.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-amber-300 font-bold pt-2 border-t border-slate-800 flex items-center gap-1.5">
+                        <span>⭐</span> Aumenta a frequência semanal de compras em +30%
+                    </div>
+                </div>
+
             </div>
 
             <!-- Caixa de Teste de Disparo ao Vivo -->
@@ -1917,7 +1979,7 @@
                     state: 'disconnected',
                     phone: null,
                     qrBase64: null,
-                    config: { notificar_pedidos: true, notificar_motoboy: true, bot_ativo: true }
+                    config: { notificar_pedidos: true, notificar_motoboy: true, bot_ativo: true, recuperar_carrinho: true, recompra_um_clique: true }
                 },
                 whatsappCarregando: false,
                 whatsappPolling: null,
