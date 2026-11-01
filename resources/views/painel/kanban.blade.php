@@ -1470,6 +1470,82 @@
                     </div>
                 </div>
 
+                <!-- Card 6: Atendente Inteligente (IA Conversacional & Transcrição de Áudio) -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl">🤖</span>
+                                <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">Groq LPU Turbo</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="whatsappStatus.config.ia_atendente_ativa" @change="salvarConfigWhatsapp()" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                            </label>
+                        </div>
+                        <h3 class="font-extrabold text-sm text-white">IA do Cardápio &amp; Transcrição de Voz</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Responde dúvidas sobre ingredientes, sabores, combos e transcreve áudios enviados pelos clientes:
+                        </p>
+                        <div class="space-y-1.5 text-[11px]">
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                🎙️ <strong>Entende Áudio de Voz:</strong> O cliente manda áudio ("tem lanche sem queijo?"), a IA ouve e responde na hora.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                🍔 <strong>Cardápio em Tempo Real:</strong> Lê seus produtos ativos e nunca inventa pratos ou preços inexistentes.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                ⚡ <strong>Ultra Rápido:</strong> Resposta humana, acolhedora e com link em menos de 1 segundo.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-purple-300 font-bold pt-2 border-t border-slate-800 flex items-center gap-1.5">
+                        <span>✨</span> Atendimento 24/7 sem fila de espera
+                    </div>
+                </div>
+
+                <!-- Card 7: Alerta Proativo de Demora na Cozinha -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl">⏳</span>
+                                <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30">Anti-Ansiedade</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="whatsappStatus.config.alerta_atraso_ativo" @change="salvarConfigWhatsapp()" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
+                            </label>
+                        </div>
+                        <h3 class="font-extrabold text-sm text-white">Alerta Proativo de Demora na Cozinha</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Acalma e encanta o cliente antes mesmo que ele pergunte onde está o pedido:
+                        </p>
+                        <div class="space-y-1.5 text-[11px]">
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                👨‍🍳 <strong>Mensagem de Satisfação:</strong> Avisa que o chef está caprichando nos detalhes e que o pedido é o próximo a sair.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80 flex items-center justify-between">
+                                <span>⏱️ <strong>Disparar após:</strong></span>
+                                <select x-model.number="whatsappStatus.config.minutos_alerta_atraso" @change="salvarConfigWhatsapp()" class="bg-slate-900 border border-slate-700 text-rose-300 text-xs rounded-lg px-2 py-1 font-bold">
+                                    <option value="25">25 minutos</option>
+                                    <option value="30">30 minutos</option>
+                                    <option value="35">35 minutos</option>
+                                    <option value="40">40 minutos</option>
+                                    <option value="45">45 minutos</option>
+                                    <option value="50">50 minutos</option>
+                                </select>
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                🛡️ <strong>Anti-Spam Garantido:</strong> Envia rigorosamente apenas 1 vez por pedido.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-rose-300 font-bold pt-2 border-t border-slate-800 flex items-center gap-1.5">
+                        <span>❤️</span> Reduz em até 90% as reclamações por atraso
+                    </div>
+                </div>
+
             </div>
 
             <!-- Caixa de Teste de Disparo ao Vivo -->
@@ -1979,7 +2055,7 @@
                     state: 'disconnected',
                     phone: null,
                     qrBase64: null,
-                    config: { notificar_pedidos: true, notificar_motoboy: true, bot_ativo: true, recuperar_carrinho: true, recompra_um_clique: true }
+                    config: { notificar_pedidos: true, notificar_motoboy: true, bot_ativo: true, recuperar_carrinho: true, recompra_um_clique: true, ia_atendente_ativa: true, alerta_atraso_ativo: true, minutos_alerta_atraso: 35 }
                 },
                 whatsappCarregando: false,
                 whatsappPolling: null,

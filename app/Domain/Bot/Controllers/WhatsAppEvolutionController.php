@@ -6,6 +6,7 @@ namespace App\Domain\Bot\Controllers;
 
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Autenticacao\Models\Usuario;
+use App\Domain\Bot\Services\AiChatService;
 use App\Domain\Bot\Services\EvolutionApiService;
 use App\Domain\Bot\Services\EvolutionBotService;
 use Exception;
@@ -18,7 +19,8 @@ final class WhatsAppEvolutionController
 {
     public function __construct(
         private readonly EvolutionApiService $evolutionApi,
-        private readonly EvolutionBotService $botService
+        private readonly EvolutionBotService $botService,
+        private readonly AiChatService $aiChatService
     ) {}
 
     /**
@@ -51,6 +53,9 @@ final class WhatsAppEvolutionController
                 'bot_ativo' => (bool) ($configWpp['bot_ativo'] ?? true),
                 'recuperar_carrinho' => (bool) ($configWpp['recuperar_carrinho'] ?? true),
                 'recompra_um_clique' => (bool) ($configWpp['recompra_um_clique'] ?? true),
+                'ia_atendente_ativa' => (bool) ($configWpp['ia_atendente_ativa'] ?? true),
+                'alerta_atraso_ativo' => (bool) ($configWpp['alerta_atraso_ativo'] ?? true),
+                'minutos_alerta_atraso' => (int) ($configWpp['minutos_alerta_atraso'] ?? 35),
             ],
         ]);
     }
@@ -128,6 +133,9 @@ final class WhatsAppEvolutionController
             'bot_ativo' => ['required', 'boolean'],
             'recuperar_carrinho' => ['nullable', 'boolean'],
             'recompra_um_clique' => ['nullable', 'boolean'],
+            'ia_atendente_ativa' => ['nullable', 'boolean'],
+            'alerta_atraso_ativo' => ['nullable', 'boolean'],
+            'minutos_alerta_atraso' => ['nullable', 'integer', 'min:15', 'max:120'],
         ]);
 
         $config = $loja->config_json ?? [];
@@ -138,6 +146,9 @@ final class WhatsAppEvolutionController
         $wpp['bot_ativo'] = $request->boolean('bot_ativo');
         $wpp['recuperar_carrinho'] = $request->boolean('recuperar_carrinho', true);
         $wpp['recompra_um_clique'] = $request->boolean('recompra_um_clique', true);
+        $wpp['ia_atendente_ativa'] = $request->boolean('ia_atendente_ativa', true);
+        $wpp['alerta_atraso_ativo'] = $request->boolean('alerta_atraso_ativo', true);
+        $wpp['minutos_alerta_atraso'] = $request->integer('minutos_alerta_atraso', 35);
 
         $config['whatsapp'] = $wpp;
         $loja->config_json = $config;
@@ -236,6 +247,18 @@ final class WhatsAppEvolutionController
         if ($evento === 'MESSAGES_UPSERT' || $evento === 'messages.upsert') {
             $telefoneRemetente = (string) ($dados['phone'] ?? '');
             $textoMensagem = (string) ($dados['text'] ?? $dados['message'] ?? '');
+            $isAudio = (bool) ($dados['is_audio'] ?? false);
+            $audioBase64 = (string) ($dados['audio_base64'] ?? '');
+            $audioMimetype = (string) ($dados['audio_mimetype'] ?? 'audio/ogg');
+
+            // Se for áudio, executa transcrição instantânea via Groq Whisper
+            if (($isAudio || !empty($audioBase64)) && !empty($audioBase64)) {
+                $transcricao = $this->aiChatService->transcreverAudio($audioBase64, $audioMimetype);
+                if (!empty($transcricao)) {
+                    $textoMensagem = $transcricao;
+                    $isAudio = true;
+                }
+            }
 
             if (empty($telefoneRemetente) || empty(trim($textoMensagem))) {
                 return response()->json(['status' => 'mensagem_vazia']);
@@ -250,11 +273,17 @@ final class WhatsAppEvolutionController
             }
 
             try {
-                $respostaTexto = $this->botService->processarMensagem($loja, $telefoneRemetente, $textoMensagem);
+                $meta = [
+                    'foi_audio' => $isAudio,
+                    'timestamp' => $dados['messageTimestamp'] ?? time(),
+                ];
+
+                $respostaTexto = $this->botService->processarMensagem($loja, $telefoneRemetente, $textoMensagem, $meta);
 
                 return response()->json([
                     'status' => 'processado',
                     'replyText' => $respostaTexto,
+                    'transcricao' => $isAudio ? $textoMensagem : null,
                 ]);
             } catch (Exception $e) {
                 Log::error("[WhatsAppEvolutionController] Erro ao processar mensagem do bot: " . $e->getMessage());

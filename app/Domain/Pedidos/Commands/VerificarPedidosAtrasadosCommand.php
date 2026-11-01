@@ -7,43 +7,66 @@ namespace App\Domain\Pedidos\Commands;
 use App\Domain\Bot\Services\EvolutionApiService;
 use App\Domain\Pedidos\Models\Pedido;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 final class VerificarPedidosAtrasadosCommand extends Command
 {
     protected $signature = 'pedelivre:verificar-atrasos';
-    protected $description = 'Verifica pedidos em preparo com tempo elevado e aciona aviso tranquilizador via WhatsApp';
+    protected $description = 'Verifica pedidos em preparo com tempo elevado e aciona aviso proativo tranquilizador via WhatsApp';
 
     public function handle(EvolutionApiService $evolutionApi): int
     {
-        $this->info('Verificando pedidos com tempo de preparo superior a 35 minutos...');
+        $this->info('Verificando pedidos em preparo com tempo elevado na cozinha...');
 
-        $pedidos = Pedido::where('canal', 'delivery')
+        // Busca pedidos em preparo recentes (últimas 3 horas)
+        $pedidos = Pedido::whereIn('canal', ['delivery', 'retirada', 'balcao'])
             ->whereIn('status', ['aceito', 'em_preparo'])
-            ->where('created_at', '<=', now()->subMinutes(35))
+            ->where('created_at', '>=', now()->subHours(3))
             ->with(['cliente', 'loja', 'entregador'])
             ->get();
 
-        $total = 0;
-        foreach ($pedidos as $pedido) {
-            $minutos = (int) $pedido->created_at->diffInMinutes(now());
+        $totalNotificados = 0;
 
-            // Verifica se a loja tem o bot de WhatsApp habilitado
+        foreach ($pedidos as $pedido) {
             $loja = $pedido->loja;
             if ($loja === null) {
                 continue;
             }
 
             $config = $loja->config_json['whatsapp'] ?? [];
-            if (!($config['notificar_pedidos'] ?? true)) {
+
+            // Verifica se o alerta proativo está habilitado na loja
+            $alertaAtivo = (bool) ($config['alerta_atraso_ativo'] ?? true);
+            $notificarGeral = (bool) ($config['notificar_pedidos'] ?? true);
+            if (!$alertaAtivo || !$notificarGeral) {
                 continue;
             }
 
-            $evolutionApi->notificarAtraso($pedido, $minutos);
-            $total++;
-            $this->line("Pedido #{$pedido->codigo_publico} da loja {$loja->nome} notificado ({$minutos} min decorridos).");
+            // Minutos configurados pelo lojista (padrão 35 min)
+            $minutosLimite = (int) ($config['minutos_alerta_atraso'] ?? 35);
+            $minutosDecorridos = (int) $pedido->created_at->diffInMinutes(now());
+
+            if ($minutosDecorridos < $minutosLimite) {
+                continue;
+            }
+
+            // Prevenção de spam: notifica apenas UMA vez por pedido
+            $cacheKey = "aviso_atraso_pedido_{$pedido->id}";
+            if (Cache::has($cacheKey)) {
+                continue;
+            }
+
+            // Dispara aviso gentil e tranquilizador para o cliente
+            $evolutionApi->notificarAtraso($pedido, $minutosDecorridos);
+
+            // Marca cache por 24 horas para nunca reenviar no mesmo pedido
+            Cache::put($cacheKey, now()->toIso8601String(), now()->addDay());
+            $totalNotificados++;
+
+            $this->line("✓ Alerta proativo enviado para Pedido #{$pedido->codigo_publico} da loja [{$loja->nome}] ({$minutosDecorridos} min decorridos).");
         }
 
-        $this->info("Total de pedidos acolhidos e notificados: {$total}.");
+        $this->info("Total de alertas proativos enviados: {$totalNotificados}.");
         return Command::SUCCESS;
     }
 }

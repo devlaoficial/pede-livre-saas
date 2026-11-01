@@ -21,30 +21,32 @@ final class EvolutionBotService
     private const OPT_OUT_KEYWORDS = ['PARAR', 'SAIR', 'CANCELAR', 'STOP', 'DESCADASTRAR'];
     private const HUMAN_KEYWORDS = ['HUMANO', 'ATENDENTE', 'FALAR COM ALGUEM', 'FALAR COM ALGUÉM', 'PESSOA', 'SUPORTE', 'MOÇA', 'MOCA', 'RAPAZ', 'AJUDA'];
     private const STATUS_KEYWORDS = ['STATUS', 'ONDE ESTA', 'ONDE ESTÁ', 'DEMORA', 'DEMORANDO', 'CADÊ', 'CADE', 'MEU PEDIDO', 'FALTA MUITO', 'ATRASOU', 'ATRASADO', 'TEMPO', 'CHEGAR', 'PREVISAO', 'PREVISÃO', 'RASTREAR'];
-    private const MENU_KEYWORDS = ['CARDAPIO', 'CARDÁPIO', 'PEDIR', 'MENU', 'VALOR', 'PREÇO', 'PRECO', 'LANCHE', 'PIZZA', 'BURGER', 'HAMBURGUER', 'ACAI', 'AÇAÍ', 'QUERO COMPRAR', 'CATALOGO', 'CATÁLOGO'];
+    private const MENU_KEYWORDS = ['CARDAPIO', 'CARDÁPIO', 'VER CARDAPIO', 'VER CARDÁPIO', 'LINK DO CARDAPIO', 'MANDA O CARDAPIO', 'MANDA O CARDÁPIO', 'ENVIAR CARDAPIO', 'MENU', 'CATALOGO', 'CATÁLOGO', 'VER O MENU'];
     private const THANKS_KEYWORDS = ['OBRIGADO', 'OBRIGADA', 'VALEU', 'TOP', 'OBG', 'TMJ', 'SHOW', 'MUITO BOM', 'DELICIA', 'DELÍCIA', 'MARAVILHA', 'EXCELENTE'];
     private const PIX_KEYWORDS = ['PIX', 'MANDA O PIX', 'CHAVE PIX', 'CODIGO PIX', 'CÓDIGO PIX', 'QR CODE', 'QRCODE', 'COPIA E COLA'];
     private const CARTAO_KEYWORDS = ['CARTAO', 'CARTÃO', 'MAQUININHA', 'MAQUINA', 'MÁQUINA', 'DEBITO', 'DÉBITO', 'CREDITO', 'CRÉDITO'];
     private const DINHEIRO_KEYWORDS = ['DINHEIRO', 'NOTA', 'TROCO'];
     private const RECOMPRA_KEYWORDS = ['REPETIR', 'DE SEMPRE', 'O DE SEMPRE', 'PEDIR O DE SEMPRE', 'QUERO O DE SEMPRE', 'REPETIR PEDIDO'];
+    private const GREETING_KEYWORDS = ['OI', 'OLA', 'OLÁ', 'OII', 'OIII', 'BOA NOITE', 'BOM DIA', 'BOA TARDE', 'MENU', 'INICIO', 'INÍCIO', 'COMEÇAR', 'COMECAR', 'OPÇÕES', 'OPCOES', 'E AI', 'E AÍ', 'SALVE', 'HEY', 'HELLO', 'HI'];
 
     public function __construct(
         private readonly BlindIndexService $blindIndex,
         private readonly EvolutionApiService $evolutionApi,
-        private readonly RecuperadorVendasService $recuperadorService
+        private readonly RecuperadorVendasService $recuperadorService,
+        private readonly AiChatService $aiChatService
     ) {}
 
     /**
      * Processa mensagem recebida via Webhook da Evolution API.
      * Retorna a resposta que deve ser enviada para o cliente (ou null se não responder).
      */
-    public function processarMensagem(Loja $loja, string $telefoneRemetente, string $textoMensagem): ?string
+    public function processarMensagem(Loja $loja, string $telefoneRemetente, string $textoMensagem, array $meta = []): ?string
     {
         $telefoneNormalizado = $this->blindIndex->normalizePhone($telefoneRemetente);
         $telefoneBidx = $this->blindIndex->generateForPhone($telefoneNormalizado);
         $textoUpper = mb_strtoupper(trim($textoMensagem));
 
-        return DB::transaction(function () use ($loja, $telefoneNormalizado, $telefoneBidx, $textoMensagem, $textoUpper): ?string {
+        return DB::transaction(function () use ($loja, $telefoneNormalizado, $telefoneBidx, $textoMensagem, $textoUpper, $meta): ?string {
             /** @var BotConversa $conversa */
             $conversa = BotConversa::firstOrCreate(
                 ['loja_id' => $loja->id, 'telefone_bidx' => $telefoneBidx],
@@ -261,7 +263,23 @@ final class EvolutionBotService
                 return $resposta;
             }
 
-            // 9. Saudação Inteligente (com Re-compra em 1-Clique se cliente recorrente)
+            // 9. Atendente Inteligente com IA (Dúvidas do Cardápio, Ingredientes, Horários e Áudios)
+            $eApenasSaudacao = in_array($textoUpper, self::GREETING_KEYWORDS, true);
+            $configWpp = $loja->config_json['whatsapp'] ?? [];
+            $iaAtiva = (bool) ($configWpp['ia_atendente_ativa'] ?? true);
+
+            if (!$eApenasSaudacao && $iaAtiva) {
+                $respostaIa = $this->aiChatService->responderDuvidaCardapio($loja, $textoMensagem);
+                if (!empty($respostaIa)) {
+                    if (!empty($meta['foi_audio'])) {
+                        $respostaIa = "🎙️ *Entendi seu áudio!* 😊\n\n" . $respostaIa;
+                    }
+                    $this->registrarResposta($loja, $conversa, $respostaIa);
+                    return $respostaIa;
+                }
+            }
+
+            // 10. Saudação Inteligente (com Re-compra em 1-Clique se cliente recorrente)
             $primeiroNome = $cliente?->nome ? explode(' ', trim($cliente->nome))[0] : 'amigo(a)';
             $linkCardapio = url("/p/{$loja->slug}");
 

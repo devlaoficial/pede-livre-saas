@@ -28,4 +28,10 @@ return [
         'api_key' => env('EVOLUTION_API_KEY', 'devla_evolution_secret_2026'),
         'webhook_secret' => env('EVOLUTION_WEBHOOK_SECRET', 'devla_pedelivre_wpp_secret_2026'),
     ],
+
+    'groq' => [
+        'api_key' => env('GROQ_API_KEY'),
+        'chat_model' => env('GROQ_CHAT_MODEL', 'openai/gpt-oss-120b'),
+        'whisper_model' => env('GROQ_WHISPER_MODEL', 'whisper-large-v3-turbo'),
+    ],
 ];
