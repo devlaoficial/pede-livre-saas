@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Fidelidade\Controllers;
 
+use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Autenticacao\Models\Usuario;
 use App\Domain\Clientes\Models\Cliente;
 use App\Domain\Pedidos\Models\Cupom;
@@ -35,15 +36,36 @@ final class RelatorioVendasController
             ], Response::HTTP_FORBIDDEN);
         }
 
-        $loja = $this->context->getLoja();
+        $loja = $user->loja ?? ($user->loja_id ? Loja::find($user->loja_id) : $this->context->getLoja());
+        if ($loja === null) {
+            return response()->json(['error' => 'LOJA_NAO_ENCONTRADA'], Response::HTTP_NOT_FOUND);
+        }
 
         $pedidosConcluidos = Pedido::where('loja_id', $loja->id)
             ->whereIn('status', ['entregue', 'retirado', 'servido'])
+            ->with(['itens.produto'])
             ->get();
 
         $totalPedidos = $pedidosConcluidos->count();
         $faturamentoTotalCentavos = (int) $pedidosConcluidos->sum('total');
         $ticketMedioCentavos = $totalPedidos > 0 ? intdiv($faturamentoTotalCentavos, $totalPedidos) : 0;
+
+        // Top Produtos Campeões
+        $produtosVendidos = [];
+        foreach ($pedidosConcluidos as $p) {
+            foreach ($p->itens as $item) {
+                $pNome = $item->produto?->nome ?? $item->nome_produto ?? 'Item';
+                $qtd = (int) ($item->quantidade ?? 1);
+                $totalCent = (int) ($item->total ?? (($item->preco_unitario ?? 0) * $qtd));
+                if (!isset($produtosVendidos[$pNome])) {
+                    $produtosVendidos[$pNome] = ['nome' => $pNome, 'qtd' => 0, 'total_centavos' => 0];
+                }
+                $produtosVendidos[$pNome]['qtd'] += $qtd;
+                $produtosVendidos[$pNome]['total_centavos'] += $totalCent;
+            }
+        }
+        usort($produtosVendidos, fn($a, $b) => $b['qtd'] <=> $a['qtd']);
+        $produtosCampeoes = array_slice($produtosVendidos, 0, 5);
 
         // Peak Hours Distribution (00h to 23h)
         $horariosPico = [];
@@ -119,6 +141,7 @@ final class RelatorioVendasController
             ],
             'clientes_lista' => $clientesLista,
             'cupons' => $cupons,
+            'produtos_campeoes' => $produtosCampeoes,
             'chamados_garcom' => is_array($chamados) ? array_values($chamados) : [],
         ]);
     }
@@ -128,7 +151,12 @@ final class RelatorioVendasController
      */
     public function listarCupons(Request $request): JsonResponse
     {
-        $loja = $this->context->getLoja();
+        /** @var Usuario|null $user */
+        $user = $request->user();
+        $loja = $user?->loja ?? ($user?->loja_id ? Loja::find($user->loja_id) : $this->context->getLoja());
+        if ($loja === null) {
+            return response()->json(['data' => []]);
+        }
         $cupons = Cupom::where('loja_id', $loja->id)
             ->orderByDesc('ativo')
             ->orderByDesc('id')
@@ -148,7 +176,10 @@ final class RelatorioVendasController
             return response()->json(['error' => 'FORBIDDEN', 'message' => 'Apenas gerentes e donos podem criar cupons.'], Response::HTTP_FORBIDDEN);
         }
 
-        $loja = $this->context->getLoja();
+        $loja = $user->loja ?? ($user->loja_id ? Loja::find($user->loja_id) : $this->context->getLoja());
+        if ($loja === null) {
+            return response()->json(['error' => 'LOJA_NAO_ENCONTRADA'], Response::HTTP_NOT_FOUND);
+        }
 
         $dados = $request->validate([
             'codigo' => ['required', 'string', 'max:40'],

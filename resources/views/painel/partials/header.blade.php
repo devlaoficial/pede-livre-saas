@@ -1,36 +1,43 @@
-<!-- Header Superior Compacto -->
-<header class="bg-slate-900 border-b border-slate-800 px-4 lg:px-6 py-3 flex items-center justify-between shrink-0 gap-2">
-    <div class="flex items-center gap-2.5 min-w-0">
-        <a href="/" class="lg:hidden text-base font-black text-white shrink-0">Pede<span class="text-rose-500">Livre</span></a>
-        <h1 class="text-xs sm:text-base font-extrabold text-white truncate" x-text="tituloModulo()"></h1>
+<!-- Header Superior Compacto (Design Claude Fiel) -->
+<header class="bg-[#0b0f19] border-b border-[#151b2b] px-4 lg:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between shrink-0 gap-3">
+    <!-- Título e Subtítulo Data -->
+    <div class="min-w-0">
+        <h1 class="text-xl lg:text-2xl font-black text-white tracking-tight" x-text="tituloModulo()"></h1>
+        <p class="text-xs text-slate-400 font-medium capitalize" x-text="dataHojeFormatada()"></p>
     </div>
 
-    <div class="flex items-center gap-2 shrink-0">
-        <button @click="mudarModulo('whatsapp')" class="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded-xl font-bold transition shadow-sm relative"
-            :class="whatsappConectado ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-600'">
-            <span>💬</span>
-            <span class="hidden md:inline" x-text="whatsappConectado ? 'WhatsApp Ativo' : 'Conectar WhatsApp'"></span>
-            <span class="w-2 h-2 rounded-full" :class="whatsappConectado ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'"></span>
-            <span x-show="totalAguardandoHumano > 0" class="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full animate-bounce" x-text="totalAguardandoHumano"></span>
+    <!-- Controles & Badges da Direita -->
+    <div class="flex flex-wrap items-center gap-2 shrink-0">
+        <!-- Status Loja Aberta -->
+        <div class="bg-[#131927] border border-[#1e2638] px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Loja aberta</span>
+        </div>
+
+        <!-- Status WhatsApp -->
+        <button @click="mudarModulo('whatsapp')"
+            class="bg-[#131927] border border-[#1e2638] hover:border-slate-600 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 flex items-center gap-2 transition">
+            <span class="w-2 h-2 rounded-full" :class="whatsappConectado ? 'bg-emerald-400' : 'bg-amber-400'"></span>
+            <span x-text="whatsappConectado ? 'WhatsApp conectado' : 'WhatsApp desconectado'"></span>
         </button>
-        <button @click="tocarChime()" class="hidden sm:inline-flex items-center text-xs bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl font-bold transition" title="Testar toque de campainha">
-            📞 Testar Toque
+
+        <!-- Sino de Alertas / Notificações -->
+        <button @click="tocarChime()" class="bg-[#131927] border border-[#1e2638] hover:border-slate-600 p-2 rounded-xl text-slate-300 hover:text-white transition relative" title="Alertas da Loja">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+            <span x-show="chamadosGarcom.length > 0" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping"></span>
         </button>
-        <button @click="copiarLinkCardapio()" class="hidden md:inline-flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl font-bold transition">
-            <span>🔗 Copiar Link</span>
+
+        <!-- Link do Cardápio -->
+        <button @click="copiarLinkCardapio()"
+            class="bg-[#131927] border border-[#1e2638] hover:border-slate-600 text-slate-300 hover:text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+            <span>Link do cardápio</span>
         </button>
-        <button @click="abrirModalPdv()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl shadow-md shadow-rose-600/20 transition">
-            + Pedido PDV
-        </button>
-        <a :href="'/p/' + (loja?.slug || 'brasa-artesanal')" target="_blank"
-            class="hidden sm:inline-flex text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-xl font-bold hover:bg-emerald-500/25">
-            Cardápio ↗
-        </a>
-        <button @click="atualizarTudo()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-2.5 py-1.5 rounded-xl" title="Atualizar Dados">
-            ↻
-        </button>
-        <button @click="sair()" class="lg:hidden bg-slate-800 hover:bg-rose-600/20 text-slate-300 text-xs font-bold px-2.5 py-1.5 rounded-xl">
-            Sair
+
+        <!-- Botão Novo Pedido F2 -->
+        <button @click="abrirModalPdv()"
+            class="bg-[#f43f5e] hover:bg-[#e11d48] text-white text-xs font-black px-4 py-2 rounded-xl shadow-lg shadow-rose-600/30 flex items-center gap-1.5 transition active:scale-95">
+            <span>+ Novo pedido · F2</span>
         </button>
     </div>
 </header>

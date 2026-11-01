@@ -217,7 +217,9 @@
                         em_preparo: lista.filter(p => p.status === 'em_preparo' || p.status === 'aceito'),
                         pronto: lista.filter(p => p.status === 'pronto'),
                         saiu_entrega: lista.filter(p => p.status === 'saiu_entrega'),
+                        pronto_e_em_rota: lista.filter(p => p.status === 'pronto' || p.status === 'saiu_entrega'),
                         finalizado: lista.filter(p => ['entregue', 'retirado', 'servido'].includes(p.status)),
+                        concluidos: lista.filter(p => ['entregue', 'retirado', 'servido'].includes(p.status)),
                     };
                 },
 
@@ -1377,6 +1379,86 @@
                         entregue: '✓ Concluir Entrega'
                     };
                     return map[prox] || 'Avançar';
+                },
+
+                dataHojeFormatada() {
+                    try {
+                        const hoje = new Date();
+                        const dias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+                        const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+                        return `${dias[hoje.getDay()]}, ${hoje.getDate()} de ${meses[hoje.getMonth()]}`;
+                    } catch (e) {
+                        return 'Hoje';
+                    }
+                },
+
+                resumoItens(pedido) {
+                    if (!pedido || !Array.isArray(pedido.itens) || pedido.itens.length === 0) {
+                        return 'Pedido concluído';
+                    }
+                    const partes = pedido.itens.map(i => {
+                        const qtd = i.quantidade || i.qtd || 1;
+                        const nome = i.produto?.nome || i.nome_produto || i.nome || 'Item';
+                        return `${qtd}x ${nome}`;
+                    });
+                    if (partes.length <= 2) {
+                        return partes.join(' · ');
+                    }
+                    return `${partes[0]} · ${partes[1]} +${partes.length - 2}`;
+                },
+
+                tempoDecorrido(pedido) {
+                    if (!pedido) return '';
+                    if (pedido.status === 'entregue' || pedido.status === 'retirado' || pedido.status === 'servido') {
+                        return 'Hoje';
+                    }
+                    if (pedido.status === 'pronto') return 'Pronto';
+                    if (pedido.status === 'saiu_entrega') return 'Em rota';
+                    
+                    const dataStr = pedido.created_at || pedido.criado_em;
+                    if (!dataStr) return 'Recente';
+                    try {
+                        const criacao = new Date(dataStr).getTime();
+                        const agora = Date.now();
+                        const diffMin = Math.max(1, Math.round((agora - criacao) / 60000));
+                        if (diffMin < 60) return `${diffMin} min`;
+                        const horas = Math.floor(diffMin / 60);
+                        return `${horas}h ${diffMin % 60}m`;
+                    } catch (e) {
+                        return 'Recente';
+                    }
+                },
+
+                nomeClienteOuBalcao(pedido) {
+                    if (pedido.canal === 'mesa') {
+                        return `Mesa ${pedido.mesa?.numero || pedido.mesa_id || 'Salão'}`;
+                    }
+                    return pedido.cliente?.nome || (pedido.canal === 'balcao' ? 'Cliente Balcão' : 'Cliente');
+                },
+
+                rotuloCanal(pedido) {
+                    if (pedido.canal === 'delivery') return 'DELIVERY';
+                    if (pedido.canal === 'balcao') return 'BALCÃO';
+                    if (pedido.canal === 'retirada') return 'RETIRADA';
+                    if (pedido.canal === 'mesa') return `MESA ${pedido.mesa?.numero || pedido.mesa_id || ''}`.trim();
+                    return (pedido.canal || 'BALCÃO').toUpperCase();
+                },
+
+                avancarStatus(pedido) {
+                    this.avancarPedido(pedido);
+                },
+
+                acaoPronto(pedido) {
+                    if (pedido.canal === 'delivery') {
+                        if (this.entregadores && this.entregadores.length > 0) {
+                            const entId = pedido.entregador_id || this.entregadores[0].id;
+                            this.despacharMotoboyRapido(pedido.id, entId);
+                        } else {
+                            this.avancarPedido(pedido);
+                        }
+                    } else {
+                        this.avancarPedido(pedido);
+                    }
                 },
 
                 avancarPedido(pedido) {
