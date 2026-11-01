@@ -77,17 +77,17 @@ final class Usuario extends Authenticatable
 
     public function isDonoLoja(): bool
     {
-        return $this->papel === 'dono_loja';
+        return in_array($this->papel, ['super_admin', 'dono_loja'], true);
     }
 
     public function isGerente(): bool
     {
-        return in_array($this->papel, ['dono_loja', 'gerente'], true);
+        return in_array($this->papel, ['super_admin', 'dono_loja', 'gerente'], true);
     }
 
     public function isCaixa(): bool
     {
-        return in_array($this->papel, ['dono_loja', 'gerente', 'caixa'], true);
+        return in_array($this->papel, ['super_admin', 'dono_loja', 'gerente', 'caixa'], true);
     }
 
     public function isCozinha(): bool

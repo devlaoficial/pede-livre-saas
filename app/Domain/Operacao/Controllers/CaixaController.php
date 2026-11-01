@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Operacao\Controllers;
 
+use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Autenticacao\Models\Usuario;
 use App\Domain\Operacao\Models\CaixaSessao;
 use App\Domain\Pedidos\Models\Pedido;
@@ -121,7 +122,10 @@ final class CaixaController
             'valor_inicial_centavos' => ['required', 'integer', 'min:0'],
         ]);
 
-        $loja = $this->context->getLoja();
+        $loja = $user->loja ?? ($user->loja_id ? Loja::find($user->loja_id) : $this->context->getLoja());
+        if ($loja === null) {
+            return response()->json(['error' => 'LOJA_NAO_ENCONTRADA'], Response::HTTP_NOT_FOUND);
+        }
 
         try {
             $sessao = $this->caixaService->abrirSessao(
@@ -132,10 +136,11 @@ final class CaixaController
 
             return response()->json([
                 'message' => 'Caixa aberto com sucesso.',
+                'data' => $sessao,
                 'sessao' => $sessao,
             ], Response::HTTP_CREATED);
         } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['error' => $e->getMessage(), 'message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -148,14 +153,28 @@ final class CaixaController
         }
 
         $request->validate([
-            'sessao_id' => ['required', 'integer'],
+            'sessao_id' => ['nullable', 'integer'],
             'tipo' => ['required', 'string', 'in:venda,sangria,suprimento'],
             'valor_centavos' => ['required', 'integer', 'min:1'],
             'observacao' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $loja = $this->context->getLoja();
-        $sessao = CaixaSessao::where('loja_id', $loja->id)->findOrFail($request->integer('sessao_id'));
+        $loja = $user->loja ?? ($user->loja_id ? Loja::find($user->loja_id) : $this->context->getLoja());
+        if ($loja === null) {
+            return response()->json(['error' => 'LOJA_NAO_ENCONTRADA'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($request->filled('sessao_id')) {
+            $sessao = CaixaSessao::where('loja_id', $loja->id)->findOrFail($request->integer('sessao_id'));
+        } else {
+            $sessao = CaixaSessao::where('loja_id', $loja->id)->whereNull('fechado_em')->first();
+            if (!$sessao) {
+                return response()->json([
+                    'error' => 'Nenhuma sessão de caixa aberta no momento.',
+                    'message' => 'Nenhuma sessão de caixa aberta no momento.'
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+        }
 
         try {
             $mov = $this->caixaService->registrarMovimento(
@@ -167,10 +186,11 @@ final class CaixaController
 
             return response()->json([
                 'message' => 'Movimento registrado no caixa.',
+                'data' => $mov,
                 'movimento' => $mov,
             ], Response::HTTP_CREATED);
         } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['error' => $e->getMessage(), 'message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -186,12 +206,26 @@ final class CaixaController
         }
 
         $request->validate([
-            'sessao_id' => ['required', 'integer'],
+            'sessao_id' => ['nullable', 'integer'],
             'valor_final_centavos' => ['required', 'integer', 'min:0'],
         ]);
 
-        $loja = $this->context->getLoja();
-        $sessao = CaixaSessao::where('loja_id', $loja->id)->findOrFail($request->integer('sessao_id'));
+        $loja = $user->loja ?? ($user->loja_id ? Loja::find($user->loja_id) : $this->context->getLoja());
+        if ($loja === null) {
+            return response()->json(['error' => 'LOJA_NAO_ENCONTRADA'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($request->filled('sessao_id')) {
+            $sessao = CaixaSessao::where('loja_id', $loja->id)->findOrFail($request->integer('sessao_id'));
+        } else {
+            $sessao = CaixaSessao::where('loja_id', $loja->id)->whereNull('fechado_em')->first();
+            if (!$sessao) {
+                return response()->json([
+                    'error' => 'Nenhuma sessão de caixa aberta para fechar.',
+                    'message' => 'Nenhuma sessão de caixa aberta para fechar.'
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+        }
 
         try {
             $sessaoFechada = $this->caixaService->fecharSessao(
@@ -201,10 +235,11 @@ final class CaixaController
 
             return response()->json([
                 'message' => 'Caixa fechado e conciliado com sucesso.',
+                'data' => $sessaoFechada,
                 'sessao' => $sessaoFechada,
             ]);
         } catch (DomainException $e) {
-            return response()->json(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['error' => $e->getMessage(), 'message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }
 }
