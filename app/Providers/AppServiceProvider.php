@@ -97,6 +97,7 @@ final class AppServiceProvider extends ServiceProvider
                 \App\Domain\Pedidos\Commands\RecuperarCarrinhosCommand::class,
                 \App\Domain\Pedidos\Commands\VerificarPedidosAtrasadosCommand::class,
                 \App\Domain\Fidelidade\Commands\SolicitarAvaliacoesCommand::class,
+                \App\Domain\Bot\Commands\DispararWinBackCommand::class,
             ]);
         }
     }
