@@ -207,7 +207,7 @@ final class PedidoPainelController
                 'troco_para' => $dados['troco_para'] ?? null,
                 'observacao' => $dados['observacao'] ?? null,
                 'endereco_json' => $dados['endereco'] ?? null,
-                'origem' => 'pdv',
+                'origem' => 'painel',
             ]);
 
             foreach ($calculo['itens_processados'] as $item) {
