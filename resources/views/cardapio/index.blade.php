@@ -769,6 +769,17 @@
                     if (this.checkout.canal === 'delivery' && !this.mesaAtiva) {
                         this.calcularFrete();
                     }
+
+                    try {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const cupomParam = urlParams.get('cupom');
+                        if (cupomParam) {
+                            this.cupomInput = cupomParam.trim().toUpperCase();
+                            this.$nextTick(() => {
+                                this.validarCupomApi();
+                            });
+                        }
+                    } catch (e) {}
                 },
 
                 salvarEstadoLocal() {

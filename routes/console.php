@@ -21,3 +21,6 @@ Schedule::command('pedelivre:verificar-atrasos')->everyFiveMinutes();
 
 // Dispatch NPS satisfaction surveys and 5-star Google Maps reviews every 5 minutes
 Schedule::command('pedelivre:solicitar-avaliacoes')->everyFiveMinutes();
+
+// Dispatch automated win-back reactivation campaigns on Thursdays and Fridays at 17:30
+Schedule::command('pedelivre:disparar-winback')->weeklyOn([4, 5], '17:30');

@@ -1867,6 +1867,84 @@
                         </div>
                     </div>
 
+                    <!-- Card 9: Reativação Win-Back Automática & Anti-Ban -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between"
+                         x-init="carregarPreviewWinback()">
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-2xl">🎯</span>
+                                    <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">CRM Win-Back</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" x-model="whatsappStatus.config.winback_ativo" @change="salvarConfigWhatsapp(); carregarPreviewWinback();" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                                </label>
+                            </div>
+                            <h3 class="font-extrabold text-sm text-white">Reativação Automática de Clientes Sumidos</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Resgata clientes que não compram há tempos enviando um cupom exclusivo de retorno com link de 1-toque:
+                            </p>
+                            <div class="space-y-2 text-[11px]">
+                                <div class="bg-slate-950 p-2.5 rounded-xl text-slate-300 border border-slate-800/80 flex items-center justify-between">
+                                    <span>⏱️ <strong>Inatividade:</strong></span>
+                                    <select x-model.number="whatsappStatus.config.winback_dias_inatividade" @change="salvarConfigWhatsapp(); carregarPreviewWinback();" class="bg-slate-900 border border-slate-700 text-purple-300 text-xs rounded-lg px-2 py-1 font-bold">
+                                        <option value="15">Sem pedir há +15 dias</option>
+                                        <option value="30">Sem pedir há +30 dias</option>
+                                        <option value="45">Sem pedir há +45 dias</option>
+                                        <option value="60">Sem pedir há +60 dias</option>
+                                    </select>
+                                </div>
+
+                                <div class="bg-slate-950 p-2.5 rounded-xl text-slate-300 border border-slate-800/80 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span>🎁 <strong>Cupom / Desconto:</strong></span>
+                                        <div class="flex items-center gap-1.5">
+                                            <input type="text" x-model="whatsappStatus.config.winback_cupom_codigo" @change="salvarConfigWhatsapp(); carregarPreviewWinback();"
+                                                placeholder="VOLTEI10" class="w-20 uppercase bg-slate-900 border border-slate-700 text-purple-300 text-center text-xs rounded-lg px-1.5 py-1 font-black">
+                                            <input type="number" x-model.number="whatsappStatus.config.winback_desconto_valor" @change="salvarConfigWhatsapp(); carregarPreviewWinback();"
+                                                min="1" max="90" class="w-12 bg-slate-900 border border-slate-700 text-purple-300 text-center text-xs rounded-lg px-1 py-1 font-bold">
+                                            <span class="text-xs font-bold text-slate-400">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[10px] text-slate-400">
+                                        <span>⏰ Expiração: <strong>48 horas</strong> (urgência)</span>
+                                        <span>🛡️ Anti-Ban: <strong>5-10s delay</strong></span>
+                                    </div>
+                                </div>
+
+                                <!-- Estatísticas da Base de Clientes Inativos -->
+                                <div class="bg-purple-950/40 border border-purple-800/50 p-2.5 rounded-xl flex items-center justify-between">
+                                    <div class="text-[11px] text-purple-200">
+                                        <span>👥 Clientes Inativos Elegíveis:</span>
+                                        <div class="text-base font-black text-white" x-text="winbackPreview.total_inativos ?? '0'"></div>
+                                    </div>
+                                    <button type="button" @click="dispararCampanhaWinback()" :disabled="disparandoWinback || !whatsappConectado || (winbackPreview.total_inativos === 0)"
+                                        class="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[11px] font-black px-3 py-1.5 rounded-xl transition shadow flex items-center gap-1.5">
+                                        <span x-show="!disparandoWinback">🚀 Disparar Agora</span>
+                                        <span x-show="disparandoWinback" class="animate-spin">⏳ Enviando...</span>
+                                    </button>
+                                </div>
+
+                                <!-- Pré-visualização da Mensagem -->
+                                <div x-data="{ verExemplo: false }" class="pt-1">
+                                    <button type="button" @click="verExemplo = !verExemplo" class="text-[10px] text-purple-400 hover:underline flex items-center gap-1 font-semibold">
+                                        <span x-text="verExemplo ? 'Ocultar exemplo' : '👁️ Ver mensagem que o cliente recebe'"></span>
+                                    </button>
+                                    <div x-show="verExemplo" x-cloak class="mt-2 p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-300 whitespace-pre-line font-mono leading-tight">
+                                        <span x-text="winbackPreview.exemplo_mensagem || 'Carregando exemplo...'"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-[11px] text-purple-300 font-bold pt-2 border-t border-slate-800 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <span>📈</span> Retorno médio de 18% a 25% dos clientes
+                            </span>
+                            <button type="button" @click="carregarPreviewWinback()" class="text-slate-400 hover:text-white transition" title="Recarregar clientes elegíveis">🔄</button>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Caixa de Teste de Disparo ao Vivo -->
@@ -2389,7 +2467,16 @@
                         minutos_alerta_atraso: 35,
                         solicitar_avaliacao: true,
                         minutos_solicitar_avaliacao: 30,
-                        google_maps_review_url: ''
+                        google_maps_review_url: '',
+                        winback_ativo: false,
+                        winback_dias_inatividade: 30,
+                        winback_cupom_codigo: 'VOLTEI10',
+                        winback_desconto_tipo: 'percentual',
+                        winback_desconto_valor: 10,
+                        winback_validade_horas: 48,
+                        winback_minimo_reais: 30,
+                        winback_limite_diario: 30,
+                        winback_mensagem: ''
                     }
                 },
                 whatsappCarregando: false,
@@ -2407,6 +2494,18 @@
                 chatCarregando: false,
                 chatEnviando: false,
                 totalAguardandoHumano: 0,
+                winbackPreview: {
+                    total_clientes_base: 0,
+                    total_inativos: 0,
+                    dias_inatividade: 30,
+                    cupom_codigo: 'VOLTEI10',
+                    desconto_texto: '10% OFF',
+                    validade_horas: 48,
+                    exemplo_mensagem: '',
+                    instancia_conectada: false
+                },
+                carregandoWinback: false,
+                disparandoWinback: false,
                 modalNovoProduto: false,
                 modalNovaCategoria: false,
                 modalNovoCupom: false,
@@ -3284,6 +3383,7 @@
                                     ...(d.config || {})
                                 }
                             };
+                            this.carregarPreviewWinback();
                         }
                     } catch (e) {
                         console.error('Erro ao consultar status do WhatsApp:', e);
@@ -3404,12 +3504,55 @@
                     }
                 },
 
+                async carregarPreviewWinback() {
+                    this.carregandoWinback = true;
+                    try {
+                        const r = await fetch('/api/painel/whatsapp/campanhas/preview', { headers: this.headersAuth() });
+                        if (r.ok) {
+                            const d = await r.json();
+                            if (d.success) {
+                                this.winbackPreview = d;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Erro ao consultar preview do win-back:', e);
+                    } finally {
+                        this.carregandoWinback = false;
+                    }
+                },
+
+                async dispararCampanhaWinback() {
+                    if (!confirm('Deseja iniciar o disparo da campanha de reativação para os clientes inativos elegíveis? As mensagens serão enviadas com delay anti-ban de forma segura.')) return;
+                    this.disparandoWinback = true;
+                    try {
+                        const r = await fetch('/api/painel/whatsapp/campanhas/disparar', {
+                            method: 'POST',
+                            headers: this.headersAuth()
+                        });
+                        const d = await r.json();
+                        if (r.ok && d.success) {
+                            this.toastMsg = `🚀 Campanha iniciada! ${d.enviados || 0} mensagens enviadas (Cupom: ${d.cupom || ''}).`;
+                            await this.carregarPreviewWinback();
+                            if (this.carregarConversasWhatsapp) {
+                                this.carregarConversasWhatsapp(true);
+                            }
+                        } else {
+                            alert(d.message || 'Não foi possível disparar a campanha.');
+                        }
+                    } catch (e) {
+                        alert('Erro ao disparar campanha no servidor.');
+                    } finally {
+                        this.disparandoWinback = false;
+                    }
+                },
+
                 mudarSubAbaWhatsapp(subAba) {
                     this.subAbaWhatsapp = subAba;
                     if (subAba === 'chat') {
                         this.carregarConversasWhatsapp();
                     } else if (subAba === 'config') {
                         this.carregarStatusWhatsapp();
+                        this.carregarPreviewWinback();
                     }
                 },
 

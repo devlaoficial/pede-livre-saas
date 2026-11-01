@@ -200,6 +200,8 @@ Route::middleware([
         Route::post('whatsapp/conversas/{id}/responder', [WhatsAppEvolutionController::class, 'responderConversa']);
         Route::post('whatsapp/conversas/{id}/assumir', [WhatsAppEvolutionController::class, 'assumirAtendimento']);
         Route::post('whatsapp/conversas/{id}/devolver-bot', [WhatsAppEvolutionController::class, 'devolverBot']);
+        Route::get('whatsapp/campanhas/preview', [WhatsAppEvolutionController::class, 'previewCampanhaWinback']);
+        Route::post('whatsapp/campanhas/disparar', [WhatsAppEvolutionController::class, 'dispararCampanhaWinback']);
         Route::get('avaliacoes', [WhatsAppEvolutionController::class, 'listarAvaliacoes']);
     });
 

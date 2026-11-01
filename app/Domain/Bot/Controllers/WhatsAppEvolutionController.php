@@ -11,6 +11,7 @@ use App\Domain\Bot\Models\BotMensagem;
 use App\Domain\Bot\Services\AiChatService;
 use App\Domain\Bot\Services\EvolutionApiService;
 use App\Domain\Bot\Services\EvolutionBotService;
+use App\Domain\Bot\Services\WinBackService;
 use App\Domain\Clientes\Models\Cliente;
 use App\Domain\Fidelidade\Models\Avaliacao;
 use App\Domain\Pedidos\Models\Pedido;
@@ -64,6 +65,15 @@ final class WhatsAppEvolutionController
                 'solicitar_avaliacao' => (bool) ($configWpp['solicitar_avaliacao'] ?? true),
                 'minutos_solicitar_avaliacao' => (int) ($configWpp['minutos_solicitar_avaliacao'] ?? 30),
                 'google_maps_review_url' => (string) ($configWpp['google_maps_review_url'] ?? ''),
+                'winback_ativo' => (bool) ($configWpp['winback_ativo'] ?? false),
+                'winback_dias_inatividade' => (int) ($configWpp['winback_dias_inatividade'] ?? 30),
+                'winback_cupom_codigo' => (string) ($configWpp['winback_cupom_codigo'] ?? 'VOLTEI10'),
+                'winback_desconto_tipo' => (string) ($configWpp['winback_desconto_tipo'] ?? 'percentual'),
+                'winback_desconto_valor' => (int) ($configWpp['winback_desconto_valor'] ?? 10),
+                'winback_validade_horas' => (int) ($configWpp['winback_validade_horas'] ?? 48),
+                'winback_minimo_reais' => (float) ($configWpp['winback_minimo_reais'] ?? 30.0),
+                'winback_mensagem' => (string) ($configWpp['winback_mensagem'] ?? ''),
+                'winback_limite_diario' => (int) ($configWpp['winback_limite_diario'] ?? 30),
             ],
         ]);
     }
@@ -147,6 +157,15 @@ final class WhatsAppEvolutionController
             'solicitar_avaliacao' => ['nullable', 'boolean'],
             'minutos_solicitar_avaliacao' => ['nullable', 'integer', 'min:10', 'max:180'],
             'google_maps_review_url' => ['nullable', 'string', 'max:500'],
+            'winback_ativo' => ['nullable', 'boolean'],
+            'winback_dias_inatividade' => ['nullable', 'integer', 'min:7', 'max:180'],
+            'winback_cupom_codigo' => ['nullable', 'string', 'max:30'],
+            'winback_desconto_tipo' => ['nullable', 'string', 'in:percentual,valor'],
+            'winback_desconto_valor' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'winback_validade_horas' => ['nullable', 'integer', 'min:6', 'max:336'],
+            'winback_minimo_reais' => ['nullable', 'numeric', 'min:0'],
+            'winback_mensagem' => ['nullable', 'string', 'max:1500'],
+            'winback_limite_diario' => ['nullable', 'integer', 'min:5', 'max:200'],
         ]);
 
         $config = $loja->config_json ?? [];
@@ -163,6 +182,15 @@ final class WhatsAppEvolutionController
         $wpp['solicitar_avaliacao'] = $request->boolean('solicitar_avaliacao', true);
         $wpp['minutos_solicitar_avaliacao'] = $request->integer('minutos_solicitar_avaliacao', 30);
         $wpp['google_maps_review_url'] = trim((string) $request->input('google_maps_review_url', ''));
+        $wpp['winback_ativo'] = $request->boolean('winback_ativo', false);
+        $wpp['winback_dias_inatividade'] = $request->integer('winback_dias_inatividade', 30);
+        $wpp['winback_cupom_codigo'] = strtoupper(trim((string) $request->input('winback_cupom_codigo', 'VOLTEI10')));
+        $wpp['winback_desconto_tipo'] = $request->input('winback_desconto_tipo', 'percentual') === 'valor' ? 'valor' : 'percentual';
+        $wpp['winback_desconto_valor'] = $request->integer('winback_desconto_valor', 10);
+        $wpp['winback_validade_horas'] = $request->integer('winback_validade_horas', 48);
+        $wpp['winback_minimo_reais'] = (float) $request->input('winback_minimo_reais', 30.0);
+        $wpp['winback_mensagem'] = $request->filled('winback_mensagem') ? trim((string) $request->input('winback_mensagem')) : null;
+        $wpp['winback_limite_diario'] = $request->integer('winback_limite_diario', 30);
 
         $config['whatsapp'] = $wpp;
         $loja->config_json = $config;
@@ -640,6 +668,73 @@ final class WhatsAppEvolutionController
             'avaliacoes' => $avaliacoes,
             'media' => round((float) $mediaNotas, 1),
             'total' => $totalAvaliacoes,
+        ]);
+    }
+
+    /**
+     * GET /api/painel/whatsapp/campanhas/preview
+     * Retorna resumo e preview de mensagens de reativação para o lojista.
+     */
+    public function previewCampanhaWinback(Request $request, WinBackService $winBackService): JsonResponse
+    {
+        /** @var Usuario $usuario */
+        $usuario = $request->user();
+        /** @var Loja|null $loja */
+        $loja = $usuario->loja;
+
+        if ($loja === null) {
+            return response()->json(['error' => 'LOJA_NAO_ENCONTRADA'], Response::HTTP_NOT_FOUND);
+        }
+
+        $resumo = $winBackService->obterResumoCampanha($loja);
+        return response()->json($resumo);
+    }
+
+    /**
+     * POST /api/painel/whatsapp/campanhas/disparar
+     * Dispara manualmente a campanha de Win-Back com delay anti-ban para a loja.
+     */
+    public function dispararCampanhaWinback(Request $request, WinBackService $winBackService): JsonResponse
+    {
+        /** @var Usuario $usuario */
+        $usuario = $request->user();
+        /** @var Loja|null $loja */
+        $loja = $usuario->loja;
+
+        if ($loja === null) {
+            return response()->json(['error' => 'LOJA_NAO_ENCONTRADA'], Response::HTTP_NOT_FOUND);
+        }
+
+        $resultado = $winBackService->executarCampanhaLoja($loja);
+
+        if (!$resultado['success']) {
+            $msg = match ($resultado['motivo'] ?? '') {
+                'whatsapp_desconectado' => 'O WhatsApp da sua loja não está conectado. Conecte pelo QR Code antes de disparar.',
+                default => 'Não foi possível disparar a campanha.'
+            };
+            return response()->json([
+                'success' => false,
+                'message' => $msg,
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if (($resultado['enviados'] ?? 0) === 0 && ($resultado['total_elegiveis'] ?? 0) === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Nenhum cliente inativo elegível encontrado para reativação no momento.',
+                'enviados' => 0,
+                'total_elegiveis' => 0,
+                'cupom' => $resultado['cupom'] ?? '',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Campanha executada! {$resultado['enviados']} mensagens enviadas com sucesso.",
+            'enviados' => $resultado['enviados'],
+            'erros' => $resultado['erros'],
+            'total_elegiveis' => $resultado['total_elegiveis'],
+            'cupom' => $resultado['cupom'],
         ]);
     }
 }
