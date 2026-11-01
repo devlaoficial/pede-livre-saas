@@ -185,8 +185,10 @@ Route::middleware([
     // Real-Time Merchant Order Panel (Kanban & State Machine - Phase 6)
     Route::prefix('painel')->group(function (): void {
         Route::get('pedidos', [PedidoPainelController::class, 'index']);
+        Route::post('pedidos/manual', [PedidoPainelController::class, 'criarPedidoManual']);
         Route::get('pedidos/{id}', [PedidoPainelController::class, 'show']);
         Route::patch('pedidos/{id}/status', [PedidoPainelController::class, 'atualizarStatus']);
+        Route::post('pedidos/{id}/cancelar', [PedidoPainelController::class, 'cancelarComMotivo']);
         Route::post('pedidos/{id}/atribuir-entregador', [PedidoPainelController::class, 'atribuirEntregador']);
 
         // WhatsApp Evolution API & Webchat Multiatendente ao Vivo

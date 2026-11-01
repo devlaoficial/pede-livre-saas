@@ -103,15 +103,83 @@
                 novaCat: { nome: '', descricao: '' },
                 novoEnt: { nome: '', telefone: '', tipo: 'proprio', valor_reais: '7,00' },
                 novaArea: { nome_bairro: '', taxa_reais: '5,00', tempo_estimado_min: 30 },
-                pdv: { nome: 'Cliente Balcão', telefone: '31999999999', canal: 'balcao', forma_pagamento: 'cartao_maquina', itens: [] },
+                
+                // Filtros Avançados do Kanban (Etapa 2)
+                filtroCanal: 'todos', // 'todos', 'delivery', 'balcao_retirada', 'mesa'
+                filtroPagamento: 'todos', // 'todos', 'pago', 'pendente'
+                
+                // Modal de Cancelamento de Pedido
+                mostrandoMotivoCancelamento: false,
+                motivoCancelamento: 'Cliente solicitou o cancelamento',
+                motivoCancelamentoOutro: '',
+
+                // Estado Completo do PDV Balcão (Etapa 2)
+                buscaPdvProduto: '',
+                filtroPdvCategoria: '',
+                salvandoPdv: false,
+                pdvItemCustomizando: null,
+                pdvVariacaoSelecionadaId: null,
+                pdvAdicionaisSelecionados: [],
+                pdvObservacaoItem: '',
+                pdvQtdItem: 1,
+                pdv: {
+                    cliente_nome: '',
+                    cliente_telefone: '',
+                    canal: 'balcao',
+                    mesa_id: '',
+                    endereco: { rua: '', numero: '', bairro: '', complemento: '', cep: '', cidade: '' },
+                    taxa_entrega_reais: '0,00',
+                    desconto_reais: '0,00',
+                    forma_pagamento: 'dinheiro',
+                    troco_para_reais: '',
+                    status_inicial: 'aceito',
+                    observacao: '',
+                    itens: []
+                },
 
                 get pedidosFiltrados() {
-                    if (!this.buscaPedido.trim()) return this.pedidos;
-                    const q = this.buscaPedido.toLowerCase();
-                    return this.pedidos.filter(p =>
-                        (p.codigo_publico || '').toLowerCase().includes(q) ||
-                        (p.cliente?.nome || '').toLowerCase().includes(q)
-                    );
+                    let lista = this.pedidos;
+
+                    // 1. Filtro por Canal de Venda
+                    if (this.filtroCanal && this.filtroCanal !== 'todos') {
+                        if (this.filtroCanal === 'balcao_retirada') {
+                            lista = lista.filter(p => p.canal === 'balcao' || p.canal === 'retirada');
+                        } else {
+                            lista = lista.filter(p => p.canal === this.filtroCanal);
+                        }
+                    }
+
+                    // 2. Filtro por Pagamento
+                    if (this.filtroPagamento && this.filtroPagamento !== 'todos') {
+                        if (this.filtroPagamento === 'pago') {
+                            lista = lista.filter(p => p.pagamento_status === 'aprovado' || p.pagamento_status === 'pago');
+                        } else if (this.filtroPagamento === 'pendente') {
+                            lista = lista.filter(p => p.pagamento_status !== 'aprovado' && p.pagamento_status !== 'pago');
+                        }
+                    }
+
+                    // 3. Busca por texto (Código, Cliente ou Telefone)
+                    if (this.buscaPedido && this.buscaPedido.trim()) {
+                        const q = this.buscaPedido.toLowerCase().trim();
+                        lista = lista.filter(p =>
+                            (p.codigo_publico || '').toLowerCase().includes(q) ||
+                            (p.cliente?.nome || '').toLowerCase().includes(q) ||
+                            (p.cliente?.telefone || '').includes(q)
+                        );
+                    }
+
+                    return lista;
+                },
+
+                get contadoresFiltros() {
+                    return {
+                        total: this.pedidos.length,
+                        delivery: this.pedidos.filter(p => p.canal === 'delivery').length,
+                        balcao: this.pedidos.filter(p => p.canal === 'balcao' || p.canal === 'retirada').length,
+                        mesa: this.pedidos.filter(p => p.canal === 'mesa').length,
+                        pago: this.pedidos.filter(p => p.pagamento_status === 'aprovado' || p.pagamento_status === 'pago').length,
+                        pendente: this.pedidos.filter(p => p.pagamento_status !== 'aprovado' && p.pagamento_status !== 'pago').length,
+                    };
                 },
 
                 get colunas() {
@@ -132,6 +200,21 @@
                 get produtosFiltrados() {
                     if (!this.filtroCategoriaId) return this.produtos;
                     return this.produtos.filter(p => Number(p.categoria_id) === Number(this.filtroCategoriaId));
+                },
+
+                get produtosPdvFiltrados() {
+                    let lista = this.produtos.filter(p => p.ativo && !p.esgotado);
+                    if (this.filtroPdvCategoria) {
+                        lista = lista.filter(p => Number(p.categoria_id) === Number(this.filtroPdvCategoria));
+                    }
+                    if (this.buscaPdvProduto && this.buscaPdvProduto.trim()) {
+                        const q = this.buscaPdvProduto.toLowerCase().trim();
+                        lista = lista.filter(p =>
+                            (p.nome || '').toLowerCase().includes(q) ||
+                            (p.codigo_pdv || '').toLowerCase().includes(q)
+                        );
+                    }
+                    return lista;
                 },
 
                 get totalConsumoMesaCentavos() {
@@ -222,6 +305,14 @@
                             window.location.replace('/login');
                         });
                     this.iniciarAudio();
+
+                    // Atalho F2 para Lançamento Rápido no PDV Balcão
+                    window.addEventListener('keydown', (e) => {
+                        if (e.key === 'F2') {
+                            e.preventDefault();
+                            this.abrirModalPdv();
+                        }
+                    });
                 },
 
                 ocultarOnboarding() {
@@ -303,11 +394,20 @@
 
                 headersAuth() {
                     const token = localStorage.getItem('pl_token') || '';
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                     return {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'Authorization': token ? `Bearer ${token}` : ''
+                        'Authorization': token ? `Bearer ${token}` : '',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest'
                     };
+                },
+
+                centavos(valor) {
+                    if (typeof valor === 'number') return Math.round(valor * 100);
+                    const limpo = String(valor || '0').replace('R$', '').replace(/\s+/g, '').replace('.', '').replace(',', '.');
+                    return Math.round((parseFloat(limpo) || 0) * 100);
                 },
 
                 carregarChamadosGarcom() {
@@ -774,36 +874,284 @@
                         });
                 },
 
+                // MÉTODOS DO PDV BALCÃO & LANÇAMENTO MANUAL (ETAPA 2)
                 abrirModalPdv() {
                     if (this.produtos.length === 0) this.carregarCatalogo();
-                    this.pdv.itens = [];
+                    if (this.mesas.length === 0) this.carregarMesas();
+                    if (this.entregadores.length === 0) this.carregarEntregas();
+                    this.resetarPdv();
                     this.modalPdv = true;
                 },
 
-                adicionarItemPdv(prod) {
-                    const ex = this.pdv.itens.find(i => i.produto_id === prod.id);
-                    if (ex) ex.qtd++;
-                    else this.pdv.itens.push({ produto_id: prod.id, nome: prod.nome, qtd: 1 });
+                fecharModalPdv() {
+                    this.modalPdv = false;
+                    this.pdvItemCustomizando = null;
+                },
+
+                resetarPdv() {
+                    this.pdv = {
+                        cliente_nome: '',
+                        cliente_telefone: '',
+                        canal: 'balcao',
+                        mesa_id: '',
+                        endereco: { rua: '', numero: '', bairro: '', complemento: '', cep: '', cidade: '' },
+                        taxa_entrega_reais: '0,00',
+                        desconto_reais: '0,00',
+                        forma_pagamento: 'dinheiro',
+                        troco_para_reais: '',
+                        status_inicial: 'aceito',
+                        observacao: '',
+                        itens: []
+                    };
+                    this.buscaPdvProduto = '';
+                    this.filtroPdvCategoria = '';
+                    this.pdvItemCustomizando = null;
+                    this.salvandoPdv = false;
+                },
+
+                clicarProdutoPdv(prod) {
+                    const temVariacoes = Array.isArray(prod.variacoes) && prod.variacoes.length > 0;
+                    const temAdicionais = Array.isArray(prod.grupos_adicionais) && prod.grupos_adicionais.length > 0;
+                    if (temVariacoes || temAdicionais) {
+                        this.abrirCustomizacaoPdv(prod);
+                    } else {
+                        this.adicionarItemSimplesPdv(prod);
+                    }
+                },
+
+                adicionarItemSimplesPdv(prod) {
+                    const preco = prod.preco_efetivo_centavos || prod.preco_centavos || 0;
+                    const existente = this.pdv.itens.find(i => i.produto_id === prod.id && !i.variacao_id && (!i.adicionais || i.adicionais.length === 0) && !i.observacao);
+                    if (existente) {
+                        existente.qtd++;
+                        existente.total_centavos = existente.preco_unit_centavos * existente.qtd;
+                    } else {
+                        this.pdv.itens.push({
+                            produto_id: prod.id,
+                            nome: prod.nome,
+                            variacao_id: null,
+                            variacao_nome: null,
+                            preco_unit_centavos: preco,
+                            qtd: 1,
+                            observacao: '',
+                            adicionais: [],
+                            total_centavos: preco
+                        });
+                    }
+                },
+
+                abrirCustomizacaoPdv(prod) {
+                    this.pdvItemCustomizando = prod;
+                    this.pdvVariacaoSelecionadaId = (prod.variacoes && prod.variacoes.length > 0) ? prod.variacoes[0].id : null;
+                    this.pdvAdicionaisSelecionados = [];
+                    this.pdvObservacaoItem = '';
+                    this.pdvQtdItem = 1;
+                },
+
+                fecharCustomizacaoPdv() {
+                    this.pdvItemCustomizando = null;
+                    this.pdvAdicionaisSelecionados = [];
+                    this.pdvObservacaoItem = '';
+                },
+
+                isAdicionalSelecionadoPdv(opcaoId) {
+                    return this.pdvAdicionaisSelecionados.some(a => a.opcao_id === opcaoId);
+                },
+
+                alternarAdicionalPdv(opcao, grupo) {
+                    const index = this.pdvAdicionaisSelecionados.findIndex(a => a.opcao_id === opcao.id);
+                    if (index >= 0) {
+                        this.pdvAdicionaisSelecionados.splice(index, 1);
+                    } else {
+                        if (grupo.maximo === 1) {
+                            const opcoesIdsGrupo = (grupo.opcoes || []).map(o => o.id);
+                            this.pdvAdicionaisSelecionados = this.pdvAdicionaisSelecionados.filter(a => !opcoesIdsGrupo.includes(a.opcao_id));
+                        }
+                        this.pdvAdicionaisSelecionados.push({
+                            opcao_id: opcao.id,
+                            nome: opcao.nome,
+                            preco_centavos: opcao.preco_centavos || 0,
+                            qtd: 1
+                        });
+                    }
+                },
+
+                confirmarItemCustomizadoPdv() {
+                    const p = this.pdvItemCustomizando;
+                    if (!p) return;
+                    let precoBase = p.preco_efetivo_centavos || p.preco_centavos || 0;
+                    let variacaoNome = null;
+                    if (this.pdvVariacaoSelecionadaId && Array.isArray(p.variacoes)) {
+                        const v = p.variacoes.find(item => item.id === this.pdvVariacaoSelecionadaId);
+                        if (v) {
+                            precoBase = v.preco_centavos || precoBase;
+                            variacaoNome = v.nome;
+                        }
+                    }
+                    const adicionaisTotal = this.pdvAdicionaisSelecionados.reduce((s, a) => s + (a.preco_centavos || 0), 0);
+                    const unitTotal = precoBase + adicionaisTotal;
+                    const qtd = Math.max(1, this.pdvQtdItem || 1);
+
+                    this.pdv.itens.push({
+                        produto_id: p.id,
+                        nome: p.nome,
+                        variacao_id: this.pdvVariacaoSelecionadaId,
+                        variacao_nome: variacaoNome,
+                        preco_unit_centavos: precoBase,
+                        qtd: qtd,
+                        observacao: this.pdvObservacaoItem ? this.pdvObservacaoItem.trim() : '',
+                        adicionais: [...this.pdvAdicionaisSelecionados],
+                        total_centavos: unitTotal * qtd
+                    });
+
+                    this.fecharCustomizacaoPdv();
+                },
+
+                alterarQtdItemPdv(index, delta) {
+                    const it = this.pdv.itens[index];
+                    if (!it) return;
+                    it.qtd = Math.max(1, it.qtd + delta);
+                    const adicionaisTotal = (it.adicionais || []).reduce((s, a) => s + (a.preco_centavos || 0), 0);
+                    it.total_centavos = (it.preco_unit_centavos + adicionaisTotal) * it.qtd;
+                },
+
+                removerItemPdv(index) {
+                    this.pdv.itens.splice(index, 1);
+                },
+
+                calcularSubtotalPdvCentavos() {
+                    return this.pdv.itens.reduce((acc, it) => acc + (it.total_centavos || 0), 0);
+                },
+
+                calcularTotalPdvCentavos() {
+                    const sub = this.calcularSubtotalPdvCentavos();
+                    const frete = this.pdv.canal === 'delivery' ? this.centavos(this.pdv.taxa_entrega_reais || '0') : 0;
+                    const desc = this.centavos(this.pdv.desconto_reais || '0');
+                    return Math.max(0, sub + frete - desc);
+                },
+
+                calcularTrocoPdvCentavos() {
+                    if (this.pdv.forma_pagamento !== 'dinheiro' || !this.pdv.troco_para_reais) return 0;
+                    const pago = this.centavos(this.pdv.troco_para_reais);
+                    const total = this.calcularTotalPdvCentavos();
+                    return Math.max(0, pago - total);
                 },
 
                 enviarPedidoPdv() {
-                    const slug = this.loja?.slug || 'brasa-artesanal';
-                    fetch(`/api/p/${slug}/pedidos`, {
+                    if (this.pdv.itens.length === 0) return;
+                    if (this.pdv.canal === 'delivery' && !this.pdv.endereco?.rua) {
+                        alert('Por favor, informe ao menos a Rua/Logradouro para entrega.');
+                        return;
+                    }
+                    this.salvandoPdv = true;
+                    const payload = {
+                        canal: this.pdv.canal,
+                        cliente: {
+                            nome: this.pdv.cliente_nome ? this.pdv.cliente_nome.trim() : 'Cliente Balcão',
+                            telefone: this.pdv.cliente_telefone ? this.pdv.cliente_telefone.trim() : ''
+                        },
+                        endereco: this.pdv.canal === 'delivery' ? {
+                            rua: this.pdv.endereco.rua,
+                            numero: this.pdv.endereco.numero || 'S/N',
+                            bairro: this.pdv.endereco.bairro || 'Centro',
+                            complemento: this.pdv.endereco.complemento || '',
+                            cep: this.pdv.endereco.cep || '',
+                            cidade: this.loja?.cidade || ''
+                        } : null,
+                        mesa_id: this.pdv.canal === 'mesa' && this.pdv.mesa_id ? Number(this.pdv.mesa_id) : null,
+                        taxa_entrega_centavos: this.pdv.canal === 'delivery' ? this.centavos(this.pdv.taxa_entrega_reais || '0') : 0,
+                        desconto_manual_centavos: this.centavos(this.pdv.desconto_reais || '0'),
+                        forma_pagamento: this.pdv.forma_pagamento,
+                        troco_para: (this.pdv.forma_pagamento === 'dinheiro' && this.pdv.troco_para_reais) ? this.centavos(this.pdv.troco_para_reais) : null,
+                        status_inicial: this.pdv.status_inicial || 'aceito',
+                        observacao: this.pdv.observacao ? this.pdv.observacao.trim() : null,
+                        itens: this.pdv.itens.map(it => ({
+                            produto_id: it.produto_id,
+                            variacao_id: it.variacao_id || null,
+                            qtd: it.qtd,
+                            observacao: it.observacao || null,
+                            adicionais: (it.adicionais || []).map(a => ({ opcao_id: a.opcao_id, qtd: a.qtd || 1 }))
+                        }))
+                    };
+
+                    fetch('/api/painel/pedidos/manual', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                        body: JSON.stringify({
-                            idempotency_key: 'pdv_' + Date.now(),
-                            canal: this.pdv.canal,
-                            cliente: { nome: this.pdv.nome || 'Cliente Balcão', telefone: this.pdv.telefone || '31999999999' },
-                            endereco: this.pdv.canal === 'delivery' ? { cep: '35170-001', rua: 'Av. Central', numero: '100', bairro: 'Centro', cidade: 'Coronel Fabriciano', uf: 'MG' } : null,
-                            itens: this.pdv.itens.map(i => ({ produto_id: i.produto_id, qtd: i.qtd })),
-                            forma_pagamento: this.pdv.forma_pagamento
-                        })
-                    }).then(r => {
-                        if (r.ok) {
+                        headers: this.headersAuth(),
+                        body: JSON.stringify(payload)
+                    })
+                    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+                    .then(res => {
+                        this.salvandoPdv = false;
+                        if (res.ok) {
                             this.modalPdv = false;
-                            this.toastMsg = 'Pedido PDV lançado no Kanban!';
+                            this.toastMsg = res.data.message || 'Pedido manual lançado com sucesso no Kanban!';
+                            this.tocarChime();
                             this.carregarPedidos();
+                            this.resetarPdv();
+                        } else {
+                            alert('Erro ao criar pedido: ' + (res.data.message || res.data.error || 'Verifique os dados informados'));
+                        }
+                    })
+                    .catch(err => {
+                        this.salvandoPdv = false;
+                        alert('Erro de comunicação com o servidor ao lançar pedido.');
+                    });
+                },
+
+                despacharMotoboyRapido(pedidoId, entregadorId) {
+                    if (!entregadorId) return;
+                    fetch(`/api/painel/pedidos/${pedidoId}/atribuir-entregador`, {
+                        method: 'POST',
+                        headers: this.headersAuth(),
+                        body: JSON.stringify({ entregador_id: Number(entregadorId) })
+                    })
+                    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+                    .then(res => {
+                        if (res.ok) {
+                            this.toastMsg = res.data.message || 'Pedido despachado para entrega com motoboy!';
+                            if (this.pedidoSelecionado && this.pedidoSelecionado.id === pedidoId) {
+                                this.pedidoSelecionado.entregador_id = Number(entregadorId);
+                                this.pedidoSelecionado.status = 'saiu_entrega';
+                            }
+                            this.carregarPedidos();
+                        } else {
+                            alert('Erro ao atribuir motoboy: ' + (res.data.message || 'Falha ao despachar'));
+                        }
+                    });
+                },
+
+                abrirModalCancelar(pedido) {
+                    this.pedidoSelecionado = pedido;
+                    this.mostrandoMotivoCancelamento = true;
+                    this.motivoCancelamento = 'Cliente solicitou o cancelamento';
+                    this.motivoCancelamentoOutro = '';
+                },
+
+                confirmarCancelamentoPedidoModal() {
+                    if (!this.pedidoSelecionado) return;
+                    const motivoFinal = this.motivoCancelamento === 'Outro'
+                        ? (this.motivoCancelamentoOutro ? this.motivoCancelamentoOutro.trim() : 'Cancelado pelo operador')
+                        : this.motivoCancelamento;
+
+                    if (motivoFinal.length < 3) {
+                        alert('Por favor, informe o motivo do cancelamento.');
+                        return;
+                    }
+
+                    fetch(`/api/painel/pedidos/${this.pedidoSelecionado.id}/cancelar`, {
+                        method: 'POST',
+                        headers: this.headersAuth(),
+                        body: JSON.stringify({ motivo: motivoFinal })
+                    })
+                    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+                    .then(res => {
+                        if (res.ok) {
+                            this.toastMsg = res.data.message || 'Pedido cancelado com sucesso.';
+                            this.mostrandoMotivoCancelamento = false;
+                            this.pedidoSelecionado = null;
+                            this.carregarPedidos();
+                        } else {
+                            alert('Erro ao cancelar pedido: ' + (res.data.message || res.data.error || 'Falha na operação'));
                         }
                     });
                 },
@@ -855,11 +1203,7 @@
                 },
 
                 cancelarPedido(pedido) {
-                    fetch(`/api/painel/pedidos/${pedido.id}/status`, {
-                        method: 'PATCH',
-                        headers: this.headersAuth(),
-                        body: JSON.stringify({ status: 'cancelado', motivo: 'Cancelado pelo operador no painel' })
-                    }).then(() => this.carregarPedidos());
+                    this.abrirModalCancelar(pedido);
                 },
 
                 imprimirPedido(pedidoId, tipo) {
