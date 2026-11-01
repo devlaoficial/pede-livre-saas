@@ -96,6 +96,7 @@ final class AppServiceProvider extends ServiceProvider
             $this->commands([
                 \App\Domain\Pedidos\Commands\RecuperarCarrinhosCommand::class,
                 \App\Domain\Pedidos\Commands\VerificarPedidosAtrasadosCommand::class,
+                \App\Domain\Fidelidade\Commands\SolicitarAvaliacoesCommand::class,
             ]);
         }
     }

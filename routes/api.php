@@ -189,12 +189,18 @@ Route::middleware([
         Route::patch('pedidos/{id}/status', [PedidoPainelController::class, 'atualizarStatus']);
         Route::post('pedidos/{id}/atribuir-entregador', [PedidoPainelController::class, 'atribuirEntregador']);
 
-        // WhatsApp Evolution API & Auto-Dispatch
+        // WhatsApp Evolution API & Webchat Multiatendente ao Vivo
         Route::get('whatsapp/status', [WhatsAppEvolutionController::class, 'status']);
         Route::post('whatsapp/conectar', [WhatsAppEvolutionController::class, 'conectar']);
         Route::post('whatsapp/desconectar', [WhatsAppEvolutionController::class, 'desconectar']);
         Route::post('whatsapp/config', [WhatsAppEvolutionController::class, 'salvarConfig']);
         Route::post('whatsapp/teste', [WhatsAppEvolutionController::class, 'enviarTeste']);
+        Route::get('whatsapp/conversas', [WhatsAppEvolutionController::class, 'listarConversas']);
+        Route::get('whatsapp/conversas/{id}/mensagens', [WhatsAppEvolutionController::class, 'obterMensagensConversa']);
+        Route::post('whatsapp/conversas/{id}/responder', [WhatsAppEvolutionController::class, 'responderConversa']);
+        Route::post('whatsapp/conversas/{id}/assumir', [WhatsAppEvolutionController::class, 'assumirAtendimento']);
+        Route::post('whatsapp/conversas/{id}/devolver-bot', [WhatsAppEvolutionController::class, 'devolverBot']);
+        Route::get('avaliacoes', [WhatsAppEvolutionController::class, 'listarAvaliacoes']);
     });
 
     // Analytics Reports, Coupons & LGPD Compliance Portal (Phase 11)

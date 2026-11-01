@@ -9,11 +9,14 @@ use App\Domain\Bot\Models\BotConversa;
 use App\Domain\Bot\Models\BotMensagem;
 use App\Domain\Clientes\Models\Cliente;
 use App\Domain\Entregas\Models\Entregador;
+use App\Domain\Fidelidade\Models\Avaliacao;
 use App\Domain\Pedidos\Models\Pedido;
+use App\Domain\Pedidos\Models\PedidoEvento;
 use App\Domain\Pedidos\Services\FluxoStatusPedidoService;
 use App\Support\Security\BlindIndexService;
 use DomainException;
 use Exception;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -96,12 +99,126 @@ final class EvolutionBotService
                 }
             }
 
+            /** @var Cliente|null $cliente */
+            $cliente = Cliente::where('loja_id', $loja->id)->where('telefone_bidx', $telefoneBidx)->first();
+            $primeiroNome = $cliente?->nome ? explode(' ', trim($cliente->nome))[0] : 'amigo(a)';
+            $contexto = $conversa->contexto_json ?? [];
+
+            // 2.1 Se o cliente deu nota 1-3 anteriormente e está enviando os detalhes da insatisfação
+            if (!empty($contexto['aguardando_feedback_negativo']) && !empty($contexto['avaliacao_pedido_id'])) {
+                $pedidoId = (int) $contexto['avaliacao_pedido_id'];
+                $avaliacao = Avaliacao::where('pedido_id', $pedidoId)->latest()->first();
+                if ($avaliacao !== null) {
+                    $comentAtual = trim((string) ($avaliacao->comentario ?? ''));
+                    $novoComent = $comentAtual !== ''
+                        ? "{$comentAtual}\n\nDetalhes do cliente: {$textoMensagem}"
+                        : $textoMensagem;
+                    $avaliacao->update(['comentario' => $novoComent]);
+                }
+
+                $conversa->estado = 'humano';
+                $conversa->contexto_json = array_merge($contexto, [
+                    'aguardando_feedback_negativo' => false,
+                    'aguardando_avaliacao' => false,
+                ]);
+                $conversa->save();
+
+                $resposta = "Muito obrigado por nos explicar em detalhes, *{$primeiroNome}*! 🙏\n\n"
+                    . "Seu relato foi anexado diretamente ao pedido e nosso gerente já foi acionado para te dar total atenção e resolver isso. Conte conosco!";
+                $this->registrarResposta($loja, $conversa, $resposta);
+                return $resposta;
+            }
+
             // Se a conversa estiver sob controle humano, só retorna ao bot se cliente solicitar explicitamente
             if ($conversa->estado === 'humano') {
                 if (in_array($textoUpper, ['MENU', 'ROBO', 'BOT', 'VOLTAR', 'INICIO'], true)) {
                     $conversa->update(['estado' => 'ia_ativa']);
                 } else {
                     return null; // Deixa o atendente humano conversar livremente
+                }
+            }
+
+            // 2.5 AVALIAÇÃO NPS & FEEDBACK REVERSO (GOOGLE MAPS OU RETENÇÃO PRIVADA)
+            // Caso B: Cliente respondendo à pesquisa de satisfação com nota de 1 a 5
+            $aguardandoAvaliacao = !empty($contexto['aguardando_avaliacao']) && !empty($contexto['avaliacao_pedido_id']);
+            $avaliacaoEnviadaEm = isset($contexto['avaliacao_enviada_em']) ? Carbon::parse($contexto['avaliacao_enviada_em']) : null;
+            $avaliacaoValida = $aguardandoAvaliacao && ($avaliacaoEnviadaEm === null || $avaliacaoEnviadaEm->diffInHours(now()) <= 24);
+
+            if ($avaliacaoValida) {
+                $notaDetectada = null;
+                if (preg_match('/\b([1-5])\b/', $textoMensagem, $m)) {
+                    $notaDetectada = (int) $m[1];
+                } elseif (in_array($textoUpper, ['EXCELENTE', 'OTIMO', 'ÓTIMO', 'PERFEITO', 'MARAVILHOSO', 'ADOREI', 'MUITO BOM', '5 ESTRELAS'], true)) {
+                    $notaDetectada = 5;
+                } elseif (in_array($textoUpper, ['BOM', 'GOSTEI', '4 ESTRELAS'], true)) {
+                    $notaDetectada = 4;
+                } elseif (in_array($textoUpper, ['REGULAR', 'MEDIO', 'MÉDIO', 'MAIS OU MENOS', '3 ESTRELAS'], true)) {
+                    $notaDetectada = 3;
+                } elseif (in_array($textoUpper, ['RUIM', '2 ESTRELAS'], true)) {
+                    $notaDetectada = 2;
+                } elseif (in_array($textoUpper, ['PESSIMO', 'PÉSSIMO', 'HORRIVEL', 'HORRÍVEL', '1 ESTRELA'], true)) {
+                    $notaDetectada = 1;
+                }
+
+                if ($notaDetectada !== null) {
+                    $pedidoId = (int) $contexto['avaliacao_pedido_id'];
+                    $pedidoAvaliado = Pedido::find($pedidoId);
+
+                    if ($pedidoAvaliado !== null) {
+                        Avaliacao::updateOrCreate(
+                            ['loja_id' => $loja->id, 'pedido_id' => $pedidoAvaliado->id],
+                            [
+                                'nota' => $notaDetectada,
+                                'comentario' => $textoMensagem,
+                            ]
+                        );
+
+                        $googleMapsUrl = trim((string) ($loja->config_json['whatsapp']['google_maps_review_url'] ?? $loja->config_json['google_maps_review_url'] ?? ''));
+
+                        if ($notaDetectada >= 4) {
+                            $conversa->contexto_json = array_merge($contexto, [
+                                'aguardando_avaliacao' => false,
+                                'ultima_nota' => $notaDetectada,
+                            ]);
+                            $conversa->save();
+
+                            if (!empty($googleMapsUrl)) {
+                                $resposta = "Sensacional, *{$primeiroNome}*! Ficamos imensamente felizes que sua experiência foi nota {$notaDetectada}! ⭐⭐⭐⭐⭐\n\n"
+                                    . "Sua opinião faz toda a diferença para o nosso restaurante local. Você poderia nos dar uma forcinha deixando essa avaliação 5 estrelas no nosso *Google Maps*? Leva menos de 30 segundos! 🙏❤️\n\n"
+                                    . "👉 {$googleMapsUrl}\n\n"
+                                    . "Muito obrigado pelo carinho e preferência! Até o próximo pedido! 🍔✨";
+                            } else {
+                                $resposta = "Sensacional, *{$primeiroNome}*! Ficamos imensamente felizes com sua nota {$notaDetectada} estrelas! ⭐⭐⭐⭐⭐\n\n"
+                                    . "Muito obrigado pelo carinho e preferência! Conte sempre com o *{$loja->nome}* para sua próxima refeição! ❤️🍕";
+                            }
+
+                            $this->registrarResposta($loja, $conversa, $resposta);
+                            return $resposta;
+                        } else {
+                            // NOTA 1, 2 OU 3: RETENÇÃO PRIVADA IMEDIATA & ALERTA NO PAINEL
+                            PedidoEvento::create([
+                                'pedido_id' => $pedidoAvaliado->id,
+                                'status_de' => $pedidoAvaliado->status,
+                                'status_para' => 'alerta_insatisfacao_nps',
+                                'observacao' => "Cliente avaliou com nota {$notaDetectada}/5 no WhatsApp: '{$textoMensagem}'",
+                            ]);
+
+                            $conversa->estado = 'humano';
+                            $conversa->contexto_json = array_merge($contexto, [
+                                'aguardando_avaliacao' => false,
+                                'aguardando_feedback_negativo' => true,
+                                'ultima_nota' => $notaDetectada,
+                            ]);
+                            $conversa->save();
+
+                            $resposta = "Poxa, *{$primeiroNome}*... Sentimos muito por isso. 😔 Essa com certeza não é a experiência que desejamos para você no *{$loja->nome}*.\n\n"
+                                . "Registrei sua nota {$notaDetectada} e nosso gerente de atendimento foi alertado agora mesmo.\n\n"
+                                . "Se você puder me contar aqui em poucas palavras o que poderíamos ter feito melhor (se foi a comida, a entrega ou o tempo), nossa gerência vai ler com prioridade máxima para acertar com você! 🙏";
+
+                            $this->registrarResposta($loja, $conversa, $resposta);
+                            return $resposta;
+                        }
+                    }
                 }
             }
 
@@ -114,9 +231,6 @@ final class EvolutionBotService
                     return $resposta;
                 }
             }
-
-            /** @var Cliente|null $cliente */
-            $cliente = Cliente::where('loja_id', $loja->id)->where('telefone_bidx', $telefoneBidx)->first();
 
             // 4. Alteração de Pagamento para Pedidos com PIX Pendente (Recuperação no Chat)
             $configWpp = $loja->config_json['whatsapp'] ?? [];

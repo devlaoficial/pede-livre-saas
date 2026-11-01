@@ -18,3 +18,6 @@ Schedule::command('pedelivre:recuperar-carrinhos')->everyFiveMinutes();
 
 // Check kitchen peak delays and trigger de-escalating notifications
 Schedule::command('pedelivre:verificar-atrasos')->everyFiveMinutes();
+
+// Dispatch NPS satisfaction surveys and 5-star Google Maps reviews every 5 minutes
+Schedule::command('pedelivre:solicitar-avaliacoes')->everyFiveMinutes();

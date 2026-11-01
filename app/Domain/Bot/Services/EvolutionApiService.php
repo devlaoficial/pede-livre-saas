@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Domain\Bot\Services;
 
 use App\Domain\Assinaturas\Models\Loja;
+use App\Domain\Bot\Models\BotConversa;
+use App\Domain\Bot\Models\BotMensagem;
 use App\Domain\Entregas\Models\Entregador;
 use App\Domain\Pedidos\Models\Pedido;
+use App\Domain\Pedidos\Models\PedidoEvento;
+use App\Support\Security\BlindIndexService;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -15,11 +19,13 @@ final class EvolutionApiService
 {
     private string $baseUrl;
     private string $apiKey;
+    private readonly BlindIndexService $blindIndex;
 
-    public function __construct()
+    public function __construct(?BlindIndexService $blindIndex = null)
     {
         $this->baseUrl = rtrim((string) config('services.evolution.url', 'http://127.0.0.1:8085'), '/');
         $this->apiKey = (string) config('services.evolution.api_key', 'devla_evolution_secret_2026');
+        $this->blindIndex = $blindIndex ?? app(BlindIndexService::class);
     }
 
     /**
@@ -358,6 +364,87 @@ final class EvolutionApiService
             return $this->enviarMensagem($instancia, $telCliente, $msg);
         } catch (Exception $e) {
             Log::error("[EvolutionApi] Falha ao notificar atraso: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Envia pesquisa de satisfação NPS e convite para avaliação 5 estrelas.
+     */
+    public function notificarSolicitacaoAvaliacao(Pedido $pedido): bool
+    {
+        try {
+            $loja = $pedido->loja;
+            if ($loja === null) {
+                return false;
+            }
+
+            $instancia = $this->obterNomeInstanciaLoja($loja);
+
+            // Verifica se a instância está conectada antes de disparar
+            $statusInstancia = $this->obterStatusInstancia($instancia);
+            if (!$statusInstancia['connected']) {
+                return false;
+            }
+
+            $cliente = $pedido->cliente;
+            $telCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
+            if (empty($telCliente) || $cliente->aceita_marketing === false) {
+                return false;
+            }
+
+            $primeiroNome = explode(' ', trim($cliente->nome ?: 'amigo(a)'))[0];
+            $codigo = $pedido->codigo_publico;
+
+            $msg = "Oi, *{$primeiroNome}*! Esperamos que sua refeição do *{$loja->nome}* tenha sido uma delícia! 😋✨\n\n"
+                . "De 1 a 5 estrelas, que nota você daria para o seu pedido *#{$codigo}* hoje?\n\n"
+                . "⭐ 5 - Excelente\n"
+                . "⭐ 4 - Muito bom\n"
+                . "⭐ 3 - Regular\n"
+                . "⭐ 2 - Ruim\n"
+                . "⭐ 1 - Péssimo\n\n"
+                . "_(Basta responder aqui com o número da sua nota de 1 a 5)_";
+
+            $enviado = $this->enviarMensagem($instancia, $telCliente, $msg);
+            if (!$enviado) {
+                return false;
+            }
+
+            // Normaliza telefone e registra contexto na conversa para o bot aguardar a nota
+            $telNormalizado = $this->blindIndex->normalizePhone($telCliente);
+            $telBidx = $this->blindIndex->generateForPhone($telNormalizado);
+
+            /** @var BotConversa $conversa */
+            $conversa = BotConversa::firstOrCreate(
+                ['loja_id' => $loja->id, 'telefone_bidx' => $telBidx],
+                ['telefone' => $telNormalizado, 'estado' => 'ia_ativa']
+            );
+
+            $ctx = $conversa->contexto_json ?? [];
+            $ctx['aguardando_avaliacao'] = true;
+            $ctx['avaliacao_pedido_id'] = $pedido->id;
+            $ctx['avaliacao_enviada_em'] = now()->toIso8601String();
+
+            $conversa->contexto_json = $ctx;
+            $conversa->save();
+
+            BotMensagem::create([
+                'loja_id' => $loja->id,
+                'conversa_id' => $conversa->id,
+                'direcao' => 'saida',
+                'mensagem' => $msg,
+            ]);
+
+            PedidoEvento::create([
+                'pedido_id' => $pedido->id,
+                'status_de' => $pedido->status,
+                'status_para' => 'solicitacao_avaliacao',
+                'observacao' => 'Pesquisa de satisfação NPS enviada via WhatsApp',
+            ]);
+
+            return true;
+        } catch (Exception $e) {
+            Log::error("[EvolutionApi] Falha ao enviar solicitação de avaliação: " . $e->getMessage());
             return false;
         }
     }
