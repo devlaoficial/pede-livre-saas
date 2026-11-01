@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Pedidos\Services;
 
 use App\Domain\Autenticacao\Models\Usuario;
+use App\Domain\Bot\Services\EvolutionApiService;
 use App\Domain\Catalogo\Models\Produto;
 use App\Domain\Catalogo\Services\CardapioCacheService;
 use App\Domain\Fidelidade\Services\CashbackService;
@@ -20,7 +21,8 @@ final class FluxoStatusPedidoService
     public function __construct(
         private readonly CardapioCacheService $cacheService,
         private readonly ImpressaoEscPosService $impressaoService,
-        private readonly CashbackService $cashbackService
+        private readonly CashbackService $cashbackService,
+        private readonly EvolutionApiService $evolutionApi
     ) {}
 
     /**
@@ -152,6 +154,9 @@ final class FluxoStatusPedidoService
 
             // 7. Broadcast real-time event to Merchant Kanban & Staff KDS
             event(new PedidoAtualizado($pedido, $statusAtual));
+
+            // 8. Auto-dispatch WhatsApp updates to Customer and Motoboy via Evolution API
+            $this->evolutionApi->notificarMudancaStatus($pedido, $novoStatus);
 
             return $pedido;
         });

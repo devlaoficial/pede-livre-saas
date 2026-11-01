@@ -1,0 +1,348 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Bot\Services;
+
+use App\Domain\Assinaturas\Models\Loja;
+use App\Domain\Bot\Models\BotConversa;
+use App\Domain\Bot\Models\BotMensagem;
+use App\Domain\Clientes\Models\Cliente;
+use App\Domain\Entregas\Models\Entregador;
+use App\Domain\Pedidos\Models\Pedido;
+use App\Domain\Pedidos\Services\FluxoStatusPedidoService;
+use App\Support\Security\BlindIndexService;
+use Exception;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+final class EvolutionBotService
+{
+    private const OPT_OUT_KEYWORDS = ['PARAR', 'SAIR', 'CANCELAR', 'STOP', 'DESCADASTRAR'];
+    private const HUMAN_KEYWORDS = ['HUMANO', 'ATENDENTE', 'FALAR COM ALGUEM', 'FALAR COM ALGUÉM', 'PESSOA', 'SUPORTE', 'MOÇA', 'MOCA', 'RAPAZ', 'AJUDA'];
+    private const STATUS_KEYWORDS = ['STATUS', 'ONDE ESTA', 'ONDE ESTÁ', 'DEMORA', 'DEMORANDO', 'CADÊ', 'CADE', 'MEU PEDIDO', 'FALTA MUITO', 'ATRASOU', 'ATRASADO', 'TEMPO', 'CHEGAR', 'PREVISAO', 'PREVISÃO', 'RASTREAR'];
+    private const MENU_KEYWORDS = ['CARDAPIO', 'CARDÁPIO', 'PEDIR', 'MENU', 'VALOR', 'PREÇO', 'PRECO', 'LANCHE', 'PIZZA', 'BURGER', 'HAMBURGUER', 'ACAI', 'AÇAÍ', 'QUERO COMPRAR', 'CATALOGO', 'CATÁLOGO'];
+    private const THANKS_KEYWORDS = ['OBRIGADO', 'OBRIGADA', 'VALEU', 'TOP', 'OBG', 'TMJ', 'SHOW', 'MUITO BOM', 'DELICIA', 'DELÍCIA', 'MARAVILHA', 'EXCELENTE'];
+
+    public function __construct(
+        private readonly BlindIndexService $blindIndex,
+        private readonly EvolutionApiService $evolutionApi
+    ) {}
+
+    /**
+     * Processa mensagem recebida via Webhook da Evolution API.
+     * Retorna a resposta que deve ser enviada para o cliente (ou null se não responder).
+     */
+    public function processarMensagem(Loja $loja, string $telefoneRemetente, string $textoMensagem): ?string
+    {
+        $telefoneNormalizado = $this->blindIndex->normalizePhone($telefoneRemetente);
+        $telefoneBidx = $this->blindIndex->generateForPhone($telefoneNormalizado);
+        $textoUpper = mb_strtoupper(trim($textoMensagem));
+
+        return DB::transaction(function () use ($loja, $telefoneNormalizado, $telefoneBidx, $textoMensagem, $textoUpper): ?string {
+            /** @var BotConversa $conversa */
+            $conversa = BotConversa::firstOrCreate(
+                ['loja_id' => $loja->id, 'telefone_bidx' => $telefoneBidx],
+                [
+                    'telefone' => $telefoneNormalizado,
+                    'estado' => 'ia_ativa',
+                    'contexto_json' => ['inicio' => now()->toIso8601String()],
+                ]
+            );
+
+            // Registra mensagem recebida
+            BotMensagem::create([
+                'loja_id' => $loja->id,
+                'conversa_id' => $conversa->id,
+                'direcao' => 'entrada',
+                'mensagem' => $textoMensagem,
+            ]);
+
+            // 0. Verifica se o remetente é um MOTOBOY da loja
+            $respostaMotoboy = $this->tratarComandoMotoboy($loja, $telefoneBidx, $textoUpper);
+            if ($respostaMotoboy !== null) {
+                $this->registrarResposta($loja, $conversa, $respostaMotoboy);
+                return $respostaMotoboy;
+            }
+
+            // 1. Opt-out LGPD (PARAR / SAIR)
+            if (in_array($textoUpper, self::OPT_OUT_KEYWORDS, true)) {
+                Cliente::where('loja_id', $loja->id)
+                    ->where('telefone_bidx', $telefoneBidx)
+                    ->update(['aceita_marketing' => false]);
+
+                $resposta = "Você foi descadastrado de mensagens promocionais conforme a LGPD. "
+                    . "Avisos essenciais de pedidos em andamento continuarão sendo enviados.";
+                $this->registrarResposta($loja, $conversa, $resposta);
+                return $resposta;
+            }
+
+            // 2. Transbordo para Humano
+            foreach (self::HUMAN_KEYWORDS as $palavra) {
+                if (str_contains($textoUpper, $palavra)) {
+                    $conversa->update(['estado' => 'humano']);
+                    $resposta = "Entendido perfeitamente! 🤝 Já notifiquei nossa equipe no balcão que você deseja falar com um atendente.\n\n"
+                        . "Um dos nossos colaboradores vai te responder aqui em instantes! Se quiser voltar ao menu automático a qualquer momento, digite *MENU*.";
+                    $this->registrarResposta($loja, $conversa, $resposta);
+                    return $resposta;
+                }
+            }
+
+            // Se a conversa estiver sob controle humano, só retorna ao bot se cliente solicitar explicitamente
+            if ($conversa->estado === 'humano') {
+                if (in_array($textoUpper, ['MENU', 'ROBO', 'BOT', 'VOLTAR', 'INICIO'], true)) {
+                    $conversa->update(['estado' => 'ia_ativa']);
+                } else {
+                    return null; // Deixa o atendente humano conversar livremente
+                }
+            }
+
+            // 3. Agradecimentos / Feedback Positivo
+            foreach (self::THANKS_KEYWORDS as $obg) {
+                if (str_contains($textoUpper, $obg)) {
+                    $resposta = "Nós que agradecemos de coração pelo carinho e pela preferência! ❤️✨\n\n"
+                        . "Esperamos que sua experiência tenha sido incrível. Se precisar de algo mais, estamos sempre por aqui!";
+                    $this->registrarResposta($loja, $conversa, $resposta);
+                    return $resposta;
+                }
+            }
+
+            // 4. Pergunta sobre STATUS / ONDE ESTÁ MEU PEDIDO / DEMORA / ATRASO
+            $pedeStatus = false;
+            foreach (self::STATUS_KEYWORDS as $termo) {
+                if (str_contains($textoUpper, $termo)) {
+                    $pedeStatus = true;
+                    break;
+                }
+            }
+
+            if ($pedeStatus) {
+                $respostaStatus = $this->tratarConsultaStatus($loja, $telefoneBidx);
+                $this->registrarResposta($loja, $conversa, $respostaStatus);
+                return $respostaStatus;
+            }
+
+            // 5. Pergunta sobre CARDÁPIO / FAZER PEDIDO / PRODUTOS
+            $pedeCardapio = false;
+            foreach (self::MENU_KEYWORDS as $termo) {
+                if (str_contains($textoUpper, $termo)) {
+                    $pedeCardapio = true;
+                    break;
+                }
+            }
+
+            if ($pedeCardapio) {
+                $linkCardapio = url("/p/{$loja->slug}");
+                $resposta = "Que maravilha falar com você! 🍔🍕😋\n\n"
+                    . "Aqui está o link do nosso cardápio digital completo com fotos, combos, adicionais e promoções:\n"
+                    . "👉 {$linkCardapio}\n\n"
+                    . "Basta clicar no link, montar o seu pedido em poucos toques e escolher a forma de pagamento que preferir. Estamos prontos para preparar tudo com muito carinho!";
+                $this->registrarResposta($loja, $conversa, $resposta);
+                return $resposta;
+            }
+
+            // 6. Opção Numérica Rápida
+            if ($textoUpper === '1') {
+                $linkCardapio = url("/p/{$loja->slug}");
+                $resposta = "Perfeito! Acesse nosso cardápio completo no link abaixo:\n👉 {$linkCardapio}";
+                $this->registrarResposta($loja, $conversa, $resposta);
+                return $resposta;
+            }
+
+            if ($textoUpper === '2') {
+                $respostaStatus = $this->tratarConsultaStatus($loja, $telefoneBidx);
+                $this->registrarResposta($loja, $conversa, $respostaStatus);
+                return $respostaStatus;
+            }
+
+            if ($textoUpper === '3') {
+                $conversa->update(['estado' => 'humano']);
+                $resposta = "Chamando nossa equipe agora mesmo! 👨‍💼 Em instantes alguém do nosso time vai te responder.";
+                $this->registrarResposta($loja, $conversa, $resposta);
+                return $resposta;
+            }
+
+            // 7. Saudação Inicial Padrão & Menu Amigável
+            $cliente = Cliente::where('loja_id', $loja->id)->where('telefone_bidx', $telefoneBidx)->first();
+            $nomeCliente = $cliente?->nome ? explode(' ', trim($cliente->nome))[0] : 'amigo(a)';
+            $linkCardapio = url("/p/{$loja->slug}");
+
+            $resposta = "Olá, *{$nomeCliente}*! Seja muito bem-vindo(a) ao *{$loja->nome}*! 👋🍔\n\n"
+                . "Como posso te ajudar agora? Escolha uma das opções:\n\n"
+                . "1️⃣ *CARDÁPIO* — Ver itens e fazer pedido\n"
+                . "2️⃣ *STATUS* — Acompanhar pedido em andamento\n"
+                . "3️⃣ *HUMANO* — Falar com um atendente da loja\n\n"
+                . "Ou clique direto no nosso cardápio online:\n👉 {$linkCardapio}";
+
+            $this->registrarResposta($loja, $conversa, $resposta);
+            return $resposta;
+        });
+    }
+
+    /**
+     * Resposta inteligente, acolhedora e desescaladora de ansiedade sobre pedidos.
+     */
+    private function tratarConsultaStatus(Loja $loja, string $telefoneBidx): string
+    {
+        // Localiza cliente
+        $cliente = Cliente::where('loja_id', $loja->id)->where('telefone_bidx', $telefoneBidx)->first();
+
+        // Busca pedidos recentes deste cliente nas últimas 12 horas
+        $pedido = null;
+        if ($cliente !== null) {
+            $pedido = Pedido::where('loja_id', $loja->id)
+                ->where('cliente_id', $cliente->id)
+                ->where('created_at', '>=', now()->subHours(12))
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+
+        // Se não houver cliente cadastrado, tenta buscar por telefone nos pedidos delivery caso não logado
+        if ($pedido === null) {
+            $linkCardapio = url("/p/{$loja->slug}");
+            return "Oi! Tudo bem? 😊\n\n"
+                . "Não localizei nenhum pedido recente em andamento associado a este número nas últimas horas.\n\n"
+                . "Gostaria de dar uma olhadinha no nosso cardápio para fazer um pedido delicioso agora? 😋👇\n"
+                . "👉 {$linkCardapio}\n\n"
+                . "Se você fez o pedido com outro telefone ou no balcão, digite *HUMANO* para que nossa equipe te localize!";
+        }
+
+        $primeiroNome = $cliente?->nome ? explode(' ', trim($cliente->nome))[0] : 'você';
+        $codigo = $pedido->codigo_publico;
+        $status = $pedido->status;
+        $minutosDecorridos = (int) $pedido->created_at->diffInMinutes(now());
+
+        $trackingSignature = hash_hmac('sha256', (string) $pedido->tracking_token_hash, (string) config('app.key'));
+        $trackingUrl = url("/p/{$loja->slug}/pedidos/{$codigo}?t={$trackingSignature}");
+
+        // Cenário 1: Já saiu para entrega
+        if ($status === 'saiu_entrega') {
+            $motoboyNome = $pedido->entregador?->nome ?? 'nosso motoboy parceiro';
+            return "Oi, *{$primeiroNome}*! Compreendo super a sua ansiedade! 🥰🛵\n\n"
+                . "O seu pedido *#{$codigo}* já está na rua a caminho da sua casa com o entregador *{$motoboyNome}*!\n\n"
+                . "Ele está em trânsito e deve buzinar ou chamar na sua porta a qualquer instante! 💨\n\n"
+                . "📍 Acompanhe pelo link:\n👉 {$trackingUrl}";
+        }
+
+        // Cenário 2: Está pronto aguardando saída ou retirada
+        if ($status === 'pronto') {
+            if ($pedido->canal === 'retirada') {
+                return "Oi, *{$primeiroNome}*! 🎉 Seu pedido *#{$codigo}* já está *PRONTINHO* te esperando no balcão!\n\n"
+                    . "Pode vir retirar quando quiser que já está quentinho e separado para você! 🛍️";
+            }
+
+            return "Oi, *{$primeiroNome}*! Ótima notícia! 🎉\n\n"
+                . "O seu pedido *#{$codigo}* acabou de sair do forno/fogão e já está devidamente embalado na bolsa térmica! 🛍️\n\n"
+                . "Nosso entregador já está pegando o seu pacote para sair imediatamente. Vai chegar bem quentinho!";
+        }
+
+        // Cenário 3: Em preparo na cozinha
+        if (in_array($status, ['aceito', 'em_preparo'], true)) {
+            // Se estiver demorando mais de 35 minutos -> Acalma com empatia máxima e prioriza
+            if ($minutosDecorridos > 35) {
+                return "Oi, *{$primeiroNome}*! Poxa, te peço mil desculpas pela espera! 🙏❤️\n\n"
+                    . "Hoje estamos com uma demanda altíssima de pedidos na cozinha, mas o time está caprichando ao máximo para manter a qualidade e o sabor impecáveis que você merece.\n\n"
+                    . "Já conferi aqui e o seu pedido *#{$codigo}* é o **próximo da fila a ser finalizado e embalado**! 🍳🔥 Nosso entregador já está de prontidão aguardando a saída.\n\n"
+                    . "Agradeço demais pelo carinho e paciência. Se preferir falar com a gente, basta digitar *HUMANO*!";
+            }
+
+            // Tempo normal de preparo
+            $restante = max(10, 40 - $minutosDecorridos);
+            return "Oi, *{$primeiroNome}*! 👨‍🍳🔥\n\n"
+                . "O seu pedido *#{$codigo}* está sendo preparado com muito carinho e cuidado pelo nosso time de cozinha para chegar perfeito para você!\n\n"
+                . "⏱️ *Tempo estimado restante:* cerca de {$restante} min.\n"
+                . "Assim que o motoboy sair com ele, eu te aviso aqui no WhatsApp na mesma hora!\n\n"
+                . "👉 Acompanhe ao vivo: {$trackingUrl}";
+        }
+
+        // Cenário 4: Pedido acabou de entrar (novo)
+        if ($status === 'novo') {
+            return "Oi, *{$primeiroNome}*! Seu pedido *#{$codigo}* foi recebido pelo nosso sistema e nossa equipe já está conferindo para iniciar o preparo imediatamente! 🕒✨";
+        }
+
+        // Cenário 5: Já entregue
+        if (in_array($status, ['entregue', 'retirado', 'servido'], true)) {
+            return "Oi, *{$primeiroNome}*! Consta aqui que o pedido *#{$codigo}* já foi finalizado e entregue! 😋❤️\n\n"
+                . "Esperamos que tenha gostado muito! Se precisar de algo ou desejar pedir novamente, estamos por aqui!";
+        }
+
+        return "Oi, *{$primeiroNome}*! O seu pedido *#{$codigo}* está com status [{$status}]. Se desejar mais detalhes, digite *HUMANO* para falar com o balcão!";
+    }
+
+    /**
+     * Comandos especiais para entregadores/motoboys da loja.
+     */
+    private function tratarComandoMotoboy(Loja $loja, string $telefoneBidx, string $textoUpper): ?string
+    {
+        /** @var Entregador|null $motoboy */
+        $motoboy = Entregador::where('loja_id', $loja->id)
+            ->where('telefone_bidx', $telefoneBidx)
+            ->where('ativo', true)
+            ->first();
+
+        if ($motoboy === null) {
+            return null; // Não é motoboy cadastrado
+        }
+
+        // Motoboy pedindo lista de entregas
+        if (in_array($textoUpper, ['ENTREGAS', 'PEDIDOS', 'ROTAS', 'MINHAS ENTREGAS', 'FILA'], true)) {
+            $pedidosProntos = Pedido::where('loja_id', $loja->id)
+                ->where('canal', 'delivery')
+                ->whereIn('status', ['pronto', 'saiu_entrega'])
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            if ($pedidosProntos->isEmpty()) {
+                return "Fala, {$motoboy->nome}! 🛵 No momento não há entregas pendentes na fila. Tudo limpo!";
+            }
+
+            $linhas = ["🛵 *Entregas Disponíveis / Em Rota ({$loja->nome}):*\n"];
+            foreach ($pedidosProntos as $p) {
+                $end = $p->endereco_json ?? [];
+                $bairro = $end['bairro'] ?? 'Bairro';
+                $num = $end['numero'] ?? '';
+                $rua = $end['rua'] ?? '';
+                $taxa = number_format($p->taxa_entrega / 100, 2, ',', '.');
+                $linhas[] = "• *#{$p->codigo_publico}* [{$p->status}]: {$rua}, {$num} ({$bairro}) - Taxa R$ {$taxa}";
+            }
+
+            $linhas[] = "\nPara marcar como entregue, digite: *ENTREGUE {codigo}* (Ex: ENTREGUE {$pedidosProntos->first()->codigo_publico})";
+            return implode("\n", $linhas);
+        }
+
+        // Motoboy informando entrega concluída: "ENTREGUE A7K2" ou "OK A7K2"
+        if (str_starts_with($textoUpper, 'ENTREGUE ') || str_starts_with($textoUpper, 'OK ')) {
+            $partes = explode(' ', $textoUpper);
+            $codigo = trim($partes[1] ?? '');
+
+            if (!empty($codigo)) {
+                $pedido = Pedido::where('loja_id', $loja->id)
+                    ->where('codigo_publico', $codigo)
+                    ->first();
+
+                if ($pedido !== null && in_array($pedido->status, ['pronto', 'saiu_entrega'], true)) {
+                    /** @var FluxoStatusPedidoService $fluxo */
+                    $fluxo = app(FluxoStatusPedidoService::class);
+                    try {
+                        $fluxo->transicionar($pedido, 'entregue', null, null, $motoboy->id, 'Confirmado via WhatsApp pelo entregador ' . $motoboy->nome);
+                        return "✅ Show de bola, {$motoboy->nome}! Pedido *#{$codigo}* marcado como ENTREGUE com sucesso!";
+                    } catch (Exception $e) {
+                        return "⚠️ Não foi possível atualizar o pedido #{$codigo}: " . $e->getMessage();
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function registrarResposta(Loja $loja, BotConversa $conversa, string $resposta): void
+    {
+        BotMensagem::create([
+            'loja_id' => $loja->id,
+            'conversa_id' => $conversa->id,
+            'direcao' => 'saida',
+            'mensagem' => $resposta,
+        ]);
+    }
+}

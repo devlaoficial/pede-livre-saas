@@ -9,6 +9,7 @@ use App\Domain\Autenticacao\Controllers\ImpersonationController;
 use App\Domain\Autenticacao\Controllers\LoginController;
 use App\Domain\Autenticacao\Controllers\TwoFactorController;
 use App\Domain\Autenticacao\Controllers\UsuarioController;
+use App\Domain\Bot\Controllers\WhatsAppEvolutionController;
 use App\Domain\Bot\Controllers\WhatsAppWebhookController;
 use App\Domain\Catalogo\Controllers\CategoriaController;
 use App\Domain\Catalogo\Controllers\ComboController;
@@ -58,6 +59,7 @@ Route::get('webhooks/mercadopago', fn () => response()->json(['status' => 'ok', 
 Route::post('webhooks/mercadopago', [MercadoPagoWebhookController::class, 'processar']);
 Route::get('pagamentos/mercadopago/callback', [MercadoPagoOAuthController::class, 'callback']);
 Route::post('webhooks/whatsapp', [WhatsAppWebhookController::class, 'processar']);
+Route::post('webhooks/whatsapp/evolution', [WhatsAppEvolutionController::class, 'webhook']);
 
 // 3. Public Menu, Table QR & 3-Step Checkout API (Tenant-isolated)
 Route::prefix('p/{slug}')
@@ -186,6 +188,13 @@ Route::middleware([
         Route::get('pedidos/{id}', [PedidoPainelController::class, 'show']);
         Route::patch('pedidos/{id}/status', [PedidoPainelController::class, 'atualizarStatus']);
         Route::post('pedidos/{id}/atribuir-entregador', [PedidoPainelController::class, 'atribuirEntregador']);
+
+        // WhatsApp Evolution API & Auto-Dispatch
+        Route::get('whatsapp/status', [WhatsAppEvolutionController::class, 'status']);
+        Route::post('whatsapp/conectar', [WhatsAppEvolutionController::class, 'conectar']);
+        Route::post('whatsapp/desconectar', [WhatsAppEvolutionController::class, 'desconectar']);
+        Route::post('whatsapp/config', [WhatsAppEvolutionController::class, 'salvarConfig']);
+        Route::post('whatsapp/teste', [WhatsAppEvolutionController::class, 'enviarTeste']);
     });
 
     // Analytics Reports, Coupons & LGPD Compliance Portal (Phase 11)

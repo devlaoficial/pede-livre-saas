@@ -22,4 +22,10 @@ return [
         'phone_number_id' => env('META_WHATSAPP_PHONE_ID'),
         'api_version' => env('META_WHATSAPP_API_VERSION', 'v20.0'),
     ],
+
+    'evolution' => [
+        'url' => env('EVOLUTION_API_URL', 'http://127.0.0.1:8085'),
+        'api_key' => env('EVOLUTION_API_KEY', 'devla_evolution_secret_2026'),
+        'webhook_secret' => env('EVOLUTION_WEBHOOK_SECRET', 'devla_pedelivre_wpp_secret_2026'),
+    ],
 ];

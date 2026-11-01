@@ -94,6 +94,13 @@
                     <span class="flex items-center gap-2.5"><span>💰</span> Caixa &amp; PIX</span>
                 </button>
 
+                <button @click="mudarModulo('whatsapp')"
+                    class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition"
+                    :class="moduloAtivo === 'whatsapp' ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25' : 'text-slate-400 hover:bg-slate-800 hover:text-white'">
+                    <span class="flex items-center gap-2.5"><span>💬</span> WhatsApp &amp; Bot</span>
+                    <span class="w-2.5 h-2.5 rounded-full" :class="whatsappConectado ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-slate-600'"></span>
+                </button>
+
                 <button @click="mudarModulo('config')"
                     class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition"
                     :class="moduloAtivo === 'config' ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25' : 'text-slate-400 hover:bg-slate-800 hover:text-white'">
@@ -129,6 +136,12 @@
             </div>
 
             <div class="flex items-center gap-2 shrink-0">
+                <button @click="mudarModulo('whatsapp')" class="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded-xl font-bold transition shadow-sm"
+                    :class="whatsappConectado ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-600'">
+                    <span>💬</span>
+                    <span class="hidden md:inline" x-text="whatsappConectado ? 'WhatsApp Ativo' : 'Conectar WhatsApp'"></span>
+                    <span class="w-2 h-2 rounded-full" :class="whatsappConectado ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'"></span>
+                </button>
                 <button @click="tocarChime()" class="hidden sm:inline-flex items-center text-xs bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl font-bold transition" title="Testar toque de campainha">
                     📞 Testar Toque
                 </button>
@@ -1126,6 +1139,28 @@
                 </div>
             </div>
 
+            <!-- Card de Conexão WhatsApp na aba Loja/Config -->
+            <div class="bg-slate-900 border-2 rounded-3xl p-6 space-y-4"
+                 :class="whatsappConectado ? 'border-emerald-500/40' : 'border-slate-800'">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">💬</span>
+                            <h3 class="font-extrabold text-sm text-white">WhatsApp &amp; Automações da Loja</h3>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full font-extrabold"
+                                  :class="whatsappConectado ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'"
+                                  x-text="whatsappConectado ? ('🟢 Conectado: +' + (whatsappStatus.phone || 'Ativo')) : '⚪ Desconectado'"></span>
+                        </div>
+                        <p class="text-xs text-slate-400">
+                            Dispare avisos aos clientes a cada fase do pedido, acione motoboys com rota no Google Maps e tenha um bot empático para acalmar atrasos.
+                        </p>
+                    </div>
+                    <button @click="mudarModulo('whatsapp')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-4 py-2 rounded-xl text-xs shadow-lg transition shrink-0">
+                        <span x-text="whatsappConectado ? '⚙️ Gerenciar Automações' : '📱 Conectar WhatsApp (QR Code)'"></span>
+                    </button>
+                </div>
+            </div>
+
             <!-- Card de Cadastro e Autorização da Conta Mercado Pago também dentro de Loja/Config (acessível no Celular e PC) -->
             <div class="bg-slate-900 border-2 rounded-3xl p-6 space-y-5"
                  :class="mpStatus?.conectado ? 'border-emerald-500/40' : 'border-amber-500/40'">
@@ -1190,6 +1225,217 @@
                     </div>
                 </form>
             </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- MÓDULO 8: WHATSAPP INTEGRADO, NOTIFICAÇÕES & BOT ANTI-ANSIEDADE -->
+        <!-- ========================================================= -->
+        <div x-cloak x-show="moduloAtivo === 'whatsapp'" class="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 space-y-6">
+            
+            <!-- Banner de Conexão do WhatsApp -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 relative overflow-hidden">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl">💬</span>
+                            <h2 class="text-lg font-black text-white">Integração WhatsApp Evolution</h2>
+                            <template x-if="whatsappConectado">
+                                <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs px-2.5 py-0.5 rounded-full font-extrabold flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    Conectado
+                                </span>
+                            </template>
+                            <template x-if="!whatsappConectado">
+                                <span class="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs px-2.5 py-0.5 rounded-full font-extrabold">
+                                    Desconectado
+                                </span>
+                            </template>
+                        </div>
+                        <p class="text-xs text-slate-400">
+                            Conecte o WhatsApp do seu restaurante para disparar atualizações aos clientes, enviar dados aos motoboys e ativar o assistente virtual anti-ansiedade.
+                        </p>
+                    </div>
+
+                    <div class="flex items-center gap-2 w-full md:w-auto">
+                        <template x-if="!whatsappConectado">
+                            <button @click="conectarWhatsapp()" :disabled="whatsappCarregando"
+                                class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                                <span x-show="!whatsappCarregando">📱 Conectar meu WhatsApp (QR Code)</span>
+                                <span x-show="whatsappCarregando">Gerando QR Code...</span>
+                            </button>
+                        </template>
+                        <template x-if="whatsappConectado">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-slate-300 font-bold bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800" x-text="whatsappStatus.phone ? '+' + whatsappStatus.phone : 'Número Ativo'"></span>
+                                <button @click="desconectarWhatsapp()" :disabled="whatsappCarregando"
+                                    class="bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 font-bold px-4 py-2 rounded-xl text-xs transition">
+                                    Desconectar
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Box QR Code quando desconectado e gerado -->
+                <template x-if="!whatsappConectado && whatsappStatus.qrBase64">
+                    <div class="mt-6 pt-6 border-t border-slate-800/80 flex flex-col md:flex-row items-center justify-center gap-8 bg-slate-950/60 p-6 rounded-2xl">
+                        <div class="bg-white p-3 rounded-2xl shadow-2xl border-4 border-emerald-500/40">
+                            <img :src="whatsappStatus.qrBase64" alt="QR Code WhatsApp" class="w-56 h-56 rounded-lg object-contain">
+                        </div>
+                        <div class="space-y-3 max-w-md text-left">
+                            <h3 class="text-white font-bold text-sm flex items-center gap-2">
+                                <span>📸</span> Como conectar seu celular:
+                            </h3>
+                            <ol class="text-xs text-slate-300 space-y-2 list-decimal list-inside leading-relaxed">
+                                <li>Abra o aplicativo do <strong>WhatsApp</strong> no seu celular</li>
+                                <li>Acesse <strong>Aparelhos Conectados</strong> (nos 3 pontinhos ou Ajustes)</li>
+                                <li>Toque em <strong>Conectar um aparelho</strong></li>
+                                <li>Aponte a câmera para o QR Code ao lado</li>
+                            </ol>
+                            <div class="pt-2 flex items-center gap-3">
+                                <button @click="conectarWhatsapp()" class="text-xs text-emerald-400 hover:underline font-bold flex items-center gap-1">
+                                    🔄 Atualizar QR Code
+                                </button>
+                                <span class="text-[11px] text-slate-400">• O QR Code expira a cada 40 segundos</span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Grade de Automações & Bot Inteligente -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Card 1: Notificações de Pedido para Clientes -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl">📦</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="whatsappStatus.config.notificar_pedidos" @change="salvarConfigWhatsapp()" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                            </label>
+                        </div>
+                        <h3 class="font-extrabold text-sm text-white">Status em Tempo Real (Cliente)</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Dispara mensagens automáticas com link de rastreamento assinado a cada etapa:
+                        </p>
+                        <div class="space-y-1.5 text-[11px]">
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                <strong class="text-rose-400">1. Confirmado:</strong> Aviso de entrada em preparo na cozinha.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                <strong class="text-amber-400">2. Pronto:</strong> Separado na bolsa térmica ou no balcão.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                <strong class="text-sky-400">3. A Caminho:</strong> Nome do entregador + alerta campainha.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                <strong class="text-emerald-400">4. Entregue:</strong> Agradecimento carinhoso e feedback.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-emerald-400 font-bold pt-2 border-t border-slate-800 flex items-center gap-1.5">
+                        <span>✓</span> Zero custo de SMS ou taxas extras
+                    </div>
+                </div>
+
+                <!-- Card 2: Despacho para Motoboys -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl">🛵</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="whatsappStatus.config.notificar_motoboy" @change="salvarConfigWhatsapp()" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                            </label>
+                        </div>
+                        <h3 class="font-extrabold text-sm text-white">Despacho &amp; GPS para Motoboys</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Assim que o pedido fica <strong>Pronto</strong>, o sistema aciona o motoboy com todos os detalhes da entrega:
+                        </p>
+                        <div class="space-y-1.5 text-[11px]">
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                📍 <strong>Endereço Completo:</strong> Rua, número, complemento e bairro.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                🗺️ <strong>Google Maps 1-Toque:</strong> Abre a rota pronta no GPS do motoboy.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                💵 <strong>Financeiro:</strong> Taxa de entrega em R$ e forma de pagamento.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                ⚡ <strong>Comando Rápido:</strong> Motoboy responde <code class="text-emerald-400">ENTREGUE 0000</code> e conclui o pedido.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-sky-400 font-bold pt-2 border-t border-slate-800 flex items-center gap-1.5">
+                        <span>✓</span> Compatível com entregadores próprios e freelancers
+                    </div>
+                </div>
+
+                <!-- Card 3: Bot Anti-Ansiedade e Atendimento Humanizado -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl">🤖</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="whatsappStatus.config.bot_ativo" @change="salvarConfigWhatsapp()" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                            </label>
+                        </div>
+                        <h3 class="font-extrabold text-sm text-white">Assistente Anti-Ansiedade</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Responde os clientes de forma ultra educada, amigável e desescaladora:
+                        </p>
+                        <div class="space-y-1.5 text-[11px]">
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                🍔 <strong>Cardápio Rápido:</strong> Envia o link oficial ao pedir preço ou produtos.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                🕒 <strong>Previsão Precisa:</strong> Consulta status em tempo real do pedido ativo.
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                ❤️ <strong>Acolhimento em Atrasos:</strong> Pede desculpas, explica o pico da cozinha e garante que é o <strong>próximo a sair</strong>!
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-slate-300 border border-slate-800/80">
+                                👨‍💼 <strong>Transbordo Humano:</strong> Pausa o bot quando o cliente digita <code class="text-rose-400">HUMANO</code>.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-amber-300 font-bold pt-2 border-t border-slate-800 flex items-center gap-1.5">
+                        <span>✓</span> Total conformidade LGPD (Opt-out imediato)
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Caixa de Teste de Disparo ao Vivo -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
+                <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                    <span>🧪</span> Testar Envio de Mensagem pelo WhatsApp
+                </h3>
+                <p class="text-xs text-slate-400">
+                    Digite o número do seu celular com DDD (ex: <code class="text-emerald-400">11999999999</code>) para testar o envio em tempo real.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div class="md:col-span-4">
+                        <input type="text" x-model="whatsappTelefoneTeste" placeholder="DDD + Número (Ex: 31988887777)"
+                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white">
+                    </div>
+                    <div class="md:col-span-5">
+                        <input type="text" x-model="whatsappMsgTeste" placeholder="Mensagem personalizada (opcional)"
+                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white">
+                    </div>
+                    <div class="md:col-span-3">
+                        <button @click="enviarTesteWhatsapp()" :disabled="whatsappCarregando || !whatsappConectado"
+                            class="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-extrabold py-2.5 rounded-xl text-xs transition border border-slate-700">
+                            🚀 Disparar Teste
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
     </div>
@@ -1665,6 +1911,19 @@
                 testandoPix: false,
                 pixTesteResultado: null,
                 formMp: { access_token: '', public_key: '', chave_pix: '' },
+                whatsappStatus: {
+                    instance: '',
+                    connected: false,
+                    state: 'disconnected',
+                    phone: null,
+                    qrBase64: null,
+                    config: { notificar_pedidos: true, notificar_motoboy: true, bot_ativo: true }
+                },
+                whatsappCarregando: false,
+                whatsappPolling: null,
+                whatsappTelefoneTeste: '',
+                whatsappMsgTeste: '',
+                salvandoConfigWpp: false,
                 modalNovoProduto: false,
                 modalNovaCategoria: false,
                 modalNovoCupom: false,
@@ -1724,6 +1983,10 @@
                     return this.incluirTaxaServicoMesa ? Math.round(base * 1.10) : base;
                 },
 
+                get whatsappConectado() {
+                    return Boolean(this.whatsappStatus?.connected);
+                },
+
                 tituloModulo() {
                     const map = {
                         pedidos: 'Gestão de Pedidos em Tempo Real & PDV',
@@ -1733,6 +1996,7 @@
                         entregas: 'Logística: Entregadores & Taxas de Frete',
                         crm: 'CRM, Fidelidade Cashback & Recuperação WhatsApp',
                         financeiro: 'Frente de Caixa, Relatórios & PIX Mercado Pago',
+                        whatsapp: 'WhatsApp Integrado, Notificações & Bot Anti-Ansiedade',
                         config: 'Configurações da Loja & Identidade Visual'
                     };
                     return map[this.moduloAtivo] || 'Painel PedeLivre';
@@ -1774,6 +2038,7 @@
                             this.carregarEntregas();
                             this.carregarChamadosGarcom();
                             this.carregarStatusMp();
+                            this.carregarStatusWhatsapp();
                             if (new URLSearchParams(window.location.search).get('mp_oauth') === 'sucesso') {
                                 this.toastMsg = 'Conta Mercado Pago conectada com sucesso via login!';
                                 this.moduloAtivo = 'config';
@@ -2517,6 +2782,132 @@
                     if (!this.somHabilitado && this.somInterval) {
                         clearInterval(this.somInterval);
                         this.somInterval = null;
+                    }
+                },
+
+                async carregarStatusWhatsapp() {
+                    try {
+                        const r = await fetch('/api/painel/whatsapp/status', { headers: this.headersAuth() });
+                        if (r.ok) {
+                            const d = await r.json();
+                            this.whatsappStatus = d;
+                        }
+                    } catch (e) {
+                        console.error('Erro ao consultar status do WhatsApp:', e);
+                    }
+                },
+
+                async conectarWhatsapp() {
+                    this.whatsappCarregando = true;
+                    try {
+                        const r = await fetch('/api/painel/whatsapp/conectar', {
+                            method: 'POST',
+                            headers: this.headersAuth()
+                        });
+                        const d = await r.json();
+                        if (r.ok) {
+                            this.whatsappStatus.qrBase64 = d.qrBase64;
+                            this.whatsappStatus.state = d.state;
+                            this.whatsappStatus.connected = d.connected;
+                            this.whatsappStatus.phone = d.phone;
+                            this.toastMsg = 'QR Code gerado! Aponte a câmera do WhatsApp para escanear.';
+
+                            this.iniciarPollingWhatsapp();
+                        } else {
+                            this.toastMsg = 'Falha ao iniciar conexão: ' + (d.message || 'Erro');
+                        }
+                    } catch (e) {
+                        this.toastMsg = 'Erro ao conectar WhatsApp. Tente novamente.';
+                    } finally {
+                        this.whatsappCarregando = false;
+                    }
+                },
+
+                iniciarPollingWhatsapp() {
+                    if (this.whatsappPolling) clearInterval(this.whatsappPolling);
+                    this.whatsappPolling = setInterval(async () => {
+                        await this.carregarStatusWhatsapp();
+                        if (this.whatsappConectado) {
+                            clearInterval(this.whatsappPolling);
+                            this.whatsappPolling = null;
+                            this.toastMsg = '🎉 WhatsApp conectado com sucesso!';
+                        }
+                    }, 3500);
+                },
+
+                async desconectarWhatsapp() {
+                    if (!confirm('Deseja realmente desconectar o WhatsApp da loja?')) return;
+                    this.whatsappCarregando = true;
+                    try {
+                        const r = await fetch('/api/painel/whatsapp/desconectar', {
+                            method: 'POST',
+                            headers: this.headersAuth()
+                        });
+                        const d = await r.json();
+                        if (r.ok) {
+                            this.whatsappStatus.connected = false;
+                            this.whatsappStatus.phone = null;
+                            this.whatsappStatus.qrBase64 = null;
+                            this.whatsappStatus.state = 'disconnected';
+                            if (this.whatsappPolling) {
+                                clearInterval(this.whatsappPolling);
+                                this.whatsappPolling = null;
+                            }
+                            this.toastMsg = 'WhatsApp desconectado com sucesso.';
+                        } else {
+                            this.toastMsg = d.message || 'Erro ao desconectar.';
+                        }
+                    } catch (e) {
+                        this.toastMsg = 'Erro ao desconectar WhatsApp.';
+                    } finally {
+                        this.whatsappCarregando = false;
+                    }
+                },
+
+                async salvarConfigWhatsapp() {
+                    this.salvandoConfigWpp = true;
+                    try {
+                        const r = await fetch('/api/painel/whatsapp/config', {
+                            method: 'POST',
+                            headers: this.headersAuth(),
+                            body: JSON.stringify(this.whatsappStatus.config)
+                        });
+                        if (r.ok) {
+                            this.toastMsg = 'Automações do WhatsApp atualizadas com sucesso!';
+                        }
+                    } catch (e) {
+                        this.toastMsg = 'Erro ao salvar configurações do WhatsApp.';
+                    } finally {
+                        this.salvandoConfigWpp = false;
+                    }
+                },
+
+                async enviarTesteWhatsapp() {
+                    if (!this.whatsappTelefoneTeste) {
+                        alert('Por favor, informe seu número com DDD para o teste.');
+                        return;
+                    }
+                    this.whatsappCarregando = true;
+                    try {
+                        const r = await fetch('/api/painel/whatsapp/teste', {
+                            method: 'POST',
+                            headers: this.headersAuth(),
+                            body: JSON.stringify({
+                                telefone: this.whatsappTelefoneTeste,
+                                mensagem: this.whatsappMsgTeste || undefined
+                            })
+                        });
+                        const d = await r.json();
+                        if (d.success) {
+                            this.toastMsg = '✅ ' + d.message;
+                            this.whatsappMsgTeste = '';
+                        } else {
+                            alert(d.message || 'Falha ao enviar mensagem de teste.');
+                        }
+                    } catch (e) {
+                        alert('Erro ao comunicar com o servidor.');
+                    } finally {
+                        this.whatsappCarregando = false;
                     }
                 },
 

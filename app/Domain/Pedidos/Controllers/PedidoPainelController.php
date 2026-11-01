@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Pedidos\Controllers;
 
+use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Autenticacao\Models\Usuario;
+use App\Domain\Bot\Services\EvolutionApiService;
 use App\Domain\Entregas\Models\Entregador;
 use App\Domain\Pedidos\Models\Pedido;
 use App\Domain\Pedidos\Requests\AtualizarStatusPedidoRequest;
@@ -21,7 +23,8 @@ final class PedidoPainelController
 {
     public function __construct(
         private readonly FluxoStatusPedidoService $fluxoService,
-        private readonly LojaContext $context
+        private readonly LojaContext $context,
+        private readonly EvolutionApiService $evolutionApi
     ) {}
 
     /**
@@ -92,6 +95,14 @@ final class PedidoPainelController
         $entregador = Entregador::findOrFail($request->integer('entregador_id'));
         $pedido = Pedido::findOrFail($id);
         $pedido->update(['entregador_id' => $entregador->id]);
+
+        if ($pedido->canal === 'delivery' && $pedido->status === 'pronto') {
+            $loja = $pedido->loja ?? Loja::find($pedido->loja_id);
+            if ($loja !== null) {
+                $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
+                $this->evolutionApi->notificarMotoboyPedidoPronto($pedido->load('entregador', 'cliente'), $instancia, $loja);
+            }
+        }
 
         return response()->json([
             'message' => 'Entregador atribuído ao pedido com sucesso.',
