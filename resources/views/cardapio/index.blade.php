@@ -144,28 +144,28 @@
                     </div>
 
                     <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <h1 class="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight">{{ $loja->nome }}</h1>
-                            <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                        <div class="flex items-center justify-between gap-2">
+                            <h1 class="text-lg sm:text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight truncate">{{ $loja->nome }}</h1>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
                                 <span>⭐</span> 4.9
                             </span>
                         </div>
 
                         <!-- Metadados: Categoria, Tempo, Entrega e Endereço -->
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-300 mt-2 font-medium">
-                            <span class="flex items-center gap-1.5 text-slate-300">
+                        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-slate-300 mt-1.5 font-medium">
+                            <span class="flex items-center gap-1 text-slate-300">
                                 <span>⏱️</span>
                                 <span>{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }}–45 min</span>
                             </span>
                             <span class="text-slate-600">•</span>
-                            <span class="flex items-center gap-1.5 text-emerald-400 font-bold">
+                            <span class="flex items-center gap-1 text-emerald-400 font-bold">
                                 <span>🛵</span>
                                 <span x-text="freteCentavos === 0 ? 'Frete Grátis' : 'Taxa ' + formatarCentavos(freteCentavos)"></span>
                             </span>
                             <span class="text-slate-600">•</span>
                             <span class="flex items-center gap-1 text-slate-400">
                                 <span>💰</span>
-                                <span>Mínimo R$ 20,00</span>
+                                <span>Mín. R$ 20</span>
                             </span>
                             @if($loja->endereco)
                                 <span class="text-slate-600 hidden md:inline">•</span>
@@ -209,15 +209,15 @@
             </div>
 
             <!-- Faixa de Cupom Ativo com 1-Clique -->
-            <div class="bg-gradient-to-r from-[#1c1815] to-[#171419] border border-[#3e271a] rounded-2xl p-2.5 sm:p-3 px-4 flex items-center justify-between gap-3 shadow-md">
-                <div class="flex items-center gap-2 text-xs text-orange-200/90 font-medium min-w-0">
-                    <span class="text-orange-400 text-base shrink-0">🎟️</span>
-                    <span class="truncate">Primeiro pedido? Use o cupom <strong class="font-black text-white bg-black/40 px-1.5 py-0.5 rounded border border-orange-500/30">BEMVINDO10</strong> e ganhe 10% OFF</span>
+            <div class="bg-gradient-to-r from-[#1c1815] to-[#171419] border border-[#3e271a] rounded-2xl p-2.5 sm:p-3 px-3 sm:px-4 flex items-center justify-between gap-2 shadow-md">
+                <div class="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-orange-200/90 font-medium min-w-0">
+                    <span class="text-orange-400 text-sm sm:text-base shrink-0">🎟️</span>
+                    <span class="truncate">Cupom <strong class="font-black text-white bg-black/40 px-1.5 py-0.5 rounded border border-orange-500/30">BEMVINDO10</strong>: 10% OFF</span>
                 </div>
                 <button type="button" @click="aplicarCupomRapido('BEMVINDO10')"
-                    class="px-3 sm:px-4 py-1.5 rounded-xl text-xs font-black text-white transition shrink-0 hover:brightness-110 shadow-sm active:scale-95 flex items-center gap-1"
+                    class="px-2.5 sm:px-4 py-1.5 rounded-xl text-[11px] sm:text-xs font-black text-white transition shrink-0 hover:brightness-110 shadow-sm active:scale-95 flex items-center gap-1"
                     :style="'background-color: var(--cor-loja)'">
-                    <span x-text="cupomAplicado?.codigo === 'BEMVINDO10' ? '✓ Cupom Ativado' : 'Aplicar Desconto'"></span>
+                    <span x-text="cupomAplicado?.codigo === 'BEMVINDO10' ? '✓ Ativado' : 'Ativar'"></span>
                 </button>
             </div>
         </header>
@@ -235,25 +235,25 @@
             </div>
 
             <!-- Card Banner de Promoção em Destaque (Gourmet Promo Showcase) -->
-            <div class="relative overflow-hidden rounded-3xl border border-[#2d2824] bg-gradient-to-r from-[#1b1512] via-[#16141a] to-[#121319] p-5 sm:p-7 shadow-2xl">
+            <div class="relative overflow-hidden rounded-3xl border border-[#2d2824] bg-gradient-to-r from-[#1b1512] via-[#16141a] to-[#121319] p-4 sm:p-7 shadow-2xl">
                 <!-- Luz de fundo sutil com a cor da loja -->
                 <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full pointer-events-none opacity-20 filter blur-3xl"
                      style="background-color: var(--cor-loja);"></div>
 
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center relative z-10">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 items-center relative z-10">
                     <!-- Informações da Promoção -->
-                    <div class="md:col-span-7 space-y-3">
+                    <div class="md:col-span-7 space-y-2.5 sm:space-y-3">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-[11px] font-black uppercase px-2.5 py-1 rounded-full text-white shadow-sm"
+                            <span class="text-[10px] sm:text-[11px] font-black uppercase px-2.5 py-1 rounded-full text-white shadow-sm"
                                   :style="'background-color: var(--cor-loja)'">
                                 💥 COMBO CASAL BRASA
                             </span>
-                            <span class="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded-full">
+                            <span class="text-[10px] sm:text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded-full">
                                 Economize R$ 18,00
                             </span>
                         </div>
 
-                        <h3 class="text-xl sm:text-2xl lg:text-3xl font-black text-white leading-tight">
+                        <h3 class="text-lg sm:text-2xl lg:text-3xl font-black text-white leading-tight">
                             2x Burgers Artesanais + Batata Rústica Grande + 2 Bebidas
                         </h3>
 
