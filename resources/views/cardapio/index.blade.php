@@ -209,15 +209,15 @@
             </div>
 
             <!-- Faixa de Cupom Ativo com 1-Clique -->
-            <div class="bg-gradient-to-r from-[#1c1815] to-[#171419] border border-[#3e271a] rounded-2xl p-2.5 sm:p-3 px-3 sm:px-4 flex items-center justify-between gap-2 shadow-md">
+            <div class="bg-gradient-to-r from-[#1c1815] to-[#171419] border border-[#3e271a] rounded-2xl p-2 sm:p-2.5 px-3 sm:px-4 flex items-center justify-between gap-2 shadow-md">
                 <div class="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-orange-200/90 font-medium min-w-0">
                     <span class="text-orange-400 text-sm sm:text-base shrink-0">🎟️</span>
                     <span class="truncate">Cupom <strong class="font-black text-white bg-black/40 px-1.5 py-0.5 rounded border border-orange-500/30">BEMVINDO10</strong>: 10% OFF</span>
                 </div>
                 <button type="button" @click="aplicarCupomRapido('BEMVINDO10')"
-                    class="px-2.5 sm:px-4 py-1.5 rounded-xl text-[11px] sm:text-xs font-black text-white transition shrink-0 hover:brightness-110 shadow-sm active:scale-95 flex items-center gap-1"
+                    class="px-2.5 sm:px-3.5 py-1 rounded-xl text-[11px] sm:text-xs font-black text-white transition shrink-0 hover:brightness-110 shadow-sm active:scale-95 flex items-center gap-1 whitespace-nowrap"
                     :style="'background-color: var(--cor-loja)'">
-                    <span x-text="cupomAplicado?.codigo === 'BEMVINDO10' ? '✓ Ativado' : 'Ativar'"></span>
+                    <span x-text="cupomAplicado?.codigo === 'BEMVINDO10' ? '✓ Ativo' : 'Ativar'"></span>
                 </button>
             </div>
         </header>
