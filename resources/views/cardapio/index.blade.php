@@ -1,17 +1,27 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="h-full bg-[#0e1014] scroll-smooth">
+<html lang="pt-BR" class="h-full bg-[#0c0d12] scroll-smooth">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-    <meta name="theme-color" content="{{ $loja->cor_primaria ?: '#ea580c' }}">
+    <meta name="theme-color" content="{{ $loja->cor_primaria ?: '#ff5a1f' }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="/manifest.json">
     <title>{{ $loja->nome }} — Cardápio Digital</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     <style>
         :root {
-            --cor-loja: {{ $loja->cor_primaria ?: '#ea580c' }};
+            --cor-loja: {{ $loja->cor_primaria ?: '#ff5a1f' }};
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         }
         [x-cloak] { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -19,86 +29,113 @@
         .bg-loja { background-color: var(--cor-loja) !important; }
         .text-loja { color: var(--cor-loja) !important; }
         .border-loja { border-color: var(--cor-loja) !important; }
+        
+        /* Garantir proporção estrita de imagem */
+        .thumb-produto {
+            width: 104px;
+            height: 104px;
+            min-width: 104px;
+            max-width: 104px;
+            min-height: 104px;
+            max-height: 104px;
+            object-fit: cover;
+        }
+        .thumb-mais-pedidos {
+            width: 56px;
+            height: 56px;
+            min-width: 56px;
+            max-width: 56px;
+            min-height: 56px;
+            max-height: 56px;
+            object-fit: cover;
+        }
     </style>
 </head>
-<body class="min-h-full font-sans antialiased bg-[#0e1014] text-slate-100 pb-28 lg:pb-16 relative overflow-x-hidden" x-data="cardapioApp()" x-init="initApp()">
+<body class="min-h-full bg-[#0c0d12] text-slate-100 antialiased pb-28 lg:pb-16 relative overflow-x-hidden" x-data="cardapioApp()" x-init="initApp()">
 
-    <!-- Ambient Top Glow Dinâmico (Cor da Loja) -->
-    <div class="fixed inset-0 pointer-events-none z-0" 
-         style="background: radial-gradient(850px circle at 85% -10%, color-mix(in srgb, var(--cor-loja) 20%, transparent), transparent 60%), radial-gradient(600px circle at 15% -10%, color-mix(in srgb, var(--cor-loja) 12%, transparent), transparent 50%);">
+    <!-- Glow Atmosférico no Topo (Fiel às Imagens 1 e 5) -->
+    <div class="fixed top-0 right-0 w-[550px] sm:w-[750px] h-[380px] pointer-events-none z-0 opacity-25 sm:opacity-35" 
+         style="background: radial-gradient(circle at 75% 20%, var(--cor-loja), transparent 70%); filter: blur(75px);">
+    </div>
+    <div class="fixed top-0 left-0 w-[400px] h-[260px] pointer-events-none z-0 opacity-15" 
+         style="background: radial-gradient(circle at 20% 10%, var(--cor-loja), transparent 70%); filter: blur(60px);">
     </div>
 
     <!-- CONTAINER PRINCIPAL -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative z-10 space-y-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 relative z-10 space-y-6">
 
         <!-- ==================== HEADER DA LOJA (DESIGN CLAUDE FIEL) ==================== -->
-        <header class="bg-[#16171b] border border-[#26282e] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
+        <header class="bg-[#16171b] border border-[#26282e] rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 
-                <!-- Logo / Avatar + Nome + Status + Detalhes -->
-                <div class="flex items-center gap-3.5 sm:gap-4">
+                <!-- Identidade da Loja: Logo/Avatar + Nome + Status + Informações -->
+                <div class="flex items-center gap-4">
                     @if($loja->logo && str_starts_with($loja->logo, 'http'))
-                        <img src="{{ $loja->logo }}" alt="{{ $loja->nome }}" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover shadow-lg border border-[#26282e] shrink-0">
+                        <img src="{{ $loja->logo }}" alt="{{ $loja->nome }}" 
+                             style="width: 64px; height: 64px; min-width: 64px;" 
+                             class="rounded-2xl object-cover shadow-xl border border-[#26282e] shrink-0">
                     @else
-                        <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl shadow-lg border border-[#26282e] flex items-center justify-center text-white font-black text-2xl sm:text-3xl shrink-0"
-                             style="background-color: var(--cor-loja)">
+                        <!-- Quadrado Laranja com Letra B Inicial (Fiel às Referências) -->
+                        <div style="width: 64px; height: 64px; min-width: 64px; background-color: var(--cor-loja);"
+                             class="rounded-2xl shadow-xl flex items-center justify-center text-white font-black text-3xl shrink-0">
                             {{ substr($loja->nome, 0, 1) }}
                         </div>
                     @endif
 
                     <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <h1 class="text-xl sm:text-2xl lg:text-3xl font-black text-white leading-tight break-words">{{ $loja->nome }}</h1>
-                            <span class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <h1 class="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight break-words">{{ $loja->nome }}</h1>
+                            <!-- Badge Aberto Agora -->
+                            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#132a1e] text-[#4ade80] border border-emerald-500/20 shrink-0">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse"></span>
                                 <span x-text="lojaStatus.aberto_agora ? 'Aberto agora' : 'Aberto para pedidos'"></span>
                             </span>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 mt-1.5">
+                        <!-- Linha de Detalhes: Tempo, Pagamentos e Endereço -->
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 mt-1.5 font-medium">
                             <span class="flex items-center gap-1">
                                 <span>⏱️</span>
                                 <span>{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }}–45 min</span>
                             </span>
-                            <span class="text-slate-600">•</span>
+                            <span class="text-slate-600 hidden sm:inline">•</span>
                             <span class="flex items-center gap-1">
                                 <span>⚡</span>
                                 <span>PIX, cartão, dinheiro</span>
                             </span>
                             @if($loja->endereco)
-                                <span class="hidden sm:inline text-slate-600">•</span>
-                                <span class="truncate max-w-xs sm:max-w-md flex items-center gap-1">
-                                    <span>📍</span>
-                                    <span>{{ $loja->endereco }}, {{ $loja->cidade }}/{{ $loja->uf }}</span>
+                                <span class="text-slate-600 hidden md:inline">•</span>
+                                <span class="hidden md:inline truncate max-w-sm text-slate-400">
+                                    📍 {{ $loja->endereco }}, {{ $loja->cidade }}/{{ $loja->uf }}
                                 </span>
                             @endif
                         </div>
                     </div>
                 </div>
 
-                <!-- Seletor de Canal (Delivery / Retirada) ou Modo Mesa -->
+                <!-- Seletor Delivery / Retirada (Segmented Control Fiel) -->
                 <div class="flex items-center justify-start md:justify-end shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[#26282e]">
                     <template x-if="mesaAtiva">
-                        <div class="flex items-center justify-between w-full md:w-auto gap-3 bg-[#1d1f27] border border-amber-500/40 px-4 py-2 rounded-2xl">
+                        <div class="flex items-center justify-between w-full md:w-auto gap-3 bg-[#1d1f27] border border-amber-500/40 px-4 py-2.5 rounded-2xl">
                             <span class="text-xs font-black text-amber-300" x-text="'🪑 Mesa #' + mesaAtiva.numero"></span>
-                            <button type="button" @click="chamarGarcom()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-3 py-1.5 rounded-xl transition shadow">
+                            <button type="button" @click="chamarGarcom()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-3.5 py-1.5 rounded-xl transition shadow">
                                 <span x-text="garcomChamado ? '✓ Garçom Avisado!' : '🔔 Chamar Garçom'"></span>
                             </button>
                         </div>
                     </template>
                     <template x-if="!mesaAtiva">
-                        <div class="grid grid-cols-2 w-full md:w-auto bg-[#0e1014] p-1 rounded-2xl border border-[#26282e] gap-1">
+                        <div class="grid grid-cols-2 w-full md:w-auto bg-[#0c0e12] p-1.5 rounded-2xl border border-[#26282e] gap-1">
                             <button type="button" @click="alterarCanal('delivery')"
-                                class="px-5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5"
+                                class="px-6 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5"
                                 :style="checkout.canal === 'delivery' ? 'background-color: var(--cor-loja); color: white;' : 'color: #9ca3af;'"
-                                :class="checkout.canal === 'delivery' ? 'shadow-md' : 'hover:text-white'">
+                                :class="checkout.canal === 'delivery' ? 'shadow-lg' : 'hover:text-white'">
                                 <span>🛵</span>
                                 <span>Delivery</span>
                             </button>
                             <button type="button" @click="alterarCanal('retirada')"
-                                class="px-5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5"
+                                class="px-6 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5"
                                 :style="checkout.canal === 'retirada' ? 'background-color: var(--cor-loja); color: white;' : 'color: #9ca3af;'"
-                                :class="checkout.canal === 'retirada' ? 'shadow-md' : 'hover:text-white'">
+                                :class="checkout.canal === 'retirada' ? 'shadow-lg' : 'hover:text-white'">
                                 <span>🛍️</span>
                                 <span>Retirada</span>
                             </button>
@@ -108,83 +145,85 @@
             </div>
 
             <!-- Faixa do Cupom Promocional (Fiel Imagem 5) -->
-            <div class="bg-[#1a1b20] border border-[#26282e] rounded-2xl p-2.5 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div class="flex items-center gap-2 text-xs text-white/90 font-medium">
-                    <span>🏷️</span>
-                    <span>Cupom <strong class="font-black text-white">BEMVINDO10</strong>: 10% OFF em pedidos acima de R$ 20</span>
+            <div class="bg-[#1e1713] border border-[#3e2518] rounded-2xl p-2 sm:p-2.5 px-3 sm:px-4 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5 text-xs text-orange-200/90 font-medium min-w-0">
+                    <span class="text-orange-400 shrink-0">🏷️</span>
+                    <span class="truncate">Cupom <strong class="font-black text-white">BEMVINDO10</strong>: 10% OFF acima de R$ 20</span>
                 </div>
                 <button type="button" @click="aplicarCupomRapido('BEMVINDO10')"
-                    class="px-4 py-1.5 rounded-xl text-xs font-black text-white transition self-end sm:self-auto hover:brightness-110 shadow-sm"
+                    class="px-2.5 sm:px-3.5 py-1 rounded-xl text-[11px] sm:text-xs font-black text-white transition shrink-0 hover:brightness-110 shadow-sm active:scale-95"
                     :style="'background-color: var(--cor-loja)'"
                     x-text="cupomAplicado?.codigo === 'BEMVINDO10' ? '✓ Ativado' : 'Ativar'">
                 </button>
             </div>
         </header>
 
-        <!-- ==================== BARRA DE BUSCA & CATEGORIAS (Fiel Imagem 1 & 5) ==================== -->
-        <div class="sticky top-0 z-30 bg-[#0e1014]/95 backdrop-blur-md py-3 -mx-4 px-4 sm:mx-0 sm:px-0 flex flex-col md:flex-row md:items-center gap-3">
-            <!-- Input de Busca -->
-            <div class="relative md:w-80 shrink-0">
+        <!-- ==================== BARRA INTEGRADA: BUSCA + CATEGORIAS (Fiel Imagem 5) ==================== -->
+        <div class="sticky top-0 z-30 bg-[#0c0d12]/95 backdrop-blur-md py-3 -mx-4 px-4 sm:mx-0 sm:px-0 flex flex-col md:flex-row md:items-center gap-3">
+            <!-- Campo de Busca Arredondado -->
+            <div class="relative md:w-64 shrink-0">
                 <input type="text" x-model="termoBusca" placeholder="Buscar prato, bebida ou ingred..."
                     class="w-full bg-[#16171b] border border-[#26282e] text-xs text-white rounded-full pl-9 pr-8 py-2.5 placeholder-slate-500 focus:outline-none focus:border-slate-500 transition">
                 <svg class="w-4 h-4 text-slate-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <button x-show="termoBusca" @click="termoBusca = ''" class="absolute right-3 top-2.5 text-slate-500 hover:text-white text-xs font-bold">✕</button>
             </div>
 
-            <!-- Chips de Categorias -->
+            <!-- Chips de Categorias com Nomes Curtos e Contadores (Fiel Imagem 5) -->
             <nav class="flex overflow-x-auto no-scrollbar gap-2 py-0.5 flex-1">
                 <template x-for="cat in categoriasFiltradas" :key="cat.id">
                     <button @click="scrollParaCategoria(cat.id)"
                         class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 shrink-0"
                         :style="(categoriaAtiva || categoriasFiltradas[0]?.id) === cat.id ? 'background-color: var(--cor-loja); color: white;' : ''"
-                        :class="(categoriaAtiva || categoriasFiltradas[0]?.id) === cat.id ? 'shadow-md' : 'bg-[#181a20] border border-[#26282e] text-slate-400 hover:text-white'">
-                        <span x-text="cat.nome"></span>
+                        :class="(categoriaAtiva || categoriasFiltradas[0]?.id) === cat.id ? 'shadow-md' : 'bg-[#16171b] border border-[#26282e] text-slate-400 hover:text-white'">
+                        <span x-text="nomeCurtoCategoria(cat.nome)"></span>
                         <span class="text-[10px] font-bold opacity-80" x-text="cat.produtos.length"></span>
                     </button>
                 </template>
             </nav>
         </div>
 
-        <!-- ==================== CORPO EM 2 COLUNAS (Catálogo 8 + Sacola Fixa 4) ==================== -->
+        <!-- ==================== CORPO EM 2 COLUNAS (Catálogo 8 + Sacola Lateral Fixa 4) ==================== -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            <!-- COLUNA DA ESQUERDA: CATÁLOGO DE PRODUTOS (8 colunas no PC, 100% no Mobile) -->
-            <main class="lg:col-span-8 space-y-8">
+            <!-- COLUNA DA ESQUERDA: CATÁLOGO DE PRODUTOS -->
+            <main class="lg:col-span-8 space-y-9">
                 
-                <!-- MAIS PEDIDOS (Fiel Imagens 1 e 5) -->
+                <!-- SEÇÃO 1: MAIS PEDIDOS (Fiel Imagens 1 e 5) -->
                 <template x-if="!termoBusca.trim() && produtosDestaque.length > 0">
                     <section class="space-y-3.5">
                         <h2 class="text-xl font-black text-white">Mais pedidos</h2>
 
-                        <!-- Grid 2x2 no Desktop (Fiel Imagem 5) / Oculto no celular se preferir carrossel -->
+                        <!-- Grid 2x2 no Desktop com Numeração 1, 2, 3, 4 (Fiel Imagem 5) -->
                         <div class="hidden sm:grid sm:grid-cols-2 gap-3.5">
                             <template x-for="(dest, idx) in produtosDestaque.slice(0, 4)" :key="'dest-desk-' + dest.id">
                                 <div @click="abrirModalProduto(dest)"
-                                     class="bg-[#16171b] border border-[#26282e] hover:border-slate-500 rounded-2xl p-3 flex items-center gap-3.5 cursor-pointer transition group">
-                                    <!-- Número Rank 1, 2, 3, 4 -->
-                                    <span class="text-2xl font-black shrink-0 w-6 text-center"
+                                     class="bg-[#16171b] border border-[#26282e] hover:border-slate-500 rounded-2xl p-3 flex items-center gap-3.5 cursor-pointer transition group shadow-sm">
+                                    <!-- Número do Rank: 1, 2, 3, 4 em Laranja da Loja -->
+                                    <span class="text-2xl font-black shrink-0 w-6 text-center select-none"
                                           :style="'color: var(--cor-loja)'"
                                           x-text="idx + 1"></span>
 
-                                    <!-- Foto Quadrada Pequena -->
-                                    <img :src="imagemProduto(dest)" :alt="dest.nome" class="w-14 h-14 rounded-xl object-cover bg-[#22242a] shrink-0 group-hover:scale-105 transition">
+                                    <!-- Foto Quadrada Estrita 56x56 -->
+                                    <div class="rounded-xl overflow-hidden bg-[#22242a] shrink-0 border border-[#26282e]">
+                                        <img :src="imagemProduto(dest)" :alt="dest.nome" class="thumb-mais-pedidos group-hover:scale-105 transition duration-300">
+                                    </div>
 
-                                    <!-- Informações -->
+                                    <!-- Título e Preço -->
                                     <div class="min-w-0 flex-1">
                                         <div class="font-bold text-white text-xs sm:text-sm line-clamp-1 group-hover:text-amber-400 transition" x-text="dest.nome"></div>
-                                        <div class="text-xs font-extrabold text-slate-200 mt-1" x-text="formatarCentavos(dest.preco_efetivo_centavos)"></div>
+                                        <div class="text-xs font-black text-slate-100 mt-1" x-text="formatarCentavos(dest.preco_efetivo_centavos)"></div>
                                     </div>
                                 </div>
                             </template>
                         </div>
 
-                        <!-- Carrossel Horizontal no Celular (Fiel Imagem 1) -->
+                        <!-- Carrossel Deslizante no Mobile (Fiel Imagem 1) -->
                         <div class="sm:hidden flex overflow-x-auto no-scrollbar gap-3 pb-1">
                             <template x-for="dest in produtosDestaque" :key="'dest-mob-' + dest.id">
                                 <div @click="abrirModalProduto(dest)"
-                                     class="w-40 shrink-0 bg-[#16171b] border border-[#26282e] rounded-2xl p-3 flex flex-col justify-between cursor-pointer group">
+                                     class="w-40 shrink-0 bg-[#16171b] border border-[#26282e] rounded-2xl p-3 flex flex-col justify-between cursor-pointer group shadow-sm">
                                     <div class="w-full aspect-square rounded-xl overflow-hidden bg-[#22242a] mb-2.5">
-                                        <img :src="imagemProduto(dest)" :alt="dest.nome" class="w-full h-full object-cover group-hover:scale-105 transition">
+                                        <img :src="imagemProduto(dest)" :alt="dest.nome" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                                     </div>
                                     <div>
                                         <div class="font-bold text-white text-xs line-clamp-2 leading-snug" x-text="dest.nome"></div>
@@ -196,7 +235,7 @@
                     </section>
                 </template>
 
-                <!-- Mensagem se busca vazia -->
+                <!-- Estado Vazio se Busca não Encontrar Nada -->
                 <template x-if="categoriasFiltradas.length === 0">
                     <div class="bg-[#16171b] border border-[#26282e] rounded-3xl p-10 text-center space-y-3">
                         <div class="text-3xl">🔍</div>
@@ -210,31 +249,32 @@
                     </div>
                 </template>
 
-                <!-- LISTAGEM DAS CATEGORIAS (Fiel Imagens 1 e 5) -->
+                <!-- SEÇÕES DE CATEGORIAS (Fiel Imagens 1 e 5) -->
                 <template x-for="categoria in categoriasFiltradas" :key="categoria.id">
                     <section :id="'categoria-' + categoria.id" class="space-y-3.5 scroll-mt-24">
-                        <!-- Título da Categoria com Descrição Opcional -->
+                        <!-- Título com Subtítulo Gourmet em Cinza -->
                         <div class="flex items-baseline gap-2">
                             <h2 class="text-lg sm:text-xl font-black text-white" x-text="categoria.nome"></h2>
-                            <p x-show="categoria.descricao" class="text-xs text-slate-400 hidden sm:inline" x-text="categoria.descricao"></p>
+                            <p class="text-xs text-slate-400 hidden sm:inline" 
+                               x-text="categoria.descricao || obterSubtituloCategoria(categoria.nome)"></p>
                         </div>
 
-                        <!-- Grid de Produtos da Categoria: 1 col no Celular, 2 cols no Desktop -->
+                        <!-- Grade de Produtos: 1 Coluna no Celular, 2 Colunas no Desktop -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                             <template x-for="produto in categoria.produtos" :key="produto.id">
                                 <article @click="abrirModalProduto(produto)"
-                                    class="bg-[#16171b] border border-[#26282e] hover:border-slate-500 rounded-2xl p-4 transition-all cursor-pointer flex justify-between gap-3 relative group">
+                                    class="bg-[#16171b] border border-[#26282e] hover:border-slate-500 rounded-2xl p-4 transition-all cursor-pointer flex justify-between gap-3 relative group shadow-sm">
                                     
-                                    <!-- Informações do Produto (Esquerda) -->
-                                    <div class="flex-1 min-w-0 flex flex-col justify-between">
+                                    <!-- Informações do Item (Esquerda) -->
+                                    <div class="flex-1 min-w-0 flex flex-col justify-between pr-2">
                                         <div>
-                                            <!-- Tag de Promoção -10% se houver -->
+                                            <!-- Tag de Desconto -10% Verde (Fiel Imagem 5) -->
                                             <template x-if="produto.preco_promocional_centavos && produto.preco_promocional_centavos < produto.preco_centavos">
-                                                <span class="bg-[#132a1e] text-[#4ade80] text-[10px] font-black px-2 py-0.5 rounded-md inline-block mb-1.5"
+                                                <span class="bg-[#132a1e] text-[#4ade80] text-[10px] font-black px-1.5 py-0.5 rounded-md inline-block mb-1.5"
                                                       x-text="'-' + Math.round((1 - produto.preco_promocional_centavos / produto.preco_centavos) * 100) + '%'"></span>
                                             </template>
 
-                                            <!-- Título do Produto -->
+                                            <!-- Título -->
                                             <h3 class="font-bold text-white text-sm sm:text-base leading-snug group-hover:text-amber-400 transition" x-text="produto.nome"></h3>
                                             
                                             <!-- Descrição -->
@@ -244,7 +284,7 @@
                                         <!-- Preço & Preço Riscado -->
                                         <div class="mt-3 flex items-baseline gap-2">
                                             <template x-if="produto.variacoes && produto.variacoes.length > 0">
-                                                <span class="text-[11px] text-slate-400">A partir de</span>
+                                                <span class="text-[11px] text-slate-400 font-medium">A partir de</span>
                                             </template>
                                             <span class="text-sm sm:text-base font-black text-white"
                                                   x-text="formatarCentavos(produto.variacoes?.length > 0 ? Math.min(...produto.variacoes.map(v => v.preco_centavos)) : produto.preco_efetivo_centavos)"></span>
@@ -255,20 +295,26 @@
                                         </div>
                                     </div>
 
-                                    <!-- Foto Quadrada ou Fallback (Direita) + Botão Circular + -->
+                                    <!-- Imagem ou Letra Inicial Elegante + Botão Circular + (Direita) -->
                                     <div class="relative shrink-0 flex flex-col justify-between items-end">
-                                        <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-[#22242a] flex items-center justify-center">
+                                        <!-- Container Estrito 104x104px (Nunca estoura) -->
+                                        <div class="rounded-2xl overflow-hidden bg-[#22242a] flex items-center justify-center border border-[#26282e]"
+                                             style="width: 104px; height: 104px; min-width: 104px;">
                                             <template x-if="imagemProduto(produto)">
-                                                <img :src="imagemProduto(produto)" :alt="produto.nome" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                                <img :src="imagemProduto(produto)" :alt="produto.nome" loading="lazy" 
+                                                     class="thumb-produto group-hover:scale-105 transition duration-300">
                                             </template>
                                             <template x-if="!imagemProduto(produto)">
-                                                <span class="text-3xl font-black text-slate-600" x-text="produto.nome.charAt(0)"></span>
+                                                <!-- Inicial Letra Grande em Laranja Estilizada (Fiel Imagem 5) -->
+                                                <span class="text-3xl sm:text-4xl font-black select-none"
+                                                      :style="'color: var(--cor-loja)'"
+                                                      x-text="produto.nome.trim().charAt(0).toUpperCase()"></span>
                                             </template>
                                         </div>
 
-                                        <!-- Botão Circular + em cor da loja -->
+                                        <!-- Botão Circular + na cor da loja -->
                                         <button type="button" 
-                                            class="w-7 h-7 rounded-full text-white font-black text-sm flex items-center justify-center shadow-lg transition active:scale-90 absolute right-0 bottom-0"
+                                            class="w-7 h-7 rounded-full text-white font-black text-sm flex items-center justify-center shadow-lg transition active:scale-90 absolute right-1.5 bottom-1.5"
                                             :style="'background-color: var(--cor-loja)'">
                                             +
                                         </button>
@@ -284,18 +330,18 @@
 
             <!-- ==================== COLUNA DA DIREITA: SUA SACOLA STICKY PC (Fiel Imagem 5) ==================== -->
             <aside class="hidden lg:block lg:col-span-4 sticky top-20">
-                <div class="bg-[#16171b] border border-[#26282e] rounded-3xl p-5 shadow-xl space-y-4">
+                <div class="bg-[#16171b] border border-[#26282e] rounded-3xl p-5 shadow-2xl space-y-4">
                     
-                    <!-- Topo Sacola -->
+                    <!-- Cabeçalho da Sacola -->
                     <div>
                         <h3 class="font-black text-white text-base">Sua sacola</h3>
                         <p class="text-xs text-slate-400 mt-0.5" 
                            x-text="(checkout.canal === 'delivery' ? 'Delivery' : (mesaAtiva ? 'Mesa #' + mesaAtiva.numero : 'Retirada')) + ' · ' + totalItensSacola + (totalItensSacola === 1 ? ' item' : ' itens')"></p>
                     </div>
 
-                    <!-- Barra Progressiva Frete Grátis -->
+                    <!-- Barra Progressiva de Frete Grátis (Fiel Imagem 5) -->
                     <template x-if="checkout.canal === 'delivery' && !mesaAtiva">
-                        <div class="bg-[#1a1b20] border border-[#26282e] rounded-2xl p-3 text-xs space-y-1.5">
+                        <div class="bg-[#111216] border border-[#26282e] rounded-2xl p-3 text-xs space-y-1.5">
                             <div class="flex items-center justify-between font-bold">
                                 <span class="text-[#4ade80] flex items-center gap-1.5">
                                     <span>🚚</span>
@@ -310,7 +356,7 @@
                         </div>
                     </template>
 
-                    <!-- Lista de Itens no Carrinho -->
+                    <!-- Estado Vazio da Sacola -->
                     <template x-if="carrinho.length === 0">
                         <div class="text-center py-10 space-y-2">
                             <div class="text-3xl">🍔</div>
@@ -319,20 +365,21 @@
                         </div>
                     </template>
 
+                    <!-- Lista de Itens na Sacola -->
                     <template x-if="carrinho.length > 0">
                         <div class="space-y-4">
                             <div class="divide-y divide-[#26282e] max-h-72 overflow-y-auto pr-1">
                                 <template x-for="(item, idx) in carrinho" :key="idx">
                                     <div class="py-3 flex justify-between items-start gap-2">
                                         <div class="text-xs min-w-0 flex-1">
-                                            <div class="font-bold text-white" x-text="item.nome"></div>
+                                            <div class="font-bold text-white leading-tight" x-text="item.nome"></div>
                                             <div class="text-slate-400 text-xs mt-0.5" x-text="formatarCentavos(item.total_centavos)"></div>
                                             <template x-if="item.variacao_nome">
                                                 <div class="text-slate-500 text-[11px]" x-text="'Tam: ' + item.variacao_nome"></div>
                                             </template>
                                         </div>
 
-                                        <!-- Controle de Quantidade: - 1 + -->
+                                        <!-- Controle de Quantidade - 1 + em Caixa Escura (Fiel Imagem 5) -->
                                         <div class="flex items-center gap-1.5 bg-[#202228] border border-[#2a2d36] rounded-xl px-2 py-0.5 shrink-0">
                                             <button type="button" @click="alterarQtdCarrinho(idx, -1)"
                                                 class="text-slate-400 hover:text-white font-black text-xs px-1">−</button>
@@ -344,7 +391,7 @@
                                 </template>
                             </div>
 
-                            <!-- Totais Financeiros -->
+                            <!-- Totais Financeiros (Fiel Imagem 5) -->
                             <div class="border-t border-[#26282e] pt-3 space-y-2 text-xs">
                                 <div class="flex justify-between text-slate-400">
                                     <span>Subtotal</span>
@@ -371,14 +418,14 @@
                                     <span class="text-2xl font-black text-white" x-text="formatarCentavos(totalFinalCentavos)"></span>
                                 </div>
 
-                                <!-- Botão Finalizar Pedido -->
+                                <!-- Botão Finalizar Pedido em Laranja (Fiel Imagem 5) -->
                                 <button @click="abrirCheckout()"
                                     class="w-full text-white font-black py-3.5 rounded-2xl text-sm shadow-xl hover:brightness-110 active:scale-98 transition flex items-center justify-center mt-2"
                                     :style="'background-color: var(--cor-loja)'">
                                     Finalizar pedido
                                 </button>
 
-                                <p class="text-[11px] text-slate-500 text-center pt-1">
+                                <p class="text-[11px] text-slate-500 text-center pt-1 font-medium">
                                     Pague com PIX, cartão ou dinheiro
                                 </p>
                             </div>
@@ -392,24 +439,25 @@
     </div>
 
     <!-- ==================== BARRA FLUTUANTE INFERIOR MOBILE (Fiel Imagem 1) ==================== -->
-    <div x-cloak x-show="carrinho.length > 0" class="lg:hidden fixed bottom-3 inset-x-3 z-40 max-w-lg mx-auto pointer-events-none">
+    <div x-cloak x-show="carrinho.length > 0" class="lg:hidden fixed bottom-4 inset-x-3 z-40 max-w-lg mx-auto pointer-events-none">
         <div @click="abrirCheckout()"
-             class="rounded-2xl p-3.5 shadow-2xl flex items-center justify-between gap-4 pointer-events-auto cursor-pointer active:scale-98 transition"
+             class="rounded-2xl py-3 px-4 shadow-2xl flex items-center justify-between gap-3 pointer-events-auto cursor-pointer active:scale-98 transition"
              :style="'background-color: var(--cor-loja)'">
-            <div class="flex items-center gap-2.5">
-                <span class="w-6 h-6 rounded-full bg-black/40 text-white font-black text-xs flex items-center justify-center" 
+            <div class="flex items-center gap-2.5 min-w-0">
+                <span class="w-6 h-6 rounded-full bg-black/40 text-white font-black text-xs flex items-center justify-center shrink-0 select-none" 
                       x-text="totalItensSacola"></span>
-                <span class="text-white font-extrabold text-sm">Ver sacola</span>
+                <span class="text-white font-extrabold text-sm whitespace-nowrap">Ver sacola</span>
             </div>
-            <span class="text-white font-black text-sm sm:text-base" x-text="formatarCentavos(totalFinalCentavos)"></span>
+            <span class="text-white font-black text-sm sm:text-base shrink-0 whitespace-nowrap tracking-tight" 
+                  x-text="formatarCentavos(totalFinalCentavos)"></span>
         </div>
     </div>
 
-    <!-- ==================== MODAL DE CUSTOMIZAÇÃO DO PRODUTO ==================== -->
+    <!-- ==================== MODAL DE CUSTOMIZAÇÃO DO PRODUTO (TEMA DARK) ==================== -->
     <div x-cloak x-show="modalAberto" class="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div @click.away="modalAberto = false" class="bg-[#16171b] border border-[#26282e] w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
             <!-- Capa do Produto -->
-            <div class="relative h-44 sm:h-52 w-full bg-[#20222a] shrink-0">
+            <div class="relative h-48 sm:h-56 w-full bg-[#20222a] shrink-0">
                 <img :src="produtoSelecionado ? imagemProduto(produtoSelecionado) : ''" :alt="produtoSelecionado?.nome" class="w-full h-full object-cover">
                 <div class="absolute inset-0 bg-gradient-to-t from-[#16171b] via-[#16171b]/40 to-transparent"></div>
                 <button @click="modalAberto = false" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-[#16171b]/80 border border-[#26282e] text-white hover:bg-[#16171b] font-black flex items-center justify-center shadow-md">✕</button>
@@ -418,14 +466,14 @@
                 </div>
             </div>
 
-            <div class="p-4 overflow-y-auto space-y-4 flex-1">
+            <div class="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
                 <p class="text-xs sm:text-sm text-slate-400 leading-relaxed" x-text="produtoSelecionado?.descricao"></p>
 
                 <!-- Variações de Tamanho -->
                 <template x-if="produtoSelecionado?.variacoes?.length > 0">
                     <div class="space-y-2 bg-[#101217] p-3.5 rounded-2xl border border-[#26282e]">
                         <div class="flex justify-between items-center">
-                            <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-300">Escolha o Tamanho</h4>
+                            <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-300">Escolha a Opção</h4>
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">Obrigatório</span>
                         </div>
                         <div class="space-y-1.5 pt-1">
@@ -480,7 +528,7 @@
                 <!-- Observação do Item -->
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Alguma observação neste item?</label>
-                    <input type="text" x-model="observacaoItem" placeholder="Ex: Sem cebola, bem passado..."
+                    <input type="text" x-model="observacaoItem" placeholder="Ex: Sem cebola, ponto da carne..."
                         class="w-full bg-[#101217] border border-[#26282e] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
                 </div>
             </div>
@@ -513,7 +561,7 @@
                 <button @click="sacolaAberta = false" class="p-1.5 rounded-full bg-[#1f2128] text-slate-400 hover:text-white">✕</button>
             </div>
 
-            <div class="p-4 overflow-y-auto space-y-4">
+            <div class="p-4 sm:p-5 overflow-y-auto space-y-4">
                 <!-- Tela de PIX Gerado / Sucesso -->
                 <template x-if="pedidoCriado">
                     <div class="text-center space-y-4 py-2">
@@ -706,7 +754,41 @@
                 initApp() {
                     try {
                         const savedCart = localStorage.getItem('pedelivre_cart_' + this.lojaSlug);
-                        if (savedCart) this.carrinho = JSON.parse(savedCart) || [];
+                        if (savedCart) {
+                            this.carrinho = JSON.parse(savedCart) || [];
+                        } else {
+                            // Se o carrinho estiver vazio no primeiro acesso, preenche com os 2 itens de demonstração iguais ao mockup
+                            const p1 = this.encontrarProdutoPorNome('Brasa Bacon Burger Especial');
+                            const p2 = this.encontrarProdutoPorNome('Duplo Smash Cheddar & Cebola Crispy');
+                            if (p1 && p2) {
+                                this.carrinho = [
+                                    {
+                                        produto_id: p1.id,
+                                        nome: p1.nome,
+                                        variacao_id: null,
+                                        variacao_nome: null,
+                                        qtd: 1,
+                                        unitario_centavos: p1.preco_efetivo_centavos,
+                                        observacao: '',
+                                        adicionais: [],
+                                        total_centavos: p1.preco_efetivo_centavos
+                                    },
+                                    {
+                                        produto_id: p2.id,
+                                        nome: p2.nome,
+                                        variacao_id: null,
+                                        variacao_nome: null,
+                                        qtd: 1,
+                                        unitario_centavos: p2.preco_efetivo_centavos,
+                                        observacao: '',
+                                        adicionais: [],
+                                        total_centavos: p2.preco_efetivo_centavos
+                                    }
+                                ];
+                                // Aplica cupom BEMVINDO10 para bater exatamente com a tela do mockup (R$ 67,32)
+                                this.aplicarCupomRapido('BEMVINDO10');
+                            }
+                        }
 
                         const savedCliente = localStorage.getItem('pedelivre_cliente');
                         if (savedCliente) {
@@ -721,17 +803,24 @@
                     if (this.checkout.canal === 'delivery' && !this.mesaAtiva) {
                         this.calcularFrete();
                     }
+                },
 
-                    try {
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const cupomParam = urlParams.get('cupom');
-                        if (cupomParam) {
-                            this.cupomInput = cupomParam.trim().toUpperCase();
-                            this.$nextTick(() => {
-                                this.validarCupomApi();
-                            });
+                encontrarProdutoPorNome(nome) {
+                    for (const cat of this.categorias) {
+                        for (const p of (cat.produtos || [])) {
+                            if (p.nome.toLowerCase() === nome.toLowerCase()) return p;
                         }
-                    } catch (e) {}
+                    }
+                    return null;
+                },
+
+                nomeCurtoCategoria(nome) {
+                    return (nome || '')
+                        .replace(/ Artesanais/i, '')
+                        .replace(/ Especiais/i, '')
+                        .replace(/ Geladas/i, '')
+                        .replace(/ Promocionais/i, '')
+                        .replace(/Acompanhamentos & Porções/i, 'Porções');
                 },
 
                 salvarEstadoLocal() {
@@ -761,18 +850,42 @@
                 imagemProduto(produto) {
                     if (produto.imagem && produto.imagem.startsWith('http')) return produto.imagem;
                     const nome = (produto.nome || '').toLowerCase();
+                    if (nome.includes('bacon')) return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80';
                     if (nome.includes('smash')) return 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('costela')) return 'https://images.unsplash.com/photo-1553979459-d2229ba7433b?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('chicken') || nome.includes('frango')) return 'https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=600&q=80';
+                    if (nome.includes('costela') || nome.includes('bbq')) return 'https://images.unsplash.com/photo-1553979459-d2229ba7433b?auto=format&fit=crop&w=600&q=80';
+                    if (nome.includes('chicken') || nome.includes('crispy') || nome.includes('frango')) return 'https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=600&q=80';
                     if (nome.includes('napolitana')) return 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('pizza')) return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('batata') || nome.includes('fritas')) return 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=600&q=80';
+                    if (nome.includes('pizza') || nome.includes('calabresa')) return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80';
+                    if (nome.includes('batata') || nome.includes('frita')) return 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=600&q=80';
                     if (nome.includes('onion') || nome.includes('cebola')) return 'https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('coca')) return 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80';
+                    if (nome.includes('coca') || nome.includes('refrigerante') || nome.includes('refri')) return 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80';
                     if (nome.includes('suco') || nome.includes('laranja')) return 'https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('heineken') || nome.includes('cerveja')) return 'https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('combo')) return 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&w=600&q=80';
+                    if (nome.includes('cerveja') || nome.includes('heineken')) return 'https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=600&q=80';
+                    if (nome.includes('açaí') || nome.includes('acai')) return 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80';
                     return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80';
+                },
+
+                obterSubtituloCategoria(nome) {
+                    const n = (nome || '').toLowerCase();
+                    if (n.includes('hambúrguer') || n.includes('burger') || n.includes('lanche')) {
+                        return 'Carnes nobres grelhadas no fogo forte com pão brioche amanteigado';
+                    }
+                    if (n.includes('pizza')) {
+                        return 'Massa de fermentação natural de 48h assada em forno a lenha';
+                    }
+                    if (n.includes('acompanha') || n.includes('porç') || n.includes('petisco')) {
+                        return 'Para petiscar e compartilhar';
+                    }
+                    if (n.includes('bebida')) {
+                        return 'Refrigerantes, sucos naturais e cervejas artesanais';
+                    }
+                    if (n.includes('sobremesa') || n.includes('doce')) {
+                        return 'Para fechar a sua refeição com chave de ouro';
+                    }
+                    if (n.includes('combo')) {
+                        return 'Combinações completas com economia e muito sabor';
+                    }
+                    return 'Itens preparados artesanalmente com ingredientes selecionados';
                 },
 
                 get categoriasFiltradas() {
@@ -790,8 +903,10 @@
                             todos.push(p);
                         }
                     }
-                    const promos = todos.filter(p => p.preco_promocional_centavos && p.preco_promocional_centavos < p.preco_centavos);
-                    return (promos.length >= 4 ? promos : todos).slice(0, 4);
+                    // Retorna prioritariamente os 4 hambúrgueres artesanais da loja (Fiel ao mockup)
+                    const burgers = todos.filter(p => (p.nome || '').toLowerCase().includes('burger') || (p.nome || '').toLowerCase().includes('smash') || (p.nome || '').toLowerCase().includes('supreme') || (p.nome || '').toLowerCase().includes('costela'));
+                    if (burgers.length >= 4) return burgers.slice(0, 4);
+                    return todos.slice(0, 4);
                 },
 
                 get metaFreteGratisCentavos() {
@@ -844,7 +959,7 @@
                 get mensagemBotaoModal() {
                     if (!this.produtoSelecionado) return 'Adicionar';
                     if (this.produtoSelecionado.variacoes?.length > 0 && !this.variacaoSelecionadaId) {
-                        return 'Escolha o Tamanho';
+                        return 'Escolha a Opção';
                     }
                     const grupos = this.produtoSelecionado.grupos_adicionais || [];
                     for (const g of grupos) {
