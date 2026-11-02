@@ -51,16 +51,16 @@
             object-fit: cover;
         }
         .cover-banner {
-            height: 220px;
+            height: 180px;
         }
         @media (min-width: 640px) {
             .cover-banner {
-                height: 280px;
+                height: 260px;
             }
         }
         @media (min-width: 1024px) {
             .cover-banner {
-                height: 320px;
+                height: 300px;
             }
         }
     </style>
@@ -118,25 +118,25 @@
     <!-- ============================================================== -->
     <!-- CONTAINER PRINCIPAL DO CONTEÚDO                                -->
     <!-- ============================================================== -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-7 -mt-16 sm:-mt-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-7 -mt-12 sm:-mt-20">
 
         <!-- ============================================================== -->
         <!-- 2. IDENTIDADE DA LOJA (LOGO FLUTUANTE + INFO + CANAL)          -->
         <!-- ============================================================== -->
         <header class="bg-[#13141a]/95 backdrop-blur-xl border border-[#232631] rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
                 
                 <!-- Logo & Dados Principais -->
-                <div class="flex items-start sm:items-center gap-4">
+                <div class="flex items-center gap-3.5 sm:gap-4">
                     <!-- Logo / Avatar da Loja com Borda Grossa e Sombra -->
                     <div class="relative shrink-0">
                         @if($loja->logo && str_starts_with($loja->logo, 'http'))
                             <img src="{{ $loja->logo }}" alt="{{ $loja->nome }}" 
-                                 style="width: 80px; height: 80px; min-width: 80px;" 
-                                 class="rounded-2xl object-cover shadow-2xl border-4 border-[#13141a] bg-[#1a1c24]">
+                                 style="width: 72px; height: 72px; min-width: 72px;" 
+                                 class="sm:w-20 sm:h-20 rounded-2xl object-cover shadow-2xl border-4 border-[#13141a] bg-[#1a1c24]">
                         @else
-                            <div style="width: 80px; height: 80px; min-width: 80px; background-color: var(--cor-loja);"
-                                 class="rounded-2xl shadow-2xl border-4 border-[#13141a] flex items-center justify-center text-white font-black text-3xl">
+                            <div style="width: 72px; height: 72px; min-width: 72px; background-color: var(--cor-loja);"
+                                 class="sm:w-20 sm:h-20 rounded-2xl shadow-2xl border-4 border-[#13141a] flex items-center justify-center text-white font-black text-2xl sm:text-3xl">
                                 {{ substr($loja->nome, 0, 1) }}
                             </div>
                         @endif
@@ -144,15 +144,15 @@
                     </div>
 
                     <div class="min-w-0 flex-1">
-                        <div class="flex items-center justify-between gap-2">
-                            <h1 class="text-lg sm:text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight truncate">{{ $loja->nome }}</h1>
-                            <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
+                        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <h1 class="text-base sm:text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight">{{ $loja->nome }}</h1>
+                            <span class="text-[11px] sm:text-xs font-bold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
                                 <span>⭐</span> 4.9
                             </span>
                         </div>
 
                         <!-- Metadados: Categoria, Tempo, Entrega e Endereço -->
-                        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-slate-300 mt-1.5 font-medium">
+                        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-slate-300 mt-1 font-medium">
                             <span class="flex items-center gap-1 text-slate-300">
                                 <span>⏱️</span>
                                 <span>{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }}–45 min</span>
