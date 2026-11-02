@@ -269,15 +269,15 @@
 
                 tituloModulo() {
                     const map = {
-                        pedidos: 'Gestão de Pedidos em Tempo Real & PDV',
-                        catalogo: 'Cardápio, Promoções, Cupons & Estoque Rápido',
-                        kds: 'KDS — Produção por Estação na Cozinha',
-                        mesas: 'Mesas, Comandas & Divisão de Conta',
-                        entregas: 'Logística: Entregadores & Taxas de Frete',
-                        crm: 'CRM, Fidelidade Cashback & Recuperação WhatsApp',
-                        financeiro: 'Frente de Caixa, Relatórios & PIX Mercado Pago',
-                        whatsapp: 'WhatsApp Integrado, Notificações & Bot Anti-Ansiedade',
-                        config: 'Configurações da Loja & Identidade Visual'
+                        pedidos: 'Pedidos',
+                        catalogo: 'Cardápio e cupons',
+                        kds: 'Cozinha',
+                        mesas: 'Mesas e comandas',
+                        entregas: 'Entregas e motoboys',
+                        crm: 'Clientes e CRM',
+                        financeiro: 'Caixa e PIX',
+                        whatsapp: 'WhatsApp e Bot',
+                        config: 'Loja e horários'
                     };
                     return map[this.moduloAtivo] || 'Painel PedeLivre';
                 },
