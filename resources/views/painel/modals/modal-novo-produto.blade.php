@@ -21,6 +21,7 @@
                             <option value="forno">🍕 Forno / Pizzas</option>
                             <option value="fritadeira">🍟 Fritadeira / Porções</option>
                             <option value="bar">🥤 Bar / Bebidas</option>
+                            <option value="sobremesa">🍨 Sobremesas / Açaí</option>
                             <option value="geral">👨‍🍳 Cozinha Geral</option>
                         </select>
                     </div>
@@ -67,8 +68,73 @@
                     </template>
                 </div>
 
+                <!-- Vínculo com Grupos de Adicionais -->
+                <template x-if="gruposAdicionais && gruposAdicionais.length > 0">
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+                        <span class="font-bold text-slate-300 block">➕ Vincular Grupos de Adicionais a este Produto</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            <template x-for="g in gruposAdicionais" :key="g.id">
+                                <label class="flex items-center gap-2 p-2 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer">
+                                    <input type="checkbox" :value="g.id" x-model="novoProd.grupos_adicionais" class="rounded text-rose-600">
+                                    <span class="text-white font-semibold truncate" x-text="g.nome"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
                 <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3 rounded-xl text-sm shadow-lg">
                     Salvar no Cardápio
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Criação / Edição de Grupo de Adicionais -->
+    <div x-cloak x-show="modalGrupoAdicional" class="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div @click.away="modalGrupoAdicional = false" class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-base text-white" x-text="formGrupoAdicional.id ? '✏️ Editar Grupo de Adicionais' : '➕ Novo Grupo de Adicionais'"></h3>
+                <button @click="modalGrupoAdicional = false" class="text-slate-400 font-bold">✕</button>
+            </div>
+            <form @submit.prevent="salvarGrupoAdicional()" class="space-y-3 text-xs">
+                <div>
+                    <label class="font-bold text-slate-400 block mb-1">Nome do Grupo * (Ex: Escolha a Borda, Adicionais Extras, Ponto da Carne)</label>
+                    <input type="text" x-model="formGrupoAdicional.nome" required placeholder="Ex: Adicionais do Burger" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold">
+                </div>
+                <div class="grid grid-cols-3 gap-2.5">
+                    <div>
+                        <label class="font-bold text-slate-400 block mb-1">Mín. Escolhas</label>
+                        <input type="number" min="0" x-model.number="formGrupoAdicional.min_escolhas" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="font-bold text-slate-400 block mb-1">Máx. Escolhas</label>
+                        <input type="number" min="1" x-model.number="formGrupoAdicional.max_escolhas" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                    </div>
+                    <div class="flex items-end pb-2">
+                        <label class="flex items-center gap-2 text-white font-bold cursor-pointer">
+                            <input type="checkbox" x-model="formGrupoAdicional.obrigatorio" class="rounded text-rose-600">
+                            <span>Obrigatório</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-slate-300">Opções do Grupo</span>
+                        <button type="button" @click="formGrupoAdicional.opcoes.push({ nome: '', preco_reais: '0,00' })" class="text-amber-400 font-bold hover:underline">+ Opção</button>
+                    </div>
+                    <template x-for="(op, idx) in formGrupoAdicional.opcoes" :key="idx">
+                        <div class="flex gap-2 items-center">
+                            <input type="text" x-model="op.nome" required placeholder="Ex: Bacon Extra" class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white">
+                            <input type="text" x-model="op.preco_reais" placeholder="5,00" class="w-24 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-emerald-400 font-bold">
+                            <button type="button" @click="formGrupoAdicional.opcoes.splice(idx, 1)" class="text-rose-400 font-bold px-2">✕</button>
+                        </div>
+                    </template>
+                </div>
+
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-sm shadow-lg">
+                    Salvar Grupo de Adicionais
                 </button>
             </form>
         </div>

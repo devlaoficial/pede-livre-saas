@@ -1,4 +1,4 @@
-<!-- Header Superior Compacto (Design Claude Fiel) -->
+<!-- Header Superior Compacto -->
 <header class="bg-[#0b0f19] border-b border-[#151b2b] px-4 lg:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between shrink-0 gap-3">
     <!-- Título e Subtítulo Data -->
     <div class="min-w-0">
@@ -8,11 +8,14 @@
 
     <!-- Controles & Badges da Direita -->
     <div class="flex flex-wrap items-center gap-2 shrink-0">
-        <!-- Status Loja Aberta -->
-        <div class="bg-[#131927] border border-[#1e2638] px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Loja aberta</span>
-        </div>
+        <!-- Botão Interativo: Abrir / Fechar Loja -->
+        <button @click="alternarStatusLojaAberta()"
+            title="Clique para abrir ou pausar o recebimento de pedidos no cardápio digital"
+            class="bg-[#131927] border px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition"
+            :class="lojaAbertaManual !== false ? 'border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10' : 'border-rose-500/40 text-rose-300 hover:bg-rose-500/10'">
+            <span class="w-2 h-2 rounded-full" :class="lojaAbertaManual !== false ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'"></span>
+            <span x-text="lojaAbertaManual !== false ? 'Loja aberta' : 'Loja pausada'"></span>
+        </button>
 
         <!-- Status WhatsApp -->
         <button @click="mudarModulo('whatsapp')"

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Operacao\Controllers;
 
 use App\Domain\Operacao\Models\Horario;
-use App\Domain\Operacao\Policies\HorarioPolicy;
 use App\Domain\Operacao\Requests\SalvarHorarioRequest;
 use App\Domain\Operacao\Resources\HorarioResource;
 use App\Support\Tenancy\LojaContext;
@@ -33,7 +32,7 @@ final class HorarioController
     }
 
     /**
-     * Bulk save or sync weekly shifts for the store.
+     * Bulk save or sync weekly shifts for the store (replaces existing shifts for submitted channels cleanly).
      */
     public function salvarTurnos(SalvarHorarioRequest $request): JsonResponse
     {
@@ -43,14 +42,23 @@ final class HorarioController
         $lojaId = (int) $this->context->getLojaId();
 
         DB::transaction(function () use ($turnos, $lojaId): void {
-            // Replace shifts for submitted channels and days
+            $canaisSubmetidos = array_values(array_unique(array_column($turnos, 'canal')));
+            if (!empty($canaisSubmetidos)) {
+                Horario::where('loja_id', $lojaId)
+                    ->whereIn('canal', $canaisSubmetidos)
+                    ->delete();
+            }
+
             foreach ($turnos as $turno) {
+                $abre = strlen($turno['abre']) === 5 ? $turno['abre'] . ':00' : $turno['abre'];
+                $fecha = strlen($turno['fecha']) === 5 ? $turno['fecha'] . ':00' : $turno['fecha'];
+
                 Horario::create([
                     'loja_id' => $lojaId,
                     'canal' => $turno['canal'],
-                    'dia_semana' => $turno['dia_semana'],
-                    'abre' => $turno['abre'] . ':00',
-                    'fecha' => $turno['fecha'] . ':00',
+                    'dia_semana' => (int) $turno['dia_semana'],
+                    'abre' => $abre,
+                    'fecha' => $fecha,
                 ]);
             }
         });

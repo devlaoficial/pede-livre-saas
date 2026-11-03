@@ -38,7 +38,7 @@
           }
       }">
 
-    <!-- ==================== NAVBAR (DESIGN CLAUDE FIEL) ==================== -->
+    <!-- ==================== NAVBAR ==================== -->
     <header class="sticky top-0 z-50 bg-[#0b0f19]/90 backdrop-blur-md border-b border-[#171e30]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 py-3.5 flex items-center justify-between">
             <!-- Logo -->
@@ -88,42 +88,37 @@
         </div>
     </header>
 
-    <!-- ==================== HERO SECTION (Fiel Imagem 4) ==================== -->
+    <!-- ==================== HERO SECTION ==================== -->
     <section class="relative pt-12 pb-16 lg:pt-20 lg:pb-24 overflow-hidden">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-12 gap-12 items-center">
             
             <!-- Texto do Hero -->
             <div class="lg:col-span-7 space-y-6">
-                <!-- Pill Notificação -->
                 <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#151c2e] border border-[#212b44] text-slate-300 text-xs font-semibold">
                     <span class="w-2 h-2 rounded-full bg-[#f43f5e]"></span>
                     <span>0% comissão · Sem taxas por venda</span>
                 </div>
 
-                <!-- Título Hero -->
                 <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.08]">
                     Venda pelo seu canal. <br>
                     <span class="text-[#f43f5e]">Fique com 100% do lucro.</span>
                 </h1>
 
-                <!-- Subtítulo -->
                 <p class="text-sm sm:text-base text-slate-400 max-w-xl leading-relaxed">
                     Cardápio digital com PIX na hora, PDV de balcão, KDS para a cozinha e CRM com WhatsApp. Tudo integrado, sem mensalidades escondidas e sem intermediários.
                 </p>
 
-                <!-- Botões de Ação -->
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
                     <a href="/cadastro?plano=premium" 
                        class="bg-[#e11d48] hover:bg-[#be123c] text-white font-black px-6 py-3.5 rounded-2xl text-xs sm:text-sm text-center shadow-xl shadow-rose-600/30 transition active:scale-95">
                         Criar minha loja grátis
                     </a>
-                    <a href="/p/brasa-artesanal" 
+                    <a href="#recursos" 
                        class="bg-[#121624] hover:bg-[#181d30] text-slate-200 border border-[#1e273c] font-bold px-6 py-3.5 rounded-2xl text-xs sm:text-sm text-center transition">
-                        Ver cardápio de exemplo
+                        Conhecer todos os recursos
                     </a>
                 </div>
 
-                <!-- Micro Copy -->
                 <div class="flex items-center gap-2 text-xs text-slate-500 pt-2">
                     <span>14 dias grátis</span>
                     <span>·</span>
@@ -133,10 +128,9 @@
                 </div>
             </div>
 
-            <!-- Card Mockup de Demonstração (Fiel Imagem 4) -->
+            <!-- Card Demonstrativo -->
             <div class="lg:col-span-5">
                 <div class="bg-[#121624] border border-[#1e2638] rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative">
-                    <!-- Topo Card Mockup -->
                     <div class="flex items-center justify-between border-b border-[#1e2638] pb-3">
                         <span class="text-xs font-bold text-white">Pedido confirmado</span>
                         <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-black px-2.5 py-0.5 rounded-md">
@@ -144,7 +138,6 @@
                         </span>
                     </div>
 
-                    <!-- Lista de Itens -->
                     <div class="space-y-2.5 text-xs">
                         <div class="flex justify-between items-center text-slate-300">
                             <span>1x Smash Burger Especial</span>
@@ -160,13 +153,11 @@
                         </div>
                     </div>
 
-                    <!-- Total -->
                     <div class="pt-3 border-t border-[#1e2638] flex justify-between items-baseline">
                         <span class="font-bold text-xs text-slate-400">Total:</span>
                         <span class="text-xl font-black text-white">R$ 63,80</span>
                     </div>
 
-                    <!-- Notificação PIX Recebido -->
                     <div class="bg-[#102920] border border-emerald-500/30 rounded-2xl p-3 flex items-center gap-2.5 text-xs text-emerald-400 font-bold">
                         <span class="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-[11px] shrink-0">✓</span>
                         <span>PIX recebido na sua conta em 3s</span>
@@ -177,7 +168,7 @@
         </div>
     </section>
 
-    <!-- ==================== BARRA DE CONFIANÇA / 4 STATS (Fiel Imagem 4) ==================== -->
+    <!-- ==================== BARRA DE CONFIANÇA / 4 STATS ==================== -->
     <section class="border-y border-[#171e30] bg-[#090d16]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <div>
@@ -199,12 +190,11 @@
         </div>
     </section>
 
-    <!-- ==================== CALCULADORA INTERATIVA DE ECONOMIA (Fiel Imagem 4) ==================== -->
+    <!-- ==================== CALCULADORA INTERATIVA DE ECONOMIA ==================== -->
     <section id="calculadora" class="py-16 lg:py-24">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid lg:grid-cols-12 gap-10 items-center">
                 
-                <!-- Esquerda: Sliders e Descrição -->
                 <div class="lg:col-span-6 space-y-5">
                     <span class="text-[10px] font-extrabold uppercase tracking-widest text-[#f43f5e]">CALCULADORA</span>
                     <h2 class="text-2xl sm:text-4xl font-black text-white leading-tight">
@@ -214,7 +204,6 @@
                         Veja quanto você economiza ao substituir as taxas abusivas dos marketplaces (12% a 27%) pelo PedeLivre com taxa ZERO.
                     </p>
 
-                    <!-- Slider 1: Faturamento Mensal -->
                     <div class="space-y-2 pt-2">
                         <div class="flex justify-between text-xs">
                             <span class="font-bold text-slate-300">Faturamento mensal no delivery:</span>
@@ -224,7 +213,6 @@
                             class="w-full accent-[#f43f5e] cursor-pointer">
                     </div>
 
-                    <!-- Slider 2: Taxa dos Apps -->
                     <div class="space-y-2 pt-1">
                         <div class="flex justify-between text-xs">
                             <span class="font-bold text-slate-300">Taxa média cobrada pelos apps:</span>
@@ -241,7 +229,6 @@
                     </div>
                 </div>
 
-                <!-- Direita: Card Resumo da Economia (Fiel Imagem 4) -->
                 <div class="lg:col-span-6">
                     <div class="bg-[#121624] border border-[#1e2638] rounded-3xl p-6 sm:p-8 space-y-4 shadow-2xl">
                         <span class="text-xs font-bold text-slate-400 block">Com o PedeLivre você fica com 100%</span>
@@ -272,7 +259,7 @@
         </div>
     </section>
 
-    <!-- ==================== GRID DE RECURSOS / TUDO INCLUSO (Fiel Imagem 4) ==================== -->
+    <!-- ==================== GRID DE RECURSOS / TUDO INCLUSO ==================== -->
     <section id="recursos" class="py-16 bg-[#090d16] border-t border-[#171e30]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
             
@@ -286,84 +273,62 @@
                 </p>
             </div>
 
-            <!-- Grid 3x2 (Fiel Imagem 4) -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                
-                <!-- Recurso 1 -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base">
-                        🍔
-                    </div>
+                    <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base">🍔</div>
                     <h3 class="font-black text-sm text-white">Cardápio digital com PIX</h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
-                        Cardápio próprio com link curto, fotos, adicionais, QR code de mesa e PIX com confirmação em segundos.
+                        Cardápio próprio com link curto, fotos WebP, adicionais, Order Bump no checkout, QR code de mesa e PIX direto na sua conta.
                     </p>
                 </div>
 
-                <!-- Recurso 2 -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-rose-500/20 text-[#f43f5e] flex items-center justify-center font-bold text-base">
-                        📋
-                    </div>
+                    <div class="w-9 h-9 rounded-xl bg-rose-500/20 text-[#f43f5e] flex items-center justify-center font-bold text-base">📋</div>
                     <h3 class="font-black text-sm text-white">Pedidos no painel</h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
                         Kanban em tempo real com alertas sonoros, filtros por canal e controle total de novos a entregues.
                     </p>
                 </div>
 
-                <!-- Recurso 3 -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-base">
-                        ⚡
-                    </div>
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-base">⚡</div>
                     <h3 class="font-black text-sm text-white">PDV de balcão</h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
                         Lance pedidos presenciais no balcão, comanda de mesa ou telefone com atalhos de teclado rápidos.
                     </p>
                 </div>
 
-                <!-- Recurso 4 -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-base">
-                        👨‍🍳
-                    </div>
+                    <div class="w-9 h-9 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-base">👨‍🍳</div>
                     <h3 class="font-black text-sm text-white">KDS da cozinha</h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
                         Separação por estações (chapa, forno, fritadeira, bar), cronômetro SLA e controle de atrasos.
                     </p>
                 </div>
 
-                <!-- Recurso 5 -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center font-bold text-base">
-                        🛵
-                    </div>
+                    <div class="w-9 h-9 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center font-bold text-base">🛵</div>
                     <h3 class="font-black text-sm text-white">Rota de entrega</h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
-                        Gestão de motoboys próprios, taxa dinâmica por bairro e link de rastreio em tempo real para o cliente.
+                        Gestão de motoboys próprios, taxa dinâmica por bairro ou raio KM e link de rastreio em tempo real para o cliente.
                     </p>
                 </div>
 
-                <!-- Recurso 6 -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-base">
-                        💬
-                    </div>
-                    <h3 class="font-black text-sm text-white">CRM e WhatsApp</h3>
+                    <div class="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-base">💬</div>
+                    <h3 class="font-black text-sm text-white">CRM e WhatsApp IA</h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
-                        Base de clientes com histórico de compras, ticket médio e mensagens automáticas no WhatsApp.
+                        Base de clientes com histórico de compras, cashback automático, campanhas Win-Back e robô de atendimento no WhatsApp.
                     </p>
                 </div>
-
             </div>
 
         </div>
     </section>
 
-    <!-- ==================== SUA LOJA NO AR EM TRÊS PASSOS (Fiel Imagem 4) ==================== -->
+    <!-- ==================== SUA LOJA NO AR EM TRÊS PASSOS ==================== -->
     <section class="py-16">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-            
             <div class="text-center max-w-xl mx-auto space-y-2">
                 <span class="text-[10px] font-extrabold uppercase tracking-widest text-[#f43f5e]">PASSO A PASSO</span>
                 <h2 class="text-2xl sm:text-3xl font-black text-white">
@@ -375,7 +340,7 @@
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-2.5">
                     <div class="w-7 h-7 rounded-lg bg-rose-500/20 text-[#f43f5e] font-black text-xs flex items-center justify-center">1</div>
                     <h3 class="font-black text-sm text-white">Crie sua loja</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">Cadastre seus produtos, fotos e dados do PIX em menos de 10 minutos.</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">Cadastre seus produtos, fotos e sua Chave PIX ou Mercado Pago em menos de 10 minutos.</p>
                 </div>
 
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-2.5">
@@ -390,11 +355,10 @@
                     <p class="text-xs text-slate-400 leading-relaxed">Os pedidos caem direto no painel e o dinheiro vai na hora para sua conta.</p>
                 </div>
             </div>
-
         </div>
     </section>
 
-    <!-- ==================== TABELA COMPARATIVA (Fiel Imagem 4) ==================== -->
+    <!-- ==================== TABELA COMPARATIVA ==================== -->
     <section class="py-16 bg-[#090d16] border-t border-[#171e30]">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             <div class="text-center space-y-2">
@@ -421,7 +385,7 @@
                         <span class="text-slate-400">Até 30 dias</span>
                     </div>
                     <div class="grid grid-cols-3 p-3.5 items-center">
-                        <span class="text-slate-300">PIX Dinâmico com baixa</span>
+                        <span class="text-slate-300">PIX Dinâmico ou Chave Direta</span>
                         <span class="font-black text-emerald-400">Incluso</span>
                         <span class="text-slate-400">Não disponível</span>
                     </div>
@@ -440,7 +404,7 @@
         </div>
     </section>
 
-    <!-- ==================== PLANOS E PREÇOS (Fiel Imagem 4) ==================== -->
+    <!-- ==================== PLANOS E PREÇOS ==================== -->
     <section id="planos" class="py-16 lg:py-24">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
             <div class="text-center space-y-2">
@@ -450,7 +414,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-                
                 <!-- Plano 1: Delivery -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-3xl p-6 flex flex-col justify-between space-y-5 shadow-lg">
                     <div class="space-y-4">
@@ -498,7 +461,7 @@
                     </a>
                 </div>
 
-                <!-- Plano 3: Premium Total (Destaque Fiel Imagem 4) -->
+                <!-- Plano 3: Premium Total -->
                 <div class="bg-[#121624] border-2 border-[#f43f5e] rounded-3xl p-6 flex flex-col justify-between space-y-5 shadow-2xl relative">
                     <span class="absolute -top-3 right-6 bg-[#f43f5e] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                         MAIS POPULAR
@@ -516,7 +479,7 @@
                             <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Tudo do Presencial</span></div>
                             <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Gestão e acerto de motoboys</span></div>
                             <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>CRM e fidelidade de clientes</span></div>
-                            <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Automações WhatsApp</span></div>
+                            <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Automações WhatsApp IA</span></div>
                             <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Múltiplos operadores e caixas</span></div>
                             <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Suporte prioritário VIP</span></div>
                         </div>
@@ -525,12 +488,11 @@
                         Testar 14 dias grátis
                     </a>
                 </div>
-
             </div>
         </div>
     </section>
 
-    <!-- ==================== FAQ ACCORDION (Fiel Imagem 4) ==================== -->
+    <!-- ==================== FAQ ACCORDION ==================== -->
     <section id="faq" class="py-16 bg-[#090d16] border-t border-[#171e30]">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             <div class="text-center space-y-2">
@@ -539,7 +501,6 @@
             </div>
 
             <div class="space-y-3">
-                <!-- FAQ 1 -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-4 cursor-pointer" @click="faqAberta = (faqAberta === 1 ? null : 1)">
                     <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-white">
                         <span>Cobram taxa sobre minhas vendas?</span>
@@ -550,18 +511,16 @@
                     </div>
                 </div>
 
-                <!-- FAQ 2 -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-4 cursor-pointer" @click="faqAberta = (faqAberta === 2 ? null : 2)">
                     <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-white">
                         <span>O dinheiro do PIX cai onde?</span>
                         <span x-text="faqAberta === 2 ? '▲' : '▼'" class="text-xs text-slate-500"></span>
                     </div>
                     <div x-show="faqAberta === 2" class="text-xs text-slate-400 pt-2 leading-relaxed">
-                        Direto na sua conta bancária via Mercado Pago em segundos. Não retemos seu dinheiro em nenhum momento.
+                        Direto na sua conta bancária via Chave PIX própria ou Mercado Pago em segundos. Não retemos seu dinheiro em nenhum momento.
                     </div>
                 </div>
 
-                <!-- FAQ 3 -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-4 cursor-pointer" @click="faqAberta = (faqAberta === 3 ? null : 3)">
                     <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-white">
                         <span>Preciso de computador ou posso usar no celular?</span>
@@ -572,7 +531,6 @@
                     </div>
                 </div>
 
-                <!-- FAQ 4 -->
                 <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-4 cursor-pointer" @click="faqAberta = (faqAberta === 4 ? null : 4)">
                     <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-white">
                         <span>Posso cancelar quando quiser?</span>
@@ -586,7 +544,7 @@
         </div>
     </section>
 
-    <!-- ==================== BANNER FINAL CTA VERMELHO (Fiel Imagem 4) ==================== -->
+    <!-- ==================== BANNER FINAL CTA VERMELHO ==================== -->
     <section class="py-16">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="bg-gradient-to-r from-[#e11d48] to-[#9f1239] rounded-3xl p-8 sm:p-12 text-center space-y-4 shadow-2xl">

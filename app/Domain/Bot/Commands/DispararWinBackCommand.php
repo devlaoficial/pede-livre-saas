@@ -28,7 +28,7 @@ final class DispararWinBackCommand extends Command
             return self::SUCCESS;
         }
 
-        $query = Loja::where('status', 'ativo');
+        $query = Loja::whereIn('status', ['ativa', 'trial']);
         if ($lojaId) {
             $query->where('id', (int) $lojaId);
         }

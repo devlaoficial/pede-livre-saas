@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Catalogo\Services\CardapioCacheService;
 use App\Domain\Catalogo\Services\HorarioFuncionamentoService;
+use App\Domain\Entregas\Models\AreaEntrega;
+use App\Domain\Fidelidade\Models\Avaliacao;
+use App\Domain\Fidelidade\Models\Cupom;
 use App\Domain\Mesas\Models\Mesa;
 use App\Domain\Pedidos\Models\Pedido;
 use App\Support\Tenancy\LojaContext;
@@ -34,11 +37,27 @@ Route::get('/p/{slug}', function (
     $cardapio = $cacheService->getCardapio($loja->id, $canal);
     $lojaStatus = $horarioService->avaliarStatusLoja($loja, $canal);
 
+    $cuponsAtivos = Cupom::where('loja_id', $loja->id)
+        ->where('ativo', true)
+        ->where(fn ($q) => $q->whereNull('validade')->orWhere('validade', '>', now()))
+        ->orderByDesc('id')
+        ->get(['codigo', 'tipo', 'valor', 'pedido_minimo', 'uso_unico_por_cliente']);
+
+    $areasEntrega = AreaEntrega::where('loja_id', $loja->id)
+        ->where('ativa', true)
+        ->orderBy('taxa_centavos')
+        ->get(['id', 'nome', 'tipo', 'bairro_nome', 'taxa_centavos', 'pedido_minimo', 'frete_gratis_acima']);
+
+    $mediaAvaliacao = round((float) (Avaliacao::where('loja_id', $loja->id)->avg('nota') ?: 5.0), 1);
+
     return view('cardapio.index', [
         'loja' => $loja,
         'cardapio' => $cardapio,
         'lojaStatus' => $lojaStatus,
         'mesa' => null,
+        'cuponsAtivos' => $cuponsAtivos,
+        'areasEntrega' => $areasEntrega,
+        'mediaAvaliacao' => $mediaAvaliacao,
     ]);
 })->name('cardapio.publico');
 
@@ -60,6 +79,19 @@ Route::get('/p/{slug}/{prefix}/{token}', function (
     $cardapio = $cacheService->getCardapio($loja->id, 'mesa');
     $lojaStatus = $horarioService->avaliarStatusLoja($loja, 'mesa');
 
+    $cuponsAtivos = Cupom::where('loja_id', $loja->id)
+        ->where('ativo', true)
+        ->where(fn ($q) => $q->whereNull('validade')->orWhere('validade', '>', now()))
+        ->orderByDesc('id')
+        ->get(['codigo', 'tipo', 'valor', 'pedido_minimo', 'uso_unico_por_cliente']);
+
+    $areasEntrega = AreaEntrega::where('loja_id', $loja->id)
+        ->where('ativa', true)
+        ->orderBy('taxa_centavos')
+        ->get(['id', 'nome', 'tipo', 'bairro_nome', 'taxa_centavos', 'pedido_minimo', 'frete_gratis_acima']);
+
+    $mediaAvaliacao = round((float) (Avaliacao::where('loja_id', $loja->id)->avg('nota') ?: 5.0), 1);
+
     return view('cardapio.index', [
         'loja' => $loja,
         'cardapio' => $cardapio,
@@ -70,6 +102,9 @@ Route::get('/p/{slug}/{prefix}/{token}', function (
             'nome' => $mesa->nome,
             'qr_token' => $mesa->qr_token,
         ],
+        'cuponsAtivos' => $cuponsAtivos,
+        'areasEntrega' => $areasEntrega,
+        'mediaAvaliacao' => $mediaAvaliacao,
     ]);
 })->whereIn('prefix', ['m', 'mesa'])->name('cardapio.mesa');
 

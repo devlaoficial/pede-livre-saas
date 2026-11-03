@@ -12,9 +12,13 @@
         <!-- Topo da Loja -->
         <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-4">
             <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-xl bg-rose-600 flex items-center justify-center font-black text-lg text-white">
-                    {{ substr($loja->nome, 0, 1) }}
-                </div>
+                @if($loja->logo_url)
+                    <img src="{{ str_starts_with($loja->logo_url, 'http') || str_starts_with($loja->logo_url, '/') ? $loja->logo_url : '/storage/' . ltrim($loja->logo_url, '/') }}" alt="{{ $loja->nome }}" class="w-11 h-11 rounded-xl object-cover border border-slate-700">
+                @else
+                    <div class="w-11 h-11 rounded-xl bg-rose-600 flex items-center justify-center font-black text-lg text-white">
+                        {{ substr($loja->nome, 0, 1) }}
+                    </div>
+                @endif
                 <div>
                     <h1 class="font-bold text-white text-sm sm:text-base">{{ $loja->nome }}</h1>
                     <p class="text-xs text-slate-400">Pedido <span class="text-rose-400 font-mono font-bold">#{{ $pedido->codigo_publico }}</span> • Canal: <span class="uppercase font-semibold">{{ $pedido->canal }}</span></p>
@@ -74,6 +78,10 @@
                 <div class="flex justify-center">
                     <img src="data:image/png;base64,{{ $pedido->pagamento->pix_qr_base64 }}" alt="QR Code PIX" class="w-48 h-48 bg-white p-2 rounded-2xl">
                 </div>
+            @elseif($pedido->pagamento->pix_copia_cola)
+                <div class="flex justify-center">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={{ urlencode($pedido->pagamento->pix_copia_cola) }}" alt="QR Code PIX" class="w-48 h-48 bg-white p-2 rounded-2xl">
+                </div>
             @endif
             @if($pedido->pagamento->pix_copia_cola)
                 <div class="space-y-2 max-w-md mx-auto">
@@ -104,14 +112,31 @@
                                 @endforeach
                             </div>
                         @endif
+                        @if($item->obs)
+                            <div class="text-xs text-amber-400 mt-0.5">Obs: {{ $item->obs }}</div>
+                        @endif
                     </div>
                     <span class="font-bold text-slate-200">R$ {{ number_format($item->total / 100, 2, ',', '.') }}</span>
                 </div>
                 @endforeach
             </div>
-            <div class="pt-3 border-t border-slate-800 flex justify-between items-center">
-                <span class="text-sm font-bold text-slate-400">Total do Pedido</span>
-                <span class="text-lg font-black text-emerald-400">R$ {{ number_format($pedido->total / 100, 2, ',', '.') }}</span>
+            <div class="pt-3 border-t border-slate-800 space-y-1.5">
+                @if($pedido->taxa_entrega > 0)
+                <div class="flex justify-between items-center text-xs text-slate-400">
+                    <span>Taxa de entrega</span>
+                    <span>R$ {{ number_format($pedido->taxa_entrega / 100, 2, ',', '.') }}</span>
+                </div>
+                @endif
+                @if($pedido->desconto > 0)
+                <div class="flex justify-between items-center text-xs text-emerald-400">
+                    <span>Desconto aplicado</span>
+                    <span>- R$ {{ number_format($pedido->desconto / 100, 2, ',', '.') }}</span>
+                </div>
+                @endif
+                <div class="flex justify-between items-center pt-1">
+                    <span class="text-sm font-bold text-slate-300">Total do Pedido</span>
+                    <span class="text-lg font-black text-emerald-400">R$ {{ number_format($pedido->total / 100, 2, ',', '.') }}</span>
+                </div>
             </div>
         </div>
 
@@ -158,12 +183,16 @@
                                 }
                                 this.status = p.status;
                                 this.pagamentoStatus = p.pagamento_status || this.pagamentoStatus;
-                                if (Array.isArray(p.historico_status)) {
-                                    this.eventos = p.historico_status.map(h => ({
-                                        status_para: h.status,
-                                        observacao: h.observacao,
-                                        horario: h.data ? new Date(h.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''
-                                    }));
+                                const listaEventos = Array.isArray(p.eventos) ? p.eventos : (Array.isArray(p.historico_status) ? p.historico_status : null);
+                                if (listaEventos) {
+                                    this.eventos = listaEventos.map(h => {
+                                        const dt = h.data_hora || h.data || h.created_at;
+                                        return {
+                                            status_para: h.status || h.status_para,
+                                            observacao: h.observacao,
+                                            horario: dt ? new Date(dt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''
+                                        };
+                                    });
                                 }
                             }
                         })

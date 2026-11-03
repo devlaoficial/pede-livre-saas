@@ -18,9 +18,12 @@
                                 <span class="text-lg font-black text-white" x-text="'🪑 Mesa #' + mesa.numero"></span>
                                 <p class="text-xs text-slate-400" x-text="(mesa.nome || 'Salão Principal') + ' • ' + mesa.capacidade + ' lugares'"></p>
                             </div>
-                            <span class="text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full"
-                                :class="mesa.status === 'livre' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'"
-                                x-text="mesa.status"></span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full"
+                                    :class="mesa.status === 'livre' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'"
+                                    x-text="mesa.status"></span>
+                                <button @click="excluirMesa(mesa.id)" title="Excluir Mesa" class="text-xs text-slate-500 hover:text-rose-400 px-1">✕</button>
+                            </div>
                         </div>
 
                         <template x-if="chamadosGarcom.some(c => Number(c.mesa_id) === Number(mesa.id))">

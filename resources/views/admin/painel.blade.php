@@ -74,16 +74,18 @@
 
         <!-- Links Rápidos & Rodapé Sidebar -->
         <div class="p-4 border-t border-slate-800 space-y-2">
-            <a href="/p/brasa-artesanal" target="_blank" class="w-full flex items-center justify-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-2 rounded-xl text-xs font-bold transition">
-                <span>🍔</span> Ver Cardápio Público ↗
-            </a>
+            <template x-if="lojas.length > 0">
+                <a :href="'/p/' + lojas[0].slug" target="_blank" class="w-full flex items-center justify-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-2 rounded-xl text-xs font-bold transition">
+                    <span>🏪</span> <span x-text="'Ver Cardápio: ' + lojas[0].nome"></span> ↗
+                </a>
+            </template>
             <button @click="sair()" class="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 px-3 py-2.5 rounded-xl text-xs font-bold transition">
                 Sair do Painel Master
             </button>
         </div>
     </aside>
 
-    <!-- ÁREA CENTRAL AUTO-ADAPTATIVA (PC Widescreen & Mobile Touch) -->
+    <!-- ÁREA CENTRAL AUTO-ADAPTATIVA -->
     <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
         <!-- Header Superior -->
@@ -101,7 +103,7 @@
 
             <div class="flex items-center gap-2 sm:gap-3">
                 <button @click="modalNovaLoja = true" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-md shadow-rose-600/20 transition">
-                    + Nova Loja
+                    + Nova Loja Cliente
                 </button>
                 <button @click="carregarTudo()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-2 rounded-xl">
                     ↻
@@ -127,7 +129,6 @@
             <!-- ABA 1: VISÃO GERAL & KPIS DO SAAS                         -->
             <!-- ========================================================= -->
             <div x-show="abaAtiva === 'dashboard'" class="space-y-6">
-                <!-- Grade de 6 KPIs Executivos -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-2">
                         <div class="flex items-center justify-between">
@@ -213,8 +214,8 @@
                                 O motor verifica faturas vencidas: envia lembrete com +3 dias, ativa Modo Somente Leitura (HTTP 402) com +7 dias e suspende o cardápio público com +15 dias.
                             </p>
                             <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-1.5 text-xs">
-                                <div class="flex justify-between"><span class="text-slate-400">Mercado Pago Produção:</span><span class="text-emerald-400 font-bold">✓ Ativo (HMAC-SHA256)</span></div>
-                                <div class="flex justify-between"><span class="text-slate-400">Banco de Dados &amp; Cache:</span><span class="text-emerald-400 font-bold">✓ MariaDB + Redis DB 5/6</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Mercado Pago &amp; PIX BCB:</span><span class="text-emerald-400 font-bold">✓ Ativo (HMAC-SHA256)</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Banco de Dados &amp; Cache:</span><span class="text-emerald-400 font-bold">✓ Multi-Tenant Isolado</span></div>
                                 <div class="flex justify-between"><span class="text-slate-400">Criptografia de Dados:</span><span class="text-emerald-400 font-bold">✓ AES-256-GCM + Blind Index</span></div>
                             </div>
                         </div>
@@ -229,11 +230,22 @@
                 <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h2 class="font-bold text-base text-white">Lojas em Operação</h2>
-                            <p class="text-xs text-slate-400">Acesse o painel de qualquer lojista com 1 clique via Impersonação Auditada</p>
+                            <h2 class="font-bold text-base text-white">Lojas Clientes em Operação</h2>
+                            <p class="text-xs text-slate-400">Acesse o painel de qualquer cliente com 1 clique via Impersonação Auditada</p>
                         </div>
                         <button @click="abaAtiva = 'lojas'" class="text-xs font-bold text-rose-400 hover:underline">Ver Todas →</button>
                     </div>
+
+                    <template x-if="lojas.length === 0">
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-8 text-center space-y-3">
+                            <div class="text-3xl">🏪</div>
+                            <h4 class="font-extrabold text-white text-sm">Nenhuma loja cadastrada ainda</h4>
+                            <p class="text-xs text-slate-400 max-w-md mx-auto">Clique em "+ Nova Loja Cliente" no topo para cadastrar seus primeiros restaurantes clientes em produção.</p>
+                            <button @click="modalNovaLoja = true" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl">
+                                + Cadastrar Primeira Loja Cliente
+                            </button>
+                        </div>
+                    </template>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <template x-for="l in lojas.slice(0, 6)" :key="l.id">
@@ -254,7 +266,7 @@
                                 <div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-900">
                                     <span x-text="l.total_pedidos + ' pedidos (' + formatarCentavos(l.gmv_centavos) + ')'"></span>
                                     <span :class="l.mp_conectado ? 'text-emerald-400 font-bold' : 'text-amber-400'"
-                                          x-text="l.mp_conectado ? '✓ PIX Produção' : 'PIX Plataforma'"></span>
+                                          x-text="l.mp_conectado ? '✓ PIX Produção' : 'PIX Direto'"></span>
                                 </div>
 
                                 <div class="flex gap-2 pt-1">
@@ -294,7 +306,6 @@
                     </div>
                 </div>
 
-                <!-- Tabela Desktop + Cards Mobile -->
                 <div class="grid grid-cols-1 gap-3">
                     <template x-for="loja in lojasFiltradas" :key="loja.id">
                         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -311,7 +322,7 @@
                                     <span>🔗 <a :href="'/p/' + loja.slug" target="_blank" class="text-emerald-400 hover:underline" x-text="'/p/' + loja.slug"></a></span>
                                     <span x-text="'👤 ' + loja.dono_nome + (loja.dono_email ? ' (' + loja.dono_email + ')' : '')"></span>
                                     <span x-text="'📱 ' + (loja.telefone_whatsapp || '-')"></span>
-                                    <span x-text="'📍 ' + (loja.cidade || 'Coronel Fabriciano') + '/' + (loja.uf || 'MG')"></span>
+                                    <span x-text="'📍 ' + (loja.cidade || '-') + '/' + (loja.uf || '-')"></span>
                                 </div>
                             </div>
 
@@ -326,7 +337,7 @@
                                         🔑 Entrar no Painel
                                     </button>
                                     <button @click="abrirModalEditarLoja(loja)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition">
-                                        ✏️Plano / Status
+                                        ✏️ Plano / Status
                                     </button>
                                     <a :href="'/p/' + loja.slug" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-bold px-3 py-2 rounded-xl">
                                         Cardápio ↗
@@ -386,16 +397,16 @@
                         <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between gap-2">
                             <div class="truncate">
                                 <span class="text-slate-400 block font-bold">Webhook PIX Mercado Pago (HMAC-SHA256):</span>
-                                <code class="text-emerald-400 font-mono">https://pedelivre.devla.com.br/api/webhooks/mercadopago</code>
+                                <code class="text-emerald-400 font-mono" x-text="window.location.origin + '/api/webhooks/mercadopago'"></code>
                             </div>
-                            <button @click="navigator.clipboard.writeText('https://pedelivre.devla.com.br/api/webhooks/mercadopago'); avisoSucesso = 'URL do Webhook Mercado Pago copiada!'" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-xl font-bold shrink-0">Copiar</button>
+                            <button @click="navigator.clipboard.writeText(window.location.origin + '/api/webhooks/mercadopago'); avisoSucesso = 'URL do Webhook Mercado Pago copiada!'" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-xl font-bold shrink-0">Copiar</button>
                         </div>
                         <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between gap-2">
                             <div class="truncate">
-                                <span class="text-slate-400 block font-bold">Webhook Oficial Meta WhatsApp Cloud API:</span>
-                                <code class="text-emerald-400 font-mono">https://pedelivre.devla.com.br/api/webhooks/whatsapp</code>
+                                <span class="text-slate-400 block font-bold">Webhook WhatsApp Evolution API:</span>
+                                <code class="text-emerald-400 font-mono" x-text="window.location.origin + '/api/webhooks/whatsapp/evolution'"></code>
                             </div>
-                            <button @click="navigator.clipboard.writeText('https://pedelivre.devla.com.br/api/webhooks/whatsapp'); avisoSucesso = 'URL do Webhook WhatsApp copiada!'" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-xl font-bold shrink-0">Copiar</button>
+                            <button @click="navigator.clipboard.writeText(window.location.origin + '/api/webhooks/whatsapp/evolution'); avisoSucesso = 'URL do Webhook WhatsApp copiada!'" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-xl font-bold shrink-0">Copiar</button>
                         </div>
                     </div>
                 </div>
@@ -422,7 +433,7 @@
         </main>
     </div>
 
-    <!-- BARRA DE NAVEGAÇÃO INFERIOR PARA CELULAR (Mobile Bottom Bar < lg) -->
+    <!-- BARRA DE NAVEGAÇÃO INFERIOR PARA CELULAR -->
     <nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 grid grid-cols-4 py-1.5 px-1">
         <button @click="abaAtiva = 'dashboard'" class="flex flex-col items-center py-1 text-[10px] font-bold"
             :class="abaAtiva === 'dashboard' ? 'text-rose-500' : 'text-slate-400'">
@@ -450,7 +461,7 @@
     <div x-cloak x-show="modalNovaLoja" class="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div @click.away="modalNovaLoja = false" class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
             <div class="flex justify-between items-center">
-                <h3 class="font-black text-base text-white">Cadastrar Nova Loja no SaaS</h3>
+                <h3 class="font-black text-base text-white">Cadastrar Nova Loja Cliente no SaaS</h3>
                 <button @click="modalNovaLoja = false" class="text-slate-400 font-bold">✕</button>
             </div>
             <form @submit.prevent="criarNovaLoja()" class="space-y-3 text-xs">
@@ -462,6 +473,20 @@
                     <div>
                         <label class="font-bold text-slate-400 block mb-1">Slug do Link (/p/slug)</label>
                         <input type="text" x-model="novaLoja.slug" placeholder="Ex: pizzaria-dom-bosco" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="font-bold text-slate-400 block mb-1">CNPJ ou CPF</label>
+                        <input type="text" x-model="novaLoja.cnpj_cpf" placeholder="00.000.000/0001-00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white">
+                    </div>
+                    <div>
+                        <label class="font-bold text-slate-400 block mb-1">Cidade</label>
+                        <input type="text" x-model="novaLoja.cidade" placeholder="Cidade" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white">
+                    </div>
+                    <div>
+                        <label class="font-bold text-slate-400 block mb-1">UF</label>
+                        <input type="text" x-model="novaLoja.uf" maxlength="2" placeholder="MG" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white uppercase">
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -502,7 +527,7 @@
                     </div>
                 </div>
                 <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-black py-3.5 rounded-xl text-sm shadow-lg transition">
-                    🚀 Criar Loja e Liberar Acesso
+                    🚀 Criar Loja Limpa e Liberar Acesso
                 </button>
             </form>
         </div>
@@ -565,6 +590,9 @@
                 novaLoja: {
                     nome_loja: '',
                     slug: '',
+                    cnpj_cpf: '',
+                    cidade: 'Coronel Fabriciano',
+                    uf: 'MG',
                     plano_id: 3,
                     status: 'ativa',
                     telefone_whatsapp: '',
@@ -692,6 +720,7 @@
                         this.modalNovaLoja = false;
                         this.novaLoja.nome_loja = '';
                         this.novaLoja.slug = '';
+                        this.novaLoja.cnpj_cpf = '';
                         this.novaLoja.email_dono = '';
                         this.carregarTudo();
                     })

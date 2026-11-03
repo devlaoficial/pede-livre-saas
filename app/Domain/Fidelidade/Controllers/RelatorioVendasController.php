@@ -50,13 +50,13 @@ final class RelatorioVendasController
         $faturamentoTotalCentavos = (int) $pedidosConcluidos->sum('total');
         $ticketMedioCentavos = $totalPedidos > 0 ? intdiv($faturamentoTotalCentavos, $totalPedidos) : 0;
 
-        // Top Produtos Campeões
+        // Top Produtos Campeões (using exact PedidoItem columns: nome_snapshot, qtd, total, preco_unit)
         $produtosVendidos = [];
         foreach ($pedidosConcluidos as $p) {
             foreach ($p->itens as $item) {
-                $pNome = $item->produto?->nome ?? $item->nome_produto ?? 'Item';
-                $qtd = (int) ($item->quantidade ?? 1);
-                $totalCent = (int) ($item->total ?? (($item->preco_unitario ?? 0) * $qtd));
+                $pNome = $item->nome_snapshot ?: ($item->produto?->nome ?? 'Item');
+                $qtd = (int) ($item->qtd ?: 1);
+                $totalCent = (int) ($item->total ?: (($item->preco_unit ?? 0) * $qtd));
                 if (!isset($produtosVendidos[$pNome])) {
                     $produtosVendidos[$pNome] = ['nome' => $pNome, 'qtd' => 0, 'total_centavos' => 0];
                 }
@@ -64,7 +64,7 @@ final class RelatorioVendasController
                 $produtosVendidos[$pNome]['total_centavos'] += $totalCent;
             }
         }
-        usort($produtosVendidos, fn($a, $b) => $b['qtd'] <=> $a['qtd']);
+        usort($produtosVendidos, fn ($a, $b) => $b['qtd'] <=> $a['qtd']);
         $produtosCampeoes = array_slice($produtosVendidos, 0, 5);
 
         // Peak Hours Distribution (00h to 23h)
@@ -183,22 +183,27 @@ final class RelatorioVendasController
 
         $dados = $request->validate([
             'codigo' => ['required', 'string', 'max:40'],
-            'tipo' => ['required', 'string', 'in:percentual,fixo_centavos'],
-            'valor' => ['required', 'integer', 'min:1'],
+            'tipo' => ['required', 'string', 'in:percentual,valor,fixo_centavos,frete_gratis'],
+            'valor' => ['required', 'integer', 'min:0'],
             'minimo_centavos' => ['nullable', 'integer', 'min:0'],
             'limite_uso_total' => ['nullable', 'integer', 'min:1'],
+            'limite_por_cliente' => ['nullable', 'integer', 'min:1'],
+            'validade' => ['nullable', 'date'],
         ]);
 
-        $codigo = strtoupper(preg_replace('/\s+/', '', $dados['codigo']));
+        $codigo = strtoupper(preg_replace('/\s+/', '', $dados['codigo']) ?? '');
+        $tipoBanco = $dados['tipo'] === 'fixo_centavos' ? 'valor' : $dados['tipo'];
 
         $cupom = Cupom::updateOrCreate(
             ['loja_id' => $loja->id, 'codigo' => $codigo],
             [
-                'tipo' => $dados['tipo'],
-                'valor' => (int) $dados['valor'],
+                'tipo' => $tipoBanco,
+                'valor' => $tipoBanco === 'frete_gratis' ? 0 : max(1, (int) $dados['valor']),
                 'minimo_centavos' => (int) ($dados['minimo_centavos'] ?? 0),
                 'limite_uso_total' => isset($dados['limite_uso_total']) ? (int) $dados['limite_uso_total'] : null,
-                'limite_por_cliente' => 3,
+                'limite_por_cliente' => isset($dados['limite_por_cliente']) ? (int) $dados['limite_por_cliente'] : 3,
+                'validade' => $dados['validade'] ?? null,
+                'canais' => ['delivery', 'retirada', 'mesa', 'balcao'],
                 'ativo' => true,
             ]
         );

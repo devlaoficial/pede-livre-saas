@@ -12,13 +12,21 @@
                         </button>
                     </div>
                     <div class="space-y-2.5">
+                        <template x-if="entregadores.length === 0">
+                            <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl text-center text-xs text-slate-500">
+                                Nenhum entregador cadastrado ainda.
+                            </div>
+                        </template>
                         <template x-for="ent in entregadores" :key="ent.id">
                             <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between">
                                 <div>
                                     <div class="font-bold text-sm text-white" x-text="ent.nome"></div>
-                                    <div class="text-xs text-slate-400" x-text="(ent.tipo || 'proprio').toUpperCase() + ' • Taxa/corrida: ' + formatarCentavos(ent.valor_por_entrega_centavos)"></div>
+                                    <div class="text-xs text-slate-400" x-text="(ent.tipo || 'proprio').toUpperCase() + (ent.telefone ? ' • ' + ent.telefone : '') + ' • Taxa/corrida: ' + formatarCentavos(ent.valor_por_entrega_centavos)"></div>
                                 </div>
-                                <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400">Ativo</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400">Ativo</span>
+                                    <button @click="excluirEntregador(ent.id)" title="Remover entregador" class="text-xs text-rose-400 hover:bg-rose-500/15 px-2 py-1 rounded-lg">✕</button>
+                                </div>
                             </div>
                         </template>
                     </div>
@@ -36,12 +44,17 @@
                         </button>
                     </div>
                     <div class="space-y-2.5">
+                        <template x-if="areasEntrega.length === 0">
+                            <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl text-center text-xs text-slate-500">
+                                Nenhuma taxa de entrega cadastrada ainda.
+                            </div>
+                        </template>
                         <template x-for="area in areasEntrega" :key="area.id">
                             <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between">
                                 <div>
                                     <div class="font-bold text-sm text-white"
-                                         x-text="area.tipo === 'bairro' ? 'Bairro: ' + area.nome_bairro : 'Raio: ' + area.raio_km_de + 'km até ' + area.raio_km_ate + 'km'"></div>
-                                    <div class="text-xs text-slate-400" x-text="'Mínimo: ' + formatarCentavos(area.pedido_minimo_centavos) + ' • Tempo: ' + area.tempo_estimado_min + ' min'"></div>
+                                         x-text="area.tipo === 'bairro' ? 'Bairro: ' + (area.nome_bairro || area.bairro_nome || area.nome) : 'Raio: ' + (area.raio_km_de || 0) + 'km até ' + (area.raio_km_ate || area.raio_ate_km || 0) + 'km'"></div>
+                                    <div class="text-xs text-slate-400" x-text="'Mínimo: ' + formatarCentavos(area.pedido_minimo_centavos || area.pedido_minimo || 0) + (area.frete_gratis_acima ? ' • Grátis acima de ' + formatarCentavos(area.frete_gratis_acima) : '') + ' • Tempo: ' + (area.tempo_estimado_min || 40) + ' min'"></div>
                                 </div>
                                 <div class="text-right">
                                     <div class="text-sm font-black text-emerald-400" x-text="formatarCentavos(area.taxa_centavos)"></div>
@@ -53,7 +66,7 @@
                 </div>
             </div>
 
-            <!-- Seção de Acerto Diário de Motoboys (Etapa 3) -->
+            <!-- Seção de Acerto Diário de Motoboys -->
             <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                     <div class="space-y-1">

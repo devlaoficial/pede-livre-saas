@@ -14,11 +14,29 @@
                 buscaPedido: '',
                 filtroCategoriaId: '',
                 loja: null,
-                configLoja: { nome: '', telefone_whatsapp: '', cor_primaria: '#DC2626', endereco: '', cidade: '', uf: '' },
+                lojaAbertaManual: true,
+                configLoja: {
+                    nome: '',
+                    cnpj_cpf: '',
+                    telefone_whatsapp: '',
+                    cor_primaria: '#DC2626',
+                    endereco: '',
+                    cidade: '',
+                    uf: '',
+                    tempo_medio_preparo_min: 35,
+                    taxa_servico_pct: 10,
+                    cashback_pct: 5,
+                    estrategia_pizza_meio_a_meio: 'maior_preco',
+                    impressao_automatica_ao_aceitar: true
+                },
+                horariosLoja: [],
                 pedidos: [],
                 pedidoSelecionado: null,
                 produtos: [],
                 categorias: [],
+                gruposAdicionais: [],
+                modalGrupoAdicional: false,
+                formGrupoAdicional: { id: null, nome: '', obrigatorio: false, min_escolhas: 0, max_escolhas: 1, opcoes: [] },
                 cupons: [],
                 chamadosGarcom: [],
                 kdsTickets: [],
@@ -98,22 +116,22 @@
                 modalNovaArea: false,
                 modalPdv: false,
                 arquivoFotoProduto: null,
-                novoProd: { id: null, categoria_id: '', nome: '', descricao: '', preco_reais: '', preco_promocional_reais: '', estacao_kds: 'chapa', imagem: '', variacoes: [] },
+                novoProd: { id: null, categoria_id: '', nome: '', descricao: '', preco_reais: '', preco_promocional_reais: '', estacao_kds: 'chapa', imagem: '', variacoes: [], grupos_adicionais: [] },
                 novoCupom: { codigo: '', tipo: 'percentual', valor_input: '10', minimo_reais: '30,00' },
                 novaCat: { nome: '', descricao: '' },
                 novoEnt: { nome: '', telefone: '', tipo: 'proprio', valor_reais: '7,00' },
-                novaArea: { nome_bairro: '', taxa_reais: '5,00', tempo_estimado_min: 30 },
+                novaArea: { tipo: 'bairro', nome_bairro: '', raio_km_de: 0, raio_km_ate: 5, taxa_reais: '5,00', pedido_minimo_reais: '20,00', frete_gratis_acima_reais: '', tempo_estimado_min: 30 },
                 
-                // Filtros Avançados do Kanban (Etapa 2)
-                filtroCanal: 'todos', // 'todos', 'delivery', 'balcao_retirada', 'mesa'
-                filtroPagamento: 'todos', // 'todos', 'pago', 'pendente'
+                // Filtros Avançados do Kanban
+                filtroCanal: 'todos',
+                filtroPagamento: 'todos',
                 
                 // Modal de Cancelamento de Pedido
                 mostrandoMotivoCancelamento: false,
                 motivoCancelamento: 'Cliente solicitou o cancelamento',
                 motivoCancelamentoOutro: '',
 
-                // Estado Caixa Profissional & Fechamento (Etapa 3)
+                // Estado Caixa Profissional & Fechamento
                 caixaStatus: { aberto: false, sessao: null, ultima_sessao: null },
                 modalAbrirCaixa: false,
                 modalMovimentoCaixa: false,
@@ -123,12 +141,12 @@
                 formFecharCaixa: { valor_final_reais: '', imprimir_80mm: true },
                 salvandoCaixa: false,
 
-                // Fechamento Diário de Motoboys (Etapa 3)
+                // Fechamento Diário de Motoboys
                 fechamentoMotoboys: [],
                 totaisFechamentoMotoboys: { total_entregas: 0, total_taxas_centavos: 0, total_dinheiro_recebido_centavos: 0, saldo_geral_centavos: 0 },
                 carregandoFechamentoMotoboys: false,
 
-                // Estado Completo do PDV Balcão (Etapa 2)
+                // Estado Completo do PDV Balcão
                 buscaPdvProduto: '',
                 filtroPdvCategoria: '',
                 salvandoPdv: false,
@@ -152,6 +170,20 @@
                     itens: []
                 },
 
+                apiFetch(url, options = {}) {
+                    return fetch(url, {
+                        ...options,
+                        headers: {
+                            ...this.headersAuth(),
+                            ...(options.headers || {})
+                        }
+                    });
+                },
+
+                carregarDadosIniciais() {
+                    this.atualizarTudo();
+                },
+
                 diferencaFechamentoCaixa() {
                     const finalCent = this.centavos(this.formFecharCaixa.valor_final_reais || '0');
                     const espCent = this.caixaStatus?.sessao?.saldo_esperado_gaveta_centavos || 0;
@@ -168,7 +200,6 @@
                 get pedidosFiltrados() {
                     let lista = this.pedidos;
 
-                    // 1. Filtro por Canal de Venda
                     if (this.filtroCanal && this.filtroCanal !== 'todos') {
                         if (this.filtroCanal === 'balcao_retirada') {
                             lista = lista.filter(p => p.canal === 'balcao' || p.canal === 'retirada');
@@ -177,7 +208,6 @@
                         }
                     }
 
-                    // 2. Filtro por Pagamento
                     if (this.filtroPagamento && this.filtroPagamento !== 'todos') {
                         if (this.filtroPagamento === 'pago') {
                             lista = lista.filter(p => p.pagamento_status === 'aprovado' || p.pagamento_status === 'pago');
@@ -186,7 +216,6 @@
                         }
                     }
 
-                    // 3. Busca por texto (Código, Cliente ou Telefone)
                     if (this.buscaPedido && this.buscaPedido.trim()) {
                         const q = this.buscaPedido.toLowerCase().trim();
                         lista = lista.filter(p =>
@@ -255,12 +284,13 @@
                         Number(p.mesa?.id) === Number(this.mesaDivisao.id)
                     );
                     const soma = pedidosMesa.reduce((acc, p) => acc + (p.subtotal_centavos || p.total_centavos || 0), 0);
-                    return soma > 0 ? soma : 8990;
+                    return soma > 0 ? soma : (this.mesaDivisao?.comanda_ativa?.total_centavos || 0);
                 },
 
                 get totalFinalMesaCentavos() {
                     const base = this.totalConsumoMesaCentavos;
-                    return this.incluirTaxaServicoMesa ? Math.round(base * 1.10) : base;
+                    const pct = Number(this.loja?.config_json?.taxa_servico_pct ?? 10);
+                    return this.incluirTaxaServicoMesa ? Math.round(base * (1 + pct / 100)) : base;
                 },
 
                 get whatsappConectado() {
@@ -280,6 +310,25 @@
                         config: 'Loja e horários'
                     };
                     return map[this.moduloAtivo] || 'Painel PedeLivre';
+                },
+
+                sincronizarConfigLoja(lojaObj) {
+                    const cfg = lojaObj.config_json || {};
+                    this.lojaAbertaManual = cfg.aceita_pedidos !== false;
+                    this.configLoja = {
+                        nome: lojaObj.nome || '',
+                        cnpj_cpf: lojaObj.cnpj_cpf || '',
+                        telefone_whatsapp: lojaObj.telefone_whatsapp || '',
+                        cor_primaria: lojaObj.cor_primaria || '#DC2626',
+                        endereco: lojaObj.endereco || '',
+                        cidade: lojaObj.cidade || '',
+                        uf: lojaObj.uf || '',
+                        tempo_medio_preparo_min: Number(cfg.tempo_medio_preparo_min ?? 35),
+                        taxa_servico_pct: Number(cfg.taxa_servico_pct ?? 10),
+                        cashback_pct: Number(cfg.cashback_pct ?? 5),
+                        estrategia_pizza_meio_a_meio: cfg.estrategia_pizza_meio_a_meio || 'maior_preco',
+                        impressao_automatica_ao_aceitar: cfg.impressao_automatica_ao_aceitar !== false
+                    };
                 },
 
                 iniciar() {
@@ -305,14 +354,7 @@
                             if (!d) return;
                             this.autenticado = true;
                             this.loja = d.data || d;
-                            this.configLoja = {
-                                nome: this.loja.nome || '',
-                                telefone_whatsapp: this.loja.telefone_whatsapp || '',
-                                cor_primaria: this.loja.cor_primaria || '#DC2626',
-                                endereco: this.loja.endereco || '',
-                                cidade: this.loja.cidade || '',
-                                uf: this.loja.uf || ''
-                            };
+                            this.sincronizarConfigLoja(this.loja);
                             this.carregarPedidos();
                             this.carregarCatalogo();
                             this.carregarEntregas();
@@ -321,6 +363,7 @@
                             this.carregarStatusWhatsapp();
                             this.carregarConversasWhatsapp(true);
                             this.carregarCaixa();
+                            this.carregarHorarios();
                             if (new URLSearchParams(window.location.search).get('mp_oauth') === 'sucesso') {
                                 this.toastMsg = 'Conta Mercado Pago conectada com sucesso via login!';
                                 this.moduloAtivo = 'config';
@@ -337,11 +380,113 @@
                         });
                     this.iniciarAudio();
 
-                    // Atalho F2 para Lançamento Rápido no PDV Balcão
                     window.addEventListener('keydown', (e) => {
                         if (e.key === 'F2') {
                             e.preventDefault();
                             this.abrirModalPdv();
+                        }
+                    });
+                },
+
+                alternarStatusLojaAberta() {
+                    const novoStatus = !this.lojaAbertaManual;
+                    this.lojaAbertaManual = novoStatus;
+                    fetch('/api/loja', {
+                        method: 'PATCH',
+                        headers: this.headersAuth(),
+                        body: JSON.stringify({
+                            config_json: {
+                                aceita_pedidos: novoStatus
+                            }
+                        })
+                    })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => {
+                        if (d) {
+                            this.loja = d.data || d;
+                            this.sincronizarConfigLoja(this.loja);
+                            this.toastMsg = novoStatus
+                                ? '🟢 Loja aberta para receber pedidos no cardápio digital!'
+                                : '🔴 Recebimento de pedidos pausado manualmente.';
+                        }
+                    });
+                },
+
+                uploadImagemLoja(tipo, file) {
+                    if (!file) return;
+                    const fd = new FormData();
+                    fd.append('tipo', tipo);
+                    fd.append('imagem', file);
+                    const token = localStorage.getItem('pl_token') || '';
+                    fetch('/api/loja/imagem', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Authorization': token ? `Bearer ${token}` : ''
+                        },
+                        body: fd
+                    })
+                    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+                    .then(({ ok, d }) => {
+                        if (ok) {
+                            this.toastMsg = d.message || 'Imagem da loja atualizada com sucesso!';
+                            this.carregarLoja();
+                        } else {
+                            alert(d.message || 'Falha ao enviar imagem.');
+                        }
+                    });
+                },
+
+                carregarHorarios() {
+                    fetch('/api/horarios', { headers: this.headersAuth() })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                            if (d && Array.isArray(d.data)) {
+                                const filtrados = d.data.filter(h => h.canal === 'delivery');
+                                this.horariosLoja = (filtrados.length > 0 ? filtrados : d.data).map(h => ({
+                                    dia_semana: Number(h.dia_semana),
+                                    abre_as: (h.abre_as || '08:00').slice(0, 5),
+                                    fecha_as: (h.fecha_as || '23:59').slice(0, 5),
+                                    ativo: Boolean(h.ativo)
+                                }));
+                            }
+                        })
+                        .catch(() => {});
+                },
+
+                adicionarTurnoHorario() {
+                    this.horariosLoja.push({
+                        dia_semana: 1,
+                        abre_as: '18:00',
+                        fecha_as: '23:30',
+                        ativo: true
+                    });
+                },
+
+                salvarHorariosLoja() {
+                    const canais = ['delivery', 'retirada', 'mesa', 'balcao'];
+                    const turnos = [];
+                    for (const c of canais) {
+                        for (const h of this.horariosLoja) {
+                            turnos.push({
+                                canal: c,
+                                dia_semana: Number(h.dia_semana),
+                                abre_as: h.abre_as,
+                                fecha_as: h.fecha_as,
+                                ativo: true
+                            });
+                        }
+                    }
+                    fetch('/api/horarios/salvar-turnos', {
+                        method: 'POST',
+                        headers: this.headersAuth(),
+                        body: JSON.stringify({ turnos })
+                    })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => {
+                        if (d) {
+                            this.toastMsg = 'Horários de funcionamento salvos com sucesso!';
+                            this.carregarHorarios();
                         }
                     });
                 },
@@ -360,7 +505,7 @@
                 },
 
                 copiarLinkCardapio() {
-                    const url = window.location.origin + '/p/' + (this.loja?.slug || 'brasa-artesanal');
+                    const url = window.location.origin + '/p/' + (this.loja?.slug || '');
                     if (navigator.clipboard) {
                         navigator.clipboard.writeText(url);
                     }
@@ -404,19 +549,19 @@
 
                 mudarModulo(mod) {
                     this.moduloAtivo = mod;
-                    if (mod === 'catalogo') { this.carregarCatalogo(); this.carregarCupons(); }
+                    if (mod === 'catalogo') { this.carregarCatalogo(); this.carregarCupons(); this.carregarGruposAdicionais(); }
                     if (mod === 'kds') this.carregarKds();
                     if (mod === 'mesas') { this.carregarMesas(); this.carregarChamadosGarcom(); }
                     if (mod === 'entregas') { this.carregarEntregas(); this.carregarFechamentoMotoboys(); }
                     if (mod === 'crm' || mod === 'financeiro') { this.carregarFinanceiro(); this.carregarCupons(); this.carregarCaixa(); }
-                    if (mod === 'config') this.carregarLoja();
+                    if (mod === 'config') { this.carregarLoja(); this.carregarHorarios(); }
                     if (mod === 'whatsapp') { this.carregarStatusWhatsapp(); this.carregarConversasWhatsapp(); }
                 },
 
                 atualizarTudo() {
                     this.carregarPedidos();
                     this.carregarChamadosGarcom();
-                    if (this.moduloAtivo === 'catalogo') { this.carregarCatalogo(); this.carregarCupons(); }
+                    if (this.moduloAtivo === 'catalogo') { this.carregarCatalogo(); this.carregarCupons(); this.carregarGruposAdicionais(); }
                     if (this.moduloAtivo === 'kds') this.carregarKds();
                     if (this.moduloAtivo === 'mesas') this.carregarMesas();
                     if (this.moduloAtivo === 'entregas') { this.carregarEntregas(); this.carregarFechamentoMotoboys(); }
@@ -518,23 +663,33 @@
                         .then(d => {
                             if (d) {
                                 this.loja = d.data || d;
-                                this.configLoja = {
-                                    nome: this.loja.nome || 'Brasa & Sabor Artesanal',
-                                    telefone_whatsapp: this.loja.telefone_whatsapp || '31987654321',
-                                    cor_primaria: this.loja.cor_primaria || '#DC2626',
-                                    endereco: this.loja.endereco || '',
-                                    cidade: this.loja.cidade || 'Coronel Fabriciano',
-                                    uf: this.loja.uf || 'MG'
-                                };
+                                this.sincronizarConfigLoja(this.loja);
                             }
                         });
                 },
 
                 salvarDadosLoja() {
+                    const payload = {
+                        nome: this.configLoja.nome,
+                        cnpj_cpf: this.configLoja.cnpj_cpf || null,
+                        telefone_whatsapp: this.configLoja.telefone_whatsapp,
+                        cor_primaria: this.configLoja.cor_primaria,
+                        endereco: this.configLoja.endereco,
+                        cidade: this.configLoja.cidade,
+                        uf: this.configLoja.uf,
+                        config_json: {
+                            aceita_pedidos: this.lojaAbertaManual,
+                            tempo_medio_preparo_min: Number(this.configLoja.tempo_medio_preparo_min || 35),
+                            taxa_servico_pct: Number(this.configLoja.taxa_servico_pct ?? 10),
+                            cashback_pct: Number(this.configLoja.cashback_pct ?? 5),
+                            estrategia_pizza_meio_a_meio: this.configLoja.estrategia_pizza_meio_a_meio || 'maior_preco',
+                            impressao_automatica_ao_aceitar: Boolean(this.configLoja.impressao_automatica_ao_aceitar)
+                        }
+                    };
                     fetch('/api/loja', {
                         method: 'PATCH',
                         headers: this.headersAuth(),
-                        body: JSON.stringify(this.configLoja)
+                        body: JSON.stringify(payload)
                     })
                     .then(r => r.json())
                     .then(() => {
@@ -553,6 +708,99 @@
                         .catch(() => {});
                 },
 
+                confirmarPagamentoPedido(pedido) {
+                    if (!pedido) return;
+                    fetch(`/api/painel/pedidos/${pedido.id}/confirmar-pagamento`, {
+                        method: 'POST',
+                        headers: this.headersAuth()
+                    })
+                    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+                    .then(({ ok, d }) => {
+                        if (ok) {
+                            pedido.pagamento_status = 'aprovado';
+                            this.toastMsg = d.message || 'Pagamento confirmado com sucesso!';
+                            this.carregarPedidos();
+                        }
+                    });
+                },
+
+                carregarGruposAdicionais() {
+                    fetch('/api/grupos-adicionais', { headers: this.headersAuth() })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                            if (d) this.gruposAdicionais = d.data || [];
+                        })
+                        .catch(() => {});
+                },
+
+                abrirModalGrupoAdicional(grp = null) {
+                    if (grp) {
+                        this.formGrupoAdicional = {
+                            id: grp.id,
+                            nome: grp.nome,
+                            obrigatorio: Boolean(grp.obrigatorio),
+                            min_escolhas: Number(grp.min_escolhas || 0),
+                            max_escolhas: Number(grp.max_escolhas || 1),
+                            opcoes: (grp.opcoes || []).map(o => ({
+                                nome: o.nome,
+                                preco_reais: ((o.preco_centavos || 0) / 100).toFixed(2).replace('.', ',')
+                            }))
+                        };
+                    } else {
+                        this.formGrupoAdicional = {
+                            id: null,
+                            nome: '',
+                            obrigatorio: false,
+                            min_escolhas: 0,
+                            max_escolhas: 1,
+                            opcoes: [{ nome: '', preco_reais: '0,00' }]
+                        };
+                    }
+                    this.modalGrupoAdicional = true;
+                },
+
+                salvarGrupoAdicional() {
+                    const opcoes = (this.formGrupoAdicional.opcoes || [])
+                        .filter(o => (o.nome || '').trim() !== '')
+                        .map((o, idx) => ({
+                            nome: o.nome.trim(),
+                            preco_centavos: this.centavos(o.preco_reais || '0'),
+                            ordem: idx,
+                            ativo: true
+                        }));
+
+                    const url = this.formGrupoAdicional.id ? `/api/grupos-adicionais/${this.formGrupoAdicional.id}` : '/api/grupos-adicionais';
+                    const method = this.formGrupoAdicional.id ? 'PUT' : 'POST';
+
+                    fetch(url, {
+                        method,
+                        headers: this.headersAuth(),
+                        body: JSON.stringify({
+                            nome: this.formGrupoAdicional.nome,
+                            obrigatorio: Boolean(this.formGrupoAdicional.obrigatorio),
+                            min_escolhas: Number(this.formGrupoAdicional.min_escolhas || 0),
+                            max_escolhas: Math.max(1, Number(this.formGrupoAdicional.max_escolhas || 1)),
+                            opcoes
+                        })
+                    }).then(r => {
+                        if (r.ok) {
+                            this.modalGrupoAdicional = false;
+                            this.toastMsg = 'Grupo de adicionais salvo com sucesso!';
+                            this.carregarGruposAdicionais();
+                            this.carregarCatalogo();
+                        }
+                    });
+                },
+
+                excluirGrupoAdicional(id) {
+                    if (!confirm('Deseja excluir este grupo de adicionais?')) return;
+                    fetch(`/api/grupos-adicionais/${id}`, { method: 'DELETE', headers: this.headersAuth() })
+                        .then(() => {
+                            this.toastMsg = 'Grupo de adicionais removido.';
+                            this.carregarGruposAdicionais();
+                        });
+                },
+
                 carregarCatalogo() {
                     fetch('/api/categorias', { headers: this.headersAuth() })
                         .then(r => r.json())
@@ -566,6 +814,7 @@
                         .then(r => r.json())
                         .then(d => { this.produtos = d.data || []; });
                     this.carregarCupons();
+                    this.carregarGruposAdicionais();
                 },
 
                 abrirModalProduto(prod = null) {
@@ -583,7 +832,8 @@
                             variacoes: (prod.variacoes || []).map(v => ({
                                 nome: v.nome,
                                 preco_reais: ((v.preco_centavos || 0) / 100).toFixed(2).replace('.', ',')
-                            }))
+                            })),
+                            grupos_adicionais: (prod.grupos_adicionais || []).map(g => g.id)
                         };
                     } else {
                         this.novoProd = {
@@ -595,7 +845,8 @@
                             preco_promocional_reais: '',
                             estacao_kds: 'chapa',
                             imagem: '',
-                            variacoes: []
+                            variacoes: [],
+                            grupos_adicionais: []
                         };
                     }
                     this.modalNovoProduto = true;
@@ -609,6 +860,27 @@
                         this.toastMsg = `Status de estoque de "${prod.nome}" atualizado!`;
                         this.carregarCatalogo();
                     });
+                },
+
+                excluirProduto(prod) {
+                    if (!confirm(`Deseja realmente excluir o produto "${prod.nome}"?`)) return;
+                    fetch(`/api/produtos/${prod.id}`, { method: 'DELETE', headers: this.headersAuth() })
+                        .then(() => {
+                            this.toastMsg = 'Produto removido do cardápio.';
+                            this.carregarCatalogo();
+                        });
+                },
+
+                excluirCategoria(cat) {
+                    if (!confirm(`Deseja excluir a categoria "${cat.nome}"?`)) return;
+                    fetch(`/api/categorias/${cat.id}`, { method: 'DELETE', headers: this.headersAuth() })
+                        .then(() => {
+                            if (Number(this.filtroCategoriaId) === Number(cat.id)) {
+                                this.filtroCategoriaId = '';
+                            }
+                            this.toastMsg = 'Categoria removida.';
+                            this.carregarCatalogo();
+                        });
                 },
 
                 salvarNovoProduto() {
@@ -638,6 +910,7 @@
                             estacao_kds: this.novoProd.estacao_kds || 'chapa',
                             imagem: this.novoProd.imagem || null,
                             variacoes: variacoesPayload,
+                            grupos_adicionais: (this.novoProd.grupos_adicionais || []).map(id => Number(id)),
                             ativo: true,
                             canais: ['delivery', 'retirada', 'mesa', 'balcao']
                         })
@@ -721,6 +994,15 @@
                     });
                 },
 
+                excluirMesa(id) {
+                    if (!confirm('Deseja excluir esta mesa?')) return;
+                    fetch(`/api/mesas/${id}`, { method: 'DELETE', headers: this.headersAuth() })
+                        .then(() => {
+                            this.toastMsg = 'Mesa removida.';
+                            this.carregarMesas();
+                        });
+                },
+
                 regenerarQrMesa(id) {
                     fetch(`/api/mesas/${id}/regenerar-qr`, {
                         method: 'POST',
@@ -764,24 +1046,40 @@
                     });
                 },
 
+                excluirEntregador(id) {
+                    if (!confirm('Deseja remover este entregador?')) return;
+                    fetch(`/api/entregadores/${id}`, { method: 'DELETE', headers: this.headersAuth() })
+                        .then(() => {
+                            this.toastMsg = 'Entregador removido.';
+                            this.carregarEntregas();
+                        });
+                },
+
                 salvarNovaArea() {
-                    const centavos = Math.round(parseFloat(String(this.novaArea.taxa_reais).replace(',', '.')) * 100) || 500;
+                    const taxaCentavos = this.centavos(this.novaArea.taxa_reais || '0');
+                    const minCentavos = this.centavos(this.novaArea.pedido_minimo_reais || '0');
+                    const gratisRaw = String(this.novaArea.frete_gratis_acima_reais || '').trim();
+                    const gratisCentavos = gratisRaw ? this.centavos(gratisRaw) : null;
+
                     fetch('/api/areas-entrega', {
                         method: 'POST',
                         headers: this.headersAuth(),
                         body: JSON.stringify({
-                            tipo: 'bairro',
-                            nome_bairro: this.novaArea.nome_bairro,
-                            taxa_centavos: centavos,
-                            pedido_minimo_centavos: 2000,
+                            tipo: this.novaArea.tipo || 'bairro',
+                            nome_bairro: this.novaArea.tipo === 'bairro' ? this.novaArea.nome_bairro : null,
+                            raio_km_de: this.novaArea.tipo === 'raio' ? Number(this.novaArea.raio_km_de || 0) : null,
+                            raio_km_ate: this.novaArea.tipo === 'raio' ? Number(this.novaArea.raio_km_ate || 5) : null,
+                            taxa_centavos: taxaCentavos,
+                            pedido_minimo_centavos: minCentavos,
+                            frete_gratis_acima: gratisCentavos,
                             tempo_estimado_min: this.novaArea.tempo_estimado_min || 30,
                             ativa: true
                         })
                     }).then(r => {
                         if (r.ok) {
                             this.modalNovaArea = false;
-                            this.novaArea = { nome_bairro: '', taxa_reais: '5,00', tempo_estimado_min: 30 };
-                            this.toastMsg = 'Nova taxa de entrega salva!';
+                            this.novaArea = { tipo: 'bairro', nome_bairro: '', raio_km_de: 0, raio_km_ate: 5, taxa_reais: '5,00', pedido_minimo_reais: '20,00', frete_gratis_acima_reais: '', tempo_estimado_min: 30 };
+                            this.toastMsg = 'Nova regra de entrega salva!';
                             this.carregarEntregas();
                         }
                     });
@@ -825,7 +1123,10 @@
                 },
 
                 salvarTokenMercadoPago() {
-                    if (!this.formMp.access_token.trim()) return;
+                    if (!this.formMp.access_token.trim() && !this.formMp.chave_pix.trim()) {
+                        alert('Informe seu Access Token do Mercado Pago ou sua Chave PIX Principal.');
+                        return;
+                    }
                     this.salvandoMp = true;
                     fetch('/api/pagamentos/mercadopago/salvar-token', {
                         method: 'POST',
@@ -836,11 +1137,11 @@
                         const d = await r.json();
                         this.salvandoMp = false;
                         if (r.ok) {
-                            this.toastMsg = d.message || 'Conta Mercado Pago autorizada com sucesso!';
+                            this.toastMsg = d.message || 'Configuração de recebimento PIX salva com sucesso!';
                             this.formMp.access_token = '';
                             this.carregarStatusMp();
                         } else {
-                            alert(d.message || 'Erro ao validar o Access Token do Mercado Pago.');
+                            alert(d.message || 'Erro ao validar configuração de PIX.');
                         }
                     })
                     .catch(() => {
@@ -856,7 +1157,7 @@
                     .then(r => r.json())
                     .then(d => {
                         this.pixTesteResultado = null;
-                        this.toastMsg = d.message || 'Conta Mercado Pago desconectada.';
+                        this.toastMsg = d.message || 'Recebimento PIX desconectado.';
                         this.carregarStatusMp();
                     });
                 },
@@ -883,7 +1184,7 @@
                     });
                 },
 
-                // === GESTÃO PROFISSIONAL DE CAIXA & TURNOS (ETAPA 3) ===
+                // === GESTÃO PROFISSIONAL DE CAIXA & TURNOS ===
                 carregarCaixa() {
                     fetch('/api/caixa/status', { headers: this.headersAuth() })
                         .then(r => r.ok ? r.json() : null)
@@ -1031,7 +1332,7 @@
                     window.open(`/painel/caixa/${id}/imprimir?token=${encodeURIComponent(token)}`, '_blank', 'width=420,height=600');
                 },
 
-                // === FECHAMENTO DIÁRIO DE MOTOBOYS (ETAPA 3) ===
+                // === FECHAMENTO DIÁRIO DE MOTOBOYS ===
                 carregarFechamentoMotoboys() {
                     this.carregandoFechamentoMotoboys = true;
                     fetch('/api/entregadores/fechamento-dia', { headers: this.headersAuth() })
@@ -1066,12 +1367,12 @@
                             if (d.oauth_url || d.authorization_url) {
                                 window.location.href = d.oauth_url || d.authorization_url;
                             } else {
-                                this.toastMsg = d.message || 'Informe seu Access Token (APP_USR-...) no campo abaixo para conectar sua conta.';
+                                this.toastMsg = d.message || 'Informe seu Access Token ou sua Chave PIX no campo abaixo.';
                             }
                         });
                 },
 
-                // MÉTODOS DO PDV BALCÃO & LANÇAMENTO MANUAL (ETAPA 2)
+                // MÉTODOS DO PDV BALCÃO & LANÇAMENTO MANUAL
                 abrirModalPdv() {
                     if (this.produtos.length === 0) this.carregarCatalogo();
                     if (this.mesas.length === 0) this.carregarMesas();
@@ -1289,7 +1590,7 @@
                             alert('Erro ao criar pedido: ' + (res.data.message || res.data.error || 'Verifique os dados informados'));
                         }
                     })
-                    .catch(err => {
+                    .catch(() => {
                         this.salvandoPdv = false;
                         alert('Erro de comunicação com o servidor ao lançar pedido.');
                     });
@@ -1497,7 +1798,6 @@
                     try {
                         const AudioContext = window.AudioContext || window.webkitAudioContext;
                         this.audioCtx = new AudioContext();
-                        // Navegadores bloqueiam áudio até o 1º toque do usuário: destrava no primeiro clique/toque
                         const destravar = () => {
                             if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
                         };
@@ -1505,7 +1805,6 @@
                     } catch (e) {}
                 },
 
-                // Toque de telefone/campainha de cozinha: "trrrrrring-trrrrrring" (2 toques de ~0,9s) + pausa
                 tocarChime() {
                     if (!this.somHabilitado || !this.audioCtx) return;
                     const ctx = this.audioCtx;
@@ -1516,7 +1815,6 @@
                     mestre.gain.value = 0.9;
                     mestre.connect(ctx.destination);
 
-                    // Cada "toque" = duas notas (1400 Hz + 1800 Hz, timbre de sino metálico) com tremolo rápido de martelo (~22 Hz)
                     const toque = (t0, duracao) => {
                         [1400, 1800, 2800].forEach((freq, i) => {
                             const osc = ctx.createOscillator();
@@ -1591,9 +1889,7 @@
                             };
                             this.carregarPreviewWinback();
                         }
-                    } catch (e) {
-                        console.error('Erro ao consultar status do WhatsApp:', e);
-                    }
+                    } catch (e) {}
                 },
 
                 async conectarWhatsapp() {
@@ -1610,7 +1906,6 @@
                             this.whatsappStatus.connected = d.connected;
                             this.whatsappStatus.phone = d.phone;
                             this.toastMsg = 'QR Code gerado! Aponte a câmera do WhatsApp para escanear.';
-
                             this.iniciarPollingWhatsapp();
                         } else {
                             this.toastMsg = 'Falha ao iniciar conexão: ' + (d.message || 'Erro');
@@ -1720,9 +2015,7 @@
                                 this.winbackPreview = d;
                             }
                         }
-                    } catch (e) {
-                        console.error('Erro ao consultar preview do win-back:', e);
-                    } finally {
+                    } catch (e) {} finally {
                         this.carregandoWinback = false;
                     }
                 },
@@ -1776,12 +2069,10 @@
                             this.conversasWhatsapp = d.conversas || [];
                             this.totalAguardandoHumano = d.total_aguardando_humano || 0;
 
-                            // Alerta sonoro suave se houver novo chamado humano
                             if (this.totalAguardandoHumano > anteriorHumano && this.somHabilitado) {
                                 this.tocarChime();
                             }
 
-                            // Se houver uma conversa aberta, atualiza mensagens
                             if (this.conversaSelecionada) {
                                 const atualizada = this.conversasWhatsapp.find(c => c.id === this.conversaSelecionada.id);
                                 if (atualizada) {
@@ -1792,9 +2083,7 @@
                                 }
                             }
                         }
-                    } catch (e) {
-                        console.error('Erro ao carregar conversas do WhatsApp:', e);
-                    } finally {
+                    } catch (e) {} finally {
                         if (!silencioso) this.chatCarregando = false;
                     }
                 },
@@ -1821,9 +2110,7 @@
                                 this.$nextTick(() => this.rolarChatParaFinal());
                             }
                         }
-                    } catch (e) {
-                        console.error('Erro ao obter mensagens da conversa:', e);
-                    } finally {
+                    } catch (e) {} finally {
                         if (!silencioso) this.chatCarregando = false;
                     }
                 },
@@ -1873,9 +2160,7 @@
                             this.toastMsg = 'Você assumiu o atendimento da conversa.';
                             this.carregarConversasWhatsapp(true);
                         }
-                    } catch (e) {
-                        console.error(e);
-                    } finally {
+                    } catch (e) {} finally {
                         this.chatEnviando = false;
                     }
                 },
@@ -1897,9 +2182,7 @@
                             this.carregarMensagensConversa(conversaId, true);
                             this.carregarConversasWhatsapp(true);
                         }
-                    } catch (e) {
-                        console.error(e);
-                    } finally {
+                    } catch (e) {} finally {
                         this.chatEnviando = false;
                     }
                 },

@@ -5,17 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Autenticacao\Controllers;
 
 use App\Domain\Assinaturas\Models\Assinatura;
-use App\Domain\Assinaturas\Models\Auditoria;
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Assinaturas\Models\Plano;
 use App\Domain\Autenticacao\Models\Usuario;
 use App\Domain\Autenticacao\Requests\LoginRequest;
 use App\Domain\Autenticacao\Resources\UsuarioResource;
-use App\Domain\Catalogo\Models\Categoria;
-use App\Domain\Catalogo\Models\Produto;
 use App\Domain\Entregas\Models\AreaEntrega;
 use App\Domain\Mesas\Models\Mesa;
-use App\Domain\Pedidos\Models\Cupom;
+use App\Domain\Operacao\Models\Horario;
 use App\Support\Security\BlindIndexService;
 use App\Support\Tenancy\LojaContext;
 use Illuminate\Http\JsonResponse;
@@ -110,6 +107,9 @@ final class LoginController
             'slug' => ['required', 'string', 'max:80', 'alpha_dash', 'unique:lojas,slug'],
             'cnpj_cpf' => ['required', 'string', 'max:20'],
             'telefone' => ['required', 'string', 'max:30'],
+            'cidade' => ['nullable', 'string', 'max:100'],
+            'uf' => ['nullable', 'string', 'max:2'],
+            'endereco' => ['nullable', 'string', 'max:255'],
             'nome_dono' => ['required', 'string', 'max:120'],
             'email' => ['required', 'string', 'email', 'max:120'],
             'senha' => ['required', 'string', 'min:8'],
@@ -135,16 +135,21 @@ final class LoginController
                 'cnpj_cpf' => $validated['cnpj_cpf'],
                 'cnpj_cpf_bidx' => $docBidx,
                 'telefone_whatsapp' => $validated['telefone'],
-                'cidade' => 'Coronel Fabriciano',
-                'uf' => 'MG',
+                'endereco' => $validated['endereco'] ?? null,
+                'cidade' => $validated['cidade'] ?: 'Coronel Fabriciano',
+                'uf' => strtoupper($validated['uf'] ?: 'MG'),
                 'lat' => -19.5186000,
                 'lng' => -42.6295000,
                 'plano_id' => $plano->id,
-                'status' => 'ativa',
+                'status' => 'trial',
+                'trial_ate' => now()->addDays(14),
                 'config_json' => [
                     'timezone' => 'America/Sao_Paulo',
                     'tempo_medio_preparo_min' => 35,
                     'aceita_pedidos' => true,
+                    'estrategia_pizza_meio_a_meio' => 'maior_preco',
+                    'taxa_servico_pct' => 10,
+                    'cashback_pct' => 5.0,
                 ],
             ]);
 
@@ -155,7 +160,6 @@ final class LoginController
                 'plano_id' => $plano->id,
                 'status' => 'trial',
                 'ciclo' => 'mensal',
-                'trial_ate' => now()->addDays(14)->toDateString(),
                 'proximo_vencimento' => now()->addDays(14)->toDateString(),
             ]);
 
@@ -171,6 +175,18 @@ final class LoginController
             ]);
 
             $todosCanais = ['delivery', 'retirada', 'mesa', 'balcao'];
+
+            for ($dia = 0; $dia <= 6; $dia++) {
+                foreach ($todosCanais as $canalHorario) {
+                    Horario::create([
+                        'loja_id' => $loja->id,
+                        'canal' => $canalHorario,
+                        'dia_semana' => $dia,
+                        'abre' => '08:00:00',
+                        'fecha' => '23:59:00',
+                    ]);
+                }
+            }
 
             AreaEntrega::create([
                 'loja_id' => $loja->id,
@@ -200,70 +216,6 @@ final class LoginController
                 'qr_token' => Str::random(32),
                 'capacidade' => 4,
                 'status' => 'livre',
-            ]);
-
-            Cupom::create([
-                'loja_id' => $loja->id,
-                'codigo' => 'BEMVINDO10',
-                'tipo' => 'percentual',
-                'valor' => 10,
-                'minimo_centavos' => 0,
-                'validade' => now()->addYear(),
-                'limite_uso_total' => 1000,
-                'limite_por_cliente' => 5,
-                'usos' => 0,
-                'canais' => $todosCanais,
-                'ativo' => true,
-            ]);
-
-            $catPrincipal = Categoria::create([
-                'loja_id' => $loja->id,
-                'nome' => 'Pratos & Lanches',
-                'descricao' => 'Destaques preparados na hora',
-                'ordem' => 1,
-                'ativa' => true,
-                'canais' => $todosCanais,
-            ]);
-
-            Produto::create([
-                'loja_id' => $loja->id,
-                'categoria_id' => $catPrincipal->id,
-                'nome' => 'Especial da Casa',
-                'descricao' => 'Nosso prato carro-chefe preparado com ingredientes selecionados.',
-                'imagem' => 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80',
-                'preco_centavos' => 3290,
-                'controla_estoque' => false,
-                'ativo' => true,
-                'esgotado' => false,
-                'ordem' => 1,
-                'tempo_preparo_min' => 20,
-                'estacao_kds' => 'chapa',
-                'canais' => $todosCanais,
-            ]);
-
-            $catBebidas = Categoria::create([
-                'loja_id' => $loja->id,
-                'nome' => 'Bebidas Geladas',
-                'descricao' => 'Refrigerantes, sucos e águas',
-                'ordem' => 2,
-                'ativa' => true,
-                'canais' => $todosCanais,
-            ]);
-
-            Produto::create([
-                'loja_id' => $loja->id,
-                'categoria_id' => $catBebidas->id,
-                'nome' => 'Coca-Cola Original Lata 350ml',
-                'descricao' => 'Lata 350ml trincando de gelada.',
-                'imagem' => 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&q=80',
-                'preco_centavos' => 690,
-                'controla_estoque' => false,
-                'ativo' => true,
-                'esgotado' => false,
-                'ordem' => 1,
-                'tempo_preparo_min' => 2,
-                'estacao_kds' => 'bar',
-                'canais' => $todosCanais,
             ]);
 
             return [$loja, $usuario];

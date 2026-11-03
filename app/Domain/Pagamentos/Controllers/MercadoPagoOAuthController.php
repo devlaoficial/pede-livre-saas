@@ -6,6 +6,7 @@ namespace App\Domain\Pagamentos\Controllers;
 
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Pagamentos\Services\MercadoPagoOAuthService;
+use App\Domain\Pagamentos\Services\MercadoPagoPixService;
 use App\Support\Tenancy\LojaContext;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,7 @@ final class MercadoPagoOAuthController
 {
     public function __construct(
         private readonly MercadoPagoOAuthService $oauthService,
+        private readonly MercadoPagoPixService $pixService,
         private readonly LojaContext $context
     ) {}
 
@@ -34,7 +36,7 @@ final class MercadoPagoOAuthController
         if (empty($clientId)) {
             return response()->json([
                 'oauth_disponivel' => false,
-                'message' => 'Para conectar sua conta imediatamente, informe seu Access Token (APP_USR-...) do Mercado Pago no campo abaixo.',
+                'message' => 'Para conectar sua conta imediatamente, informe seu Access Token (APP_USR-...) do Mercado Pago ou sua Chave PIX nos campos abaixo.',
             ]);
         }
 
@@ -48,8 +50,8 @@ final class MercadoPagoOAuthController
     }
 
     /**
-     * Allows the merchant to directly register & authorize their Mercado Pago account
-     * using their official Access Token (APP_USR-... or TEST-...), verifying it against Mercado Pago API.
+     * Allows the merchant to register & authorize their Mercado Pago account using their official Access Token
+     * OR configure their direct Banco Central PIX key (CPF, CNPJ, E-mail, Celular, Aleatória).
      */
     public function salvarTokenManual(Request $request): JsonResponse
     {
@@ -57,14 +59,44 @@ final class MercadoPagoOAuthController
         Gate::authorize('update', $loja);
 
         $dados = $request->validate([
-            'access_token' => ['required', 'string', 'min:15', 'max:255'],
+            'access_token' => ['nullable', 'string', 'max:255'],
             'public_key' => ['nullable', 'string', 'max:255'],
             'chave_pix' => ['nullable', 'string', 'max:140'],
         ]);
 
-        $token = trim($dados['access_token']);
+        $token = trim((string) ($dados['access_token'] ?? ''));
+        $chavePix = trim((string) ($dados['chave_pix'] ?? ''));
 
-        // Validate the token in real time against Mercado Pago's official /users/me endpoint
+        if ($token === '' && $chavePix === '') {
+            return response()->json([
+                'error' => 'DADOS_OBRIGATORIOS',
+                'message' => 'Informe seu Access Token do Mercado Pago (APP_USR-...) ou sua Chave PIX principal.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $configAtual = is_array($loja->config_json) ? $loja->config_json : [];
+        if (!empty($dados['public_key'])) {
+            $configAtual['mp_public_key'] = trim((string) $dados['public_key']);
+        }
+        if ($chavePix !== '') {
+            $configAtual['chave_pix'] = $chavePix;
+        }
+
+        // Case 1: Only Chave PIX was provided (Direct BCB PIX mode without Mercado Pago token)
+        if ($token === '') {
+            $loja->update([
+                'config_json' => $configAtual,
+            ]);
+
+            return response()->json([
+                'message' => "Chave PIX [{$chavePix}] salva com sucesso! O cardápio já está emitindo QR Code PIX oficial do Banco Central.",
+                'conectado' => !empty($loja->mp_access_token),
+                'chave_pix' => $chavePix,
+                'modo' => !empty($loja->mp_access_token) ? 'producao' : 'pix_direto',
+            ]);
+        }
+
+        // Case 2: Access Token provided — validate in real time against Mercado Pago's /users/me endpoint
         $resp = Http::withToken($token)->timeout(10)->get('https://api.mercadopago.com/users/me');
         if ($resp->failed()) {
             return response()->json([
@@ -79,13 +111,6 @@ final class MercadoPagoOAuthController
         $mpNickname = (string) ($userJson['nickname'] ?? $mpEmail ?: $loja->nome);
         $contaLabel = $mpEmail !== '' ? "{$mpNickname} ({$mpEmail})" : $mpNickname;
 
-        $configAtual = is_array($loja->config_json) ? $loja->config_json : [];
-        if (!empty($dados['public_key'])) {
-            $configAtual['mp_public_key'] = trim((string) $dados['public_key']);
-        }
-        if (!empty($dados['chave_pix'])) {
-            $configAtual['chave_pix'] = trim((string) $dados['chave_pix']);
-        }
         $configAtual['mp_conta_nome'] = $contaLabel;
         $configAtual['mp_conectado_em'] = now()->format('d/m/Y H:i');
 
@@ -100,13 +125,14 @@ final class MercadoPagoOAuthController
             'conectado' => true,
             'mp_user_id' => $mpUserId,
             'mp_conta_nome' => $contaLabel,
+            'chave_pix' => $configAtual['chave_pix'] ?? null,
             'modo' => str_starts_with($token, 'TEST-') ? 'sandbox' : 'producao',
         ]);
     }
 
     /**
      * Generates a R$ 1,00 live test PIX QR Code on the merchant's connected Mercado Pago account
-     * so they can verify their PIX integration immediately.
+     * or via their configured Banco Central PIX Key.
      */
     public function testarPix(): JsonResponse
     {
@@ -114,42 +140,62 @@ final class MercadoPagoOAuthController
         Gate::authorize('update', $loja);
 
         $token = $loja?->mp_access_token;
-        if (empty($token)) {
+        $chavePix = trim((string) ($loja?->config_json['chave_pix'] ?? ''));
+
+        if (empty($token) && $chavePix === '') {
             return response()->json([
                 'error' => 'CONTA_NAO_CONECTADA',
-                'message' => 'Cadastre seu Access Token do Mercado Pago primeiro para testar a geração de PIX.',
+                'message' => 'Cadastre seu Access Token do Mercado Pago ou sua Chave PIX primeiro para testar a geração de PIX.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $resp = Http::withHeaders([
-            'Authorization' => "Bearer {$token}",
-            'X-Idempotency-Key' => 'test_pix_' . $loja->id . '_' . time(),
-        ])->timeout(12)->post('https://api.mercadopago.com/v1/payments', [
-            'transaction_amount' => 1.00,
-            'description' => "Teste de Conexao PIX - {$loja->nome}",
-            'payment_method_id' => 'pix',
-            'payer' => [
-                'email' => "teste_{$loja->id}@pedelivre.com.br",
-                'first_name' => 'Teste',
-                'last_name' => 'PedeLivre',
-            ],
-        ]);
+        if (!empty($token)) {
+            $resp = Http::withHeaders([
+                'Authorization' => "Bearer {$token}",
+                'X-Idempotency-Key' => 'test_pix_' . $loja->id . '_' . time(),
+            ])->timeout(12)->post('https://api.mercadopago.com/v1/payments', [
+                'transaction_amount' => 1.00,
+                'description' => "Teste de Conexao PIX - {$loja->nome}",
+                'payment_method_id' => 'pix',
+                'payer' => [
+                    'email' => "teste_{$loja->id}@pedelivre.com.br",
+                    'first_name' => 'Teste',
+                    'last_name' => 'PedeLivre',
+                ],
+            ]);
 
-        if ($resp->failed()) {
+            if ($resp->failed()) {
+                return response()->json([
+                    'error' => 'FALHA_PIX_MP',
+                    'message' => 'O Mercado Pago recusou a emissão do PIX: ' . ($resp->json('message') ?? $resp->body()),
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $dados = $resp->json();
+            $txData = $dados['point_of_interaction']['transaction_data'] ?? [];
+
             return response()->json([
-                'error' => 'FALHA_PIX_MP',
-                'message' => 'O Mercado Pago recusou a emissão do PIX: ' . ($resp->json('message') ?? $resp->body()),
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                'message' => 'QR Code PIX real do Banco Central gerado com sucesso na sua conta Mercado Pago!',
+                'mp_payment_id' => (string) ($dados['id'] ?? ''),
+                'pix_copia_cola' => (string) ($txData['qr_code'] ?? ''),
+                'pix_qr_base64' => (string) ($txData['qr_code_base64'] ?? ''),
+            ]);
         }
 
-        $dados = $resp->json();
-        $txData = $dados['point_of_interaction']['transaction_data'] ?? [];
+        // Direct PIX Key BCB EMVCo BRCode generation (R$ 1,00 = 100 centavos)
+        $copiaCola = $this->pixService->montarPayloadEmvPix(
+            chavePix: $chavePix,
+            nomeRecebedor: $loja->nome ?: 'RESTAURANTE',
+            cidadeRecebedor: $loja->cidade ?: 'BRASIL',
+            valorCentavos: 100,
+            txid: 'TESTEPIX' . $loja->id
+        );
 
         return response()->json([
-            'message' => 'QR Code PIX real do Banco Central gerado com sucesso na sua conta Mercado Pago!',
-            'mp_payment_id' => (string) ($dados['id'] ?? ''),
-            'pix_copia_cola' => (string) ($txData['qr_code'] ?? ''),
-            'pix_qr_base64' => (string) ($txData['qr_code_base64'] ?? ''),
+            'message' => "Código PIX Banco Central (R$ 1,00) gerado com sucesso para a chave [{$chavePix}]!",
+            'mp_payment_id' => 'BCB_DIRETO_' . time(),
+            'pix_copia_cola' => $copiaCola,
+            'pix_qr_base64' => '',
         ]);
     }
 
@@ -227,15 +273,16 @@ final class MercadoPagoOAuthController
         $token = $loja?->mp_access_token;
         $conectado = !empty($token);
         $cfg = is_array($loja?->config_json) ? $loja->config_json : [];
+        $chavePix = $cfg['chave_pix'] ?? null;
 
         return response()->json([
             'conectado' => $conectado,
             'mp_user_id' => $loja?->mp_user_id,
             'mp_conta_nome' => $cfg['mp_conta_nome'] ?? null,
             'mp_conectado_em' => $cfg['mp_conectado_em'] ?? null,
-            'chave_pix' => $cfg['chave_pix'] ?? null,
+            'chave_pix' => $chavePix,
             'public_key' => $cfg['mp_public_key'] ?? null,
-            'modo' => $conectado ? (str_starts_with((string) $token, 'TEST-') ? 'sandbox' : 'producao') : 'demonstracao',
+            'modo' => $conectado ? (str_starts_with((string) $token, 'TEST-') ? 'sandbox' : 'producao') : (!empty($chavePix) ? 'pix_direto' : 'nao_configurado'),
             'oauth_disponivel' => !empty(config('services.mercadopago.client_id')),
             'webhook_url' => url('/api/webhooks/mercadopago'),
         ]);

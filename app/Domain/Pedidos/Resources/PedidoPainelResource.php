@@ -58,6 +58,7 @@ final class PedidoPainelResource extends JsonResource
                 'numero' => $this->mesa->numero,
                 'nome' => $this->mesa->nome,
             ] : null,
+            'entregador_id' => $this->entregador_id,
             'entregador' => $this->entregador ? [
                 'id' => $this->entregador->id,
                 'nome' => $this->entregador->nome,
@@ -79,6 +80,7 @@ final class PedidoPainelResource extends JsonResource
                 'id' => $item->id,
                 'produto_id' => $item->produto_id,
                 'nome' => $item->nome_snapshot,
+                'nome_snapshot' => $item->nome_snapshot,
                 'variacao' => $item->variacao_snapshot,
                 'qtd' => $item->qtd,
                 'preco_unit' => $item->preco_unit,
@@ -86,6 +88,7 @@ final class PedidoPainelResource extends JsonResource
                 'observacao' => $item->observacao,
                 'adicionais' => $item->adicionais_json,
                 'status_cozinha' => $item->status_cozinha,
+                'estacao_kds' => $item->produto?->estacao_kds ?? 'geral',
             ]),
             'eventos' => $this->eventos->map(fn ($e) => [
                 'status_de' => $e->status_de,

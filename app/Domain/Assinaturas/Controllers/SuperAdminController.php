@@ -15,6 +15,7 @@ use App\Domain\Catalogo\Models\Categoria;
 use App\Domain\Catalogo\Models\Produto;
 use App\Domain\Entregas\Models\AreaEntrega;
 use App\Domain\Mesas\Models\Mesa;
+use App\Domain\Operacao\Models\Horario;
 use App\Domain\Pedidos\Models\Cupom;
 use App\Domain\Pedidos\Models\Pedido;
 use App\Support\Security\BlindIndexService;
@@ -180,6 +181,7 @@ final class SuperAdminController
                     'dominio_proprio' => $loja->dominio_proprio,
                     'nome' => $loja->nome,
                     'telefone_whatsapp' => $loja->telefone_whatsapp,
+                    'endereco' => $loja->endereco,
                     'cidade' => $loja->cidade,
                     'uf' => $loja->uf,
                     'status' => $loja->status,
@@ -211,6 +213,7 @@ final class SuperAdminController
             'status' => ['sometimes', 'string', 'in:ativa,trial,inadimplente,suspensa,cancelada'],
             'plano_id' => ['sometimes', 'integer', 'exists:planos,id'],
             'telefone_whatsapp' => ['sometimes', 'string', 'max:30'],
+            'endereco' => ['sometimes', 'nullable', 'string', 'max:255'],
             'cidade' => ['sometimes', 'nullable', 'string', 'max:100'],
             'uf' => ['sometimes', 'nullable', 'string', 'max:2'],
         ]);
@@ -255,19 +258,27 @@ final class SuperAdminController
         $validated = $request->validate([
             'nome_loja' => ['required', 'string', 'max:120'],
             'slug' => ['nullable', 'string', 'max:80'],
+            'cnpj_cpf' => ['nullable', 'string', 'max:25'],
             'plano_id' => ['required', 'integer', 'exists:planos,id'],
             'status' => ['required', 'string', 'in:ativa,trial'],
             'telefone_whatsapp' => ['required', 'string', 'max:30'],
+            'endereco' => ['nullable', 'string', 'max:255'],
             'cidade' => ['nullable', 'string', 'max:100'],
             'uf' => ['nullable', 'string', 'max:2'],
             'nome_dono' => ['required', 'string', 'max:120'],
             'email_dono' => ['required', 'string', 'email', 'max:120'],
             'senha_dono' => ['required', 'string', 'min:6'],
+            'popular_exemplo' => ['nullable', 'boolean'],
         ]);
 
-        $slug = !empty($validated['slug'])
+        $slugBase = !empty($validated['slug'])
             ? Str::slug($validated['slug'])
-            : Str::slug($validated['nome_loja']) . '-' . strtolower(Str::random(3));
+            : Str::slug($validated['nome_loja']);
+
+        $slug = $slugBase;
+        if (Loja::withoutGlobalScopes()->where('slug', $slug)->exists()) {
+            $slug = $slugBase . '-' . strtolower(Str::random(3));
+        }
 
         $emailBidx = $this->blindIndex->generateForEmail($validated['email_dono']);
         if (Usuario::withoutGlobalScopes()->where('email_bidx', $emailBidx)->exists()) {
@@ -275,23 +286,31 @@ final class SuperAdminController
         }
 
         $loja = DB::transaction(function () use ($validated, $slug, $emailBidx, $request): Loja {
-            $docRandom = (string) random_int(10000000000000, 99999999999999);
+            $docRaw = !empty($validated['cnpj_cpf'])
+                ? trim((string) $validated['cnpj_cpf'])
+                : (string) random_int(10000000000000, 99999999999999);
+
             $loja = Loja::create([
                 'slug' => $slug,
                 'nome' => $validated['nome_loja'],
-                'cnpj_cpf' => $docRandom,
-                'cnpj_cpf_bidx' => $this->blindIndex->generateForDocument($docRandom),
+                'cnpj_cpf' => $docRaw,
+                'cnpj_cpf_bidx' => $this->blindIndex->generateForDocument($docRaw),
                 'telefone_whatsapp' => $validated['telefone_whatsapp'],
-                'cidade' => $validated['cidade'] ?? 'Coronel Fabriciano',
-                'uf' => strtoupper($validated['uf'] ?? 'MG'),
+                'endereco' => $validated['endereco'] ?? null,
+                'cidade' => $validated['cidade'] ?: 'Coronel Fabriciano',
+                'uf' => strtoupper($validated['uf'] ?: 'MG'),
                 'lat' => -19.5186000,
                 'lng' => -42.6295000,
                 'plano_id' => (int) $validated['plano_id'],
                 'status' => $validated['status'],
+                'trial_ate' => $validated['status'] === 'trial' ? now()->addDays(14) : null,
                 'config_json' => [
                     'timezone' => 'America/Sao_Paulo',
                     'tempo_medio_preparo_min' => 35,
                     'aceita_pedidos' => true,
+                    'estrategia_pizza_meio_a_meio' => 'maior_preco',
+                    'taxa_servico_pct' => 10,
+                    'cashback_pct' => 5.0,
                 ],
             ]);
 
@@ -300,7 +319,9 @@ final class SuperAdminController
                 'plano_id' => $loja->plano_id,
                 'status' => $loja->status,
                 'ciclo' => 'mensal',
-                'proximo_vencimento' => now()->addMonth()->toDateString(),
+                'proximo_vencimento' => $validated['status'] === 'trial'
+                    ? now()->addDays(14)->toDateString()
+                    : now()->addMonth()->toDateString(),
             ]);
 
             Usuario::create([
@@ -315,6 +336,19 @@ final class SuperAdminController
             ]);
 
             $todosCanais = ['delivery', 'retirada', 'mesa', 'balcao'];
+
+            // Horários padrão de funcionamento (Todos os dias das 08:00 às 23:59 para operar imediatamente)
+            for ($dia = 0; $dia <= 6; $dia++) {
+                foreach ($todosCanais as $canalHorario) {
+                    Horario::withoutGlobalScopes()->create([
+                        'loja_id' => $loja->id,
+                        'canal' => $canalHorario,
+                        'dia_semana' => $dia,
+                        'abre' => '08:00:00',
+                        'fecha' => '23:59:00',
+                    ]);
+                }
+            }
 
             AreaEntrega::withoutGlobalScopes()->create([
                 'loja_id' => $loja->id,
@@ -346,69 +380,32 @@ final class SuperAdminController
                 'status' => 'livre',
             ]);
 
-            Cupom::withoutGlobalScopes()->create([
-                'loja_id' => $loja->id,
-                'codigo' => 'BEMVINDO10',
-                'tipo' => 'percentual',
-                'valor' => 10,
-                'minimo_centavos' => 0,
-                'validade' => now()->addYear(),
-                'limite_uso_total' => 1000,
-                'limite_por_cliente' => 5,
-                'usos' => 0,
-                'canais' => $todosCanais,
-                'ativo' => true,
-            ]);
+            // Só popula produtos exemplo se explicitamente solicitado pelo administrador
+            if (!empty($validated['popular_exemplo'])) {
+                $catPrincipal = Categoria::withoutGlobalScopes()->create([
+                    'loja_id' => $loja->id,
+                    'nome' => 'Pratos & Lanches',
+                    'descricao' => 'Destaques preparados na hora',
+                    'ordem' => 1,
+                    'ativa' => true,
+                    'canais' => $todosCanais,
+                ]);
 
-            $catPrincipal = Categoria::withoutGlobalScopes()->create([
-                'loja_id' => $loja->id,
-                'nome' => 'Pratos & Lanches',
-                'descricao' => 'Destaques preparados na hora',
-                'ordem' => 1,
-                'ativa' => true,
-                'canais' => $todosCanais,
-            ]);
-
-            Produto::withoutGlobalScopes()->create([
-                'loja_id' => $loja->id,
-                'categoria_id' => $catPrincipal->id,
-                'nome' => 'Especial da Casa',
-                'descricao' => 'Nosso prato carro-chefe preparado com ingredientes selecionados.',
-                'imagem' => 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80',
-                'preco_centavos' => 3290,
-                'controla_estoque' => false,
-                'ativo' => true,
-                'esgotado' => false,
-                'ordem' => 1,
-                'tempo_preparo_min' => 20,
-                'estacao_kds' => 'chapa',
-                'canais' => $todosCanais,
-            ]);
-
-            $catBebidas = Categoria::withoutGlobalScopes()->create([
-                'loja_id' => $loja->id,
-                'nome' => 'Bebidas Geladas',
-                'descricao' => 'Refrigerantes, sucos e águas',
-                'ordem' => 2,
-                'ativa' => true,
-                'canais' => $todosCanais,
-            ]);
-
-            Produto::withoutGlobalScopes()->create([
-                'loja_id' => $loja->id,
-                'categoria_id' => $catBebidas->id,
-                'nome' => 'Coca-Cola Original Lata 350ml',
-                'descricao' => 'Lata 350ml trincando de gelada.',
-                'imagem' => 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&q=80',
-                'preco_centavos' => 690,
-                'controla_estoque' => false,
-                'ativo' => true,
-                'esgotado' => false,
-                'ordem' => 1,
-                'tempo_preparo_min' => 2,
-                'estacao_kds' => 'bar',
-                'canais' => $todosCanais,
-            ]);
+                Produto::withoutGlobalScopes()->create([
+                    'loja_id' => $loja->id,
+                    'categoria_id' => $catPrincipal->id,
+                    'nome' => 'Produto Exemplo (Edite ou Exclua)',
+                    'descricao' => 'Edite este item no painel da loja em Cardápio e Cupons.',
+                    'preco_centavos' => 2990,
+                    'controla_estoque' => false,
+                    'ativo' => true,
+                    'esgotado' => false,
+                    'ordem' => 1,
+                    'tempo_preparo_min' => 20,
+                    'estacao_kds' => 'geral',
+                    'canais' => $todosCanais,
+                ]);
+            }
 
             Auditoria::create([
                 'loja_id' => $loja->id,

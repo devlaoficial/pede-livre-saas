@@ -8,6 +8,8 @@ use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Entregas\Models\AreaEntrega;
 use DomainException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 final class CalculadoraFreteService
 {
@@ -23,27 +25,31 @@ final class CalculadoraFreteService
      */
     public function calcular(Loja $loja, array $endereco, int $subtotalCentavos): array
     {
-        $bairro = isset($endereco['bairro']) ? trim(mb_strtolower($endereco['bairro'])) : null;
-        $lat = $endereco['lat'] ?? null;
-        $lng = $endereco['lng'] ?? null;
-        $cep = isset($endereco['cep']) ? preg_replace('/\D+/', '', $endereco['cep']) : null;
+        $bairroInput = isset($endereco['bairro']) ? trim((string) $endereco['bairro']) : '';
+        $lat = isset($endereco['lat']) && is_numeric($endereco['lat']) ? (float) $endereco['lat'] : null;
+        $lng = isset($endereco['lng']) && is_numeric($endereco['lng']) ? (float) $endereco['lng'] : null;
+        $cep = isset($endereco['cep']) ? preg_replace('/\D+/', '', (string) $endereco['cep']) : null;
 
-        // 1. Check Neighborhood matching first
-        if ($bairro !== null && $bairro !== '') {
-            $areaBairro = AreaEntrega::where('loja_id', $loja->id)
-                ->where('ativa', true)
-                ->where('tipo', 'bairro')
-                ->whereRaw('LOWER(nome_bairro) = ?', [$bairro])
-                ->first();
-
+        // 1. Check Neighborhood matching first (accent-insensitive and case-insensitive)
+        if ($bairroInput !== '') {
+            $areaBairro = $this->buscarAreaPorBairro($loja->id, $bairroInput);
             if ($areaBairro !== null) {
                 return $this->formatarRespostaArea($areaBairro, $subtotalCentavos, null);
             }
         }
 
         // 2. Check Haversine Distance by Coordinates or Geocoded CEP
-        if (($lat === null || $lng === null) && $cep !== null) {
-            [$lat, $lng] = $this->geocodificarCepCached($cep);
+        if (($lat === null || $lng === null) && $cep !== null && strlen($cep) === 8) {
+            $geo = $this->geocodificarCepCached($cep, $loja);
+            $lat = $geo['lat'];
+            $lng = $geo['lng'];
+
+            if ($bairroInput === '' && !empty($geo['bairro'])) {
+                $areaBairroCep = $this->buscarAreaPorBairro($loja->id, (string) $geo['bairro']);
+                if ($areaBairroCep !== null) {
+                    return $this->formatarRespostaArea($areaBairroCep, $subtotalCentavos, null);
+                }
+            }
         }
 
         if ($lat !== null && $lng !== null && $loja->lat !== null && $loja->lng !== null) {
@@ -70,6 +76,32 @@ final class CalculadoraFreteService
         throw new DomainException('Desculpe, o endereço informado está fora do nosso raio de entrega.');
     }
 
+    private function buscarAreaPorBairro(int $lojaId, string $bairro): ?AreaEntrega
+    {
+        $bairroNorm = $this->normalizarTexto($bairro);
+        if ($bairroNorm === '') {
+            return null;
+        }
+
+        $areasBairro = AreaEntrega::where('loja_id', $lojaId)
+            ->where('ativa', true)
+            ->where('tipo', 'bairro')
+            ->get();
+
+        foreach ($areasBairro as $area) {
+            if ($this->normalizarTexto((string) $area->nome_bairro) === $bairroNorm) {
+                return $area;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizarTexto(string $texto): string
+    {
+        return strtolower(trim(Str::ascii($texto)));
+    }
+
     /**
      * Haversine formula calculation.
      */
@@ -92,14 +124,40 @@ final class CalculadoraFreteService
     }
 
     /**
-     * @return array{0: ?float, 1: ?float}
+     * Real CEP Geocoding via AwesomeAPI CEP / ViaCEP + Nominatim in production,
+     * with deterministic fallback around store coordinates when offline or in testing.
+     *
+     * @return array{lat: ?float, lng: ?float, bairro: ?string}
      */
-    private function geocodificarCepCached(string $cep): array
+    private function geocodificarCepCached(string $cep, Loja $loja): array
     {
-        return Cache::remember("geocoding:cep:{$cep}", 86400 * 30, function () use ($cep): array {
-            // Simulated local geocoding cache fallback or mock coordinates
-            // Default offset around Minas Gerais / Vale do Aço
-            return [-19.5186 + (intval(substr($cep, -3)) * 0.0001), -42.6306 + (intval(substr($cep, -3)) * 0.0001)];
+        return Cache::remember("geocoding:cep:v2:{$cep}", 86400 * 30, function () use ($cep, $loja): array {
+            if (!app()->environment('testing')) {
+                try {
+                    $resp = Http::timeout(4)->get("https://cep.awesomeapi.com.br/json/{$cep}");
+                    if ($resp->successful()) {
+                        $dados = $resp->json();
+                        if (isset($dados['lat'], $dados['lng']) && is_numeric($dados['lat']) && is_numeric($dados['lng'])) {
+                            return [
+                                'lat' => (float) $dados['lat'],
+                                'lng' => (float) $dados['lng'],
+                                'bairro' => isset($dados['district']) ? (string) $dados['district'] : null,
+                            ];
+                        }
+                    }
+                } catch (\Throwable) {
+                    // Fallback below if external geocoding API times out
+                }
+            }
+
+            $baseLat = $loja->lat !== null ? (float) $loja->lat : -19.5186;
+            $baseLng = $loja->lng !== null ? (float) $loja->lng : -42.6306;
+
+            return [
+                'lat' => $baseLat + (intval(substr($cep, -3)) * 0.0001),
+                'lng' => $baseLng + (intval(substr($cep, -3)) * 0.0001),
+                'bairro' => null,
+            ];
         });
     }
 
@@ -116,7 +174,7 @@ final class CalculadoraFreteService
         $freteGratis = false;
         $taxaFinal = $area->taxa_centavos;
 
-        if ($area->frete_gratis_acima_centavos !== null && $subtotalCentavos >= $area->frete_gratis_acima_centavos) {
+        if ($area->frete_gratis_acima_centavos !== null && $area->frete_gratis_acima_centavos > 0 && $subtotalCentavos >= $area->frete_gratis_acima_centavos) {
             $freteGratis = true;
             $taxaFinal = 0;
         }

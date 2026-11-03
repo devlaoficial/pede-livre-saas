@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Assinaturas\Console\ProcessarInadimplenciaCommand;
 use App\Domain\Assinaturas\Models\Loja;
+use App\Domain\Assinaturas\Services\AssinaturaPlataformaService;
+use App\Domain\Assinaturas\Services\ReguaInadimplenciaService;
 use App\Domain\Autenticacao\Models\Usuario;
+use App\Domain\Bot\Commands\DispararWinBackCommand;
+use App\Domain\Bot\Services\WhatsAppMetaCloudService;
 use App\Domain\Catalogo\Models\Categoria;
 use App\Domain\Catalogo\Models\Combo;
 use App\Domain\Catalogo\Models\GrupoAdicional;
@@ -18,31 +23,31 @@ use App\Domain\Catalogo\Policies\ComboPolicy;
 use App\Domain\Catalogo\Policies\GrupoAdicionalPolicy;
 use App\Domain\Catalogo\Policies\ProdutoPolicy;
 use App\Domain\Catalogo\Services\CardapioCacheService;
-use App\Domain\Pagamentos\Services\MercadoPagoOAuthService;
-use App\Domain\Pagamentos\Services\MercadoPagoPixService;
-use App\Domain\Assinaturas\Services\AssinaturaPlataformaService;
-use App\Domain\Assinaturas\Services\ReguaInadimplenciaService;
-use App\Domain\Bot\Services\WhatsAppMetaCloudService;
-use App\Domain\Fidelidade\Services\CashbackService;
-use App\Domain\Mesas\Services\ComandaService;
-use App\Domain\Pedidos\Services\CaixaService;
-use App\Domain\Pedidos\Services\ImpressaoEscPosService;
-use App\Support\Security\WebhookSignatureValidator;
 use App\Domain\Entregas\Models\AreaEntrega;
 use App\Domain\Entregas\Models\Entregador;
 use App\Domain\Entregas\Policies\AreaEntregaPolicy;
 use App\Domain\Entregas\Policies\EntregadorPolicy;
+use App\Domain\Fidelidade\Commands\SolicitarAvaliacoesCommand;
+use App\Domain\Fidelidade\Services\CashbackService;
 use App\Domain\Mesas\Models\Mesa;
 use App\Domain\Mesas\Policies\MesaPolicy;
+use App\Domain\Mesas\Services\ComandaService;
 use App\Domain\Operacao\Models\ExcecaoHorario;
 use App\Domain\Operacao\Models\Horario;
 use App\Domain\Operacao\Policies\ExcecaoHorarioPolicy;
 use App\Domain\Operacao\Policies\HorarioPolicy;
+use App\Domain\Pagamentos\Services\MercadoPagoOAuthService;
+use App\Domain\Pagamentos\Services\MercadoPagoPixService;
+use App\Domain\Pedidos\Commands\RecuperarCarrinhosCommand;
+use App\Domain\Pedidos\Commands\VerificarPedidosAtrasadosCommand;
+use App\Domain\Pedidos\Services\CaixaService;
+use App\Domain\Pedidos\Services\ImpressaoEscPosService;
 use App\Policies\LojaPolicy;
 use App\Policies\UsuarioPolicy;
 use App\Support\Security\BlindIndexService;
 use App\Support\Security\SafeImageUploadService;
 use App\Support\Security\SensitiveDataRedactor;
+use App\Support\Security\WebhookSignatureValidator;
 use App\Support\Tenancy\LojaContext;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -94,10 +99,11 @@ final class AppServiceProvider extends ServiceProvider
         // 3. Custom Domain CLI Commands
         if ($this->app->runningInConsole()) {
             $this->commands([
-                \App\Domain\Pedidos\Commands\RecuperarCarrinhosCommand::class,
-                \App\Domain\Pedidos\Commands\VerificarPedidosAtrasadosCommand::class,
-                \App\Domain\Fidelidade\Commands\SolicitarAvaliacoesCommand::class,
-                \App\Domain\Bot\Commands\DispararWinBackCommand::class,
+                ProcessarInadimplenciaCommand::class,
+                RecuperarCarrinhosCommand::class,
+                VerificarPedidosAtrasadosCommand::class,
+                SolicitarAvaliacoesCommand::class,
+                DispararWinBackCommand::class,
             ]);
         }
     }

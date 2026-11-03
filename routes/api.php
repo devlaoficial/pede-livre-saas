@@ -43,7 +43,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes - PedeLivre SaaS (Phases 1 to 11 Complete Master Blueprint)
+| API Routes - PedeLivre SaaS
 |--------------------------------------------------------------------------
 */
 
@@ -88,7 +88,7 @@ Route::middleware([
     // Auth & Logout
     Route::post('auth/logout', [LoginController::class, 'logout']);
 
-    // Super Admin Dashboard & Audited Impersonation (Phase 1 & Phase 9)
+    // Super Admin Dashboard & Audited Impersonation
     Route::prefix('admin')->group(function (): void {
         Route::get('metricas', [SuperAdminController::class, 'metricas']);
         Route::get('lojas', [SuperAdminController::class, 'listarLojas']);
@@ -100,22 +100,22 @@ Route::middleware([
             ->middleware('throttle:10,1');
     });
 
-    // SaaS Subscriptions, Plan Upgrades & 3-Click Self-Service Cancellation (Phase 9)
-    // Note: ModoLeituraInadimplenciaMiddleware explicitly allows /api/assinatura* and /api/faturas*
+    // SaaS Subscriptions, Plan Upgrades & 3-Click Self-Service Cancellation
     Route::prefix('assinatura')->group(function (): void {
         Route::post('alterar-plano', [AssinaturaController::class, 'alterarPlano']);
         Route::post('cancelar', [AssinaturaController::class, 'cancelar']);
     });
     Route::post('faturas/{id}/pagar', [AssinaturaController::class, 'pagarFatura']);
 
-    // Store Profile & Settings
+    // Store Profile, Branding & Settings
     Route::get('loja', [LojaController::class, 'show']);
     Route::patch('loja', [LojaController::class, 'update']);
+    Route::post('loja/imagem', [LojaController::class, 'uploadImagem']);
 
     // Staff Users Management
     Route::apiResource('usuarios', UsuarioController::class);
 
-    // Catalog Drag-and-Drop & Fast Stock (Phase 3)
+    // Catalog Drag-and-Drop & Fast Stock
     Route::patch('categorias/reordenar', [ReordenarCatalogoController::class, 'reordenarCategorias']);
     Route::patch('produtos/reordenar', [ReordenarCatalogoController::class, 'reordenarProdutos']);
     Route::post('produtos/{id}/pausar', [EstoqueRapidoController::class, 'pausarProduto']);
@@ -123,13 +123,13 @@ Route::middleware([
     Route::post('produtos/{id}/imagem', [UploadProdutoImagemController::class, 'upload']);
     Route::post('catalogo/importar', [ImportacaoCatalogoController::class, 'importar']);
 
-    // Catalog CRUD (Phase 2 & 3)
+    // Catalog CRUD
     Route::apiResource('categorias', CategoriaController::class);
     Route::apiResource('produtos', ProdutoController::class);
     Route::apiResource('grupos-adicionais', GrupoAdicionalController::class);
     Route::apiResource('combos', ComboController::class);
 
-    // Operations: Operating Hours & Exceptions (Phase 4)
+    // Operations: Operating Hours & Exceptions
     Route::get('horarios', [HorarioController::class, 'index']);
     Route::post('horarios/salvar-turnos', [HorarioController::class, 'salvarTurnos']);
     Route::delete('horarios/{id}', [HorarioController::class, 'destroy']);
@@ -140,7 +140,7 @@ Route::middleware([
     Route::get('entregadores/fechamento-dia', [EntregadorController::class, 'fechamentoDia']);
     Route::apiResource('entregadores', EntregadorController::class);
 
-    // On-Premise Operations: Tables, Open Tabs (Comandas) & Bill Splitting (Phase 4 & Phase 10)
+    // On-Premise Operations: Tables, Open Tabs (Comandas) & Bill Splitting
     Route::get('mesas-chamados', [MesaAdminController::class, 'chamadosAtivos']);
     Route::post('mesas/{id}/atender-chamado', [MesaAdminController::class, 'atenderChamado']);
     Route::middleware(VerificarRecursoPlanoMiddleware::class . ':canal_mesa_balcao')->group(function (): void {
@@ -153,13 +153,13 @@ Route::middleware([
         Route::post('comandas/{id}/fechar', [ComandaController::class, 'fechar']);
     });
 
-    // Kitchen Display System (KDS by Station - Phase 10)
+    // Kitchen Display System (KDS by Station)
     Route::prefix('kds')->group(function (): void {
         Route::get('tickets', [KdsController::class, 'tickets']);
         Route::patch('itens/{itemId}/status', [KdsController::class, 'atualizarStatusItem']);
     });
 
-    // Cash Register (Caixa - Phase 10)
+    // Cash Register (Caixa)
     Route::prefix('caixa')->group(function (): void {
         Route::get('status', [CaixaController::class, 'status']);
         Route::post('abrir', [CaixaController::class, 'abrir']);
@@ -167,7 +167,7 @@ Route::middleware([
         Route::post('fechar', [CaixaController::class, 'fechar']);
     });
 
-    // Mercado Pago OAuth2 Connect, Direct Token Authorization & Status (Phase 8)
+    // Mercado Pago OAuth2 Connect, Direct Token Authorization & Status
     Route::prefix('pagamentos/mercadopago')->group(function (): void {
         Route::get('conectar', [MercadoPagoOAuthController::class, 'conectar']);
         Route::post('salvar-token', [MercadoPagoOAuthController::class, 'salvarTokenManual']);
@@ -176,7 +176,7 @@ Route::middleware([
         Route::get('status', [MercadoPagoOAuthController::class, 'status']);
     });
 
-    // Tier 2: 80mm ESC/POS Thermal Print Queue & Agent Endpoints (Phase 7)
+    // 80mm ESC/POS Thermal Print Queue & Agent Endpoints
     Route::prefix('impressao')->group(function (): void {
         Route::get('fila', [ImpressaoFilaController::class, 'obterFila']);
         Route::post('{jobId}/confirmar', [ImpressaoFilaController::class, 'confirmarImpressao']);
@@ -184,12 +184,13 @@ Route::middleware([
     });
     Route::post('painel/pedidos/{id}/imprimir', [ImpressaoFilaController::class, 'imprimirManualmente']);
 
-    // Real-Time Merchant Order Panel (Kanban & State Machine - Phase 6)
+    // Real-Time Merchant Order Panel (Kanban & State Machine)
     Route::prefix('painel')->group(function (): void {
         Route::get('pedidos', [PedidoPainelController::class, 'index']);
         Route::post('pedidos/manual', [PedidoPainelController::class, 'criarPedidoManual']);
         Route::get('pedidos/{id}', [PedidoPainelController::class, 'show']);
         Route::patch('pedidos/{id}/status', [PedidoPainelController::class, 'atualizarStatus']);
+        Route::post('pedidos/{id}/confirmar-pagamento', [PedidoPainelController::class, 'confirmarPagamento']);
         Route::post('pedidos/{id}/cancelar', [PedidoPainelController::class, 'cancelarComMotivo']);
         Route::post('pedidos/{id}/atribuir-entregador', [PedidoPainelController::class, 'atribuirEntregador']);
 
@@ -209,7 +210,7 @@ Route::middleware([
         Route::get('avaliacoes', [WhatsAppEvolutionController::class, 'listarAvaliacoes']);
     });
 
-    // Analytics Reports, Coupons & LGPD Compliance Portal (Phase 11)
+    // Analytics Reports, Coupons & LGPD Compliance Portal
     Route::get('relatorios/vendas', [RelatorioVendasController::class, 'vendas']);
     Route::get('cupons', [RelatorioVendasController::class, 'listarCupons']);
     Route::post('cupons', [RelatorioVendasController::class, 'criarCupom']);

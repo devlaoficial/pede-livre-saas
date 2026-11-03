@@ -8,6 +8,7 @@ use App\Domain\Assinaturas\Models\Assinatura;
 use App\Domain\Assinaturas\Models\Fatura;
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Assinaturas\Models\Plano;
+use App\Domain\Pagamentos\Services\MercadoPagoPixService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -33,7 +34,7 @@ final class AssinaturaPlataformaService
 
             /** @var Assinatura|null $assinatura */
             $assinatura = Assinatura::where('loja_id', $loja->id)
-                ->where('status', 'ativa')
+                ->whereIn('status', ['ativa', 'trial'])
                 ->first();
 
             if ($assinatura !== null) {
@@ -105,16 +106,29 @@ final class AssinaturaPlataformaService
             : $plano->preco_centavos;
 
         $platformToken = (string) config('services.mercadopago.platform_access_token', '');
-        $copiaCola = "00020126580014br.gov.bcb.pix0136 SaaS-PedeLivre-Assinatura-{$assinatura->id}-" . time();
+        $pixService = app(MercadoPagoPixService::class);
+        $copiaCola = $pixService->montarPayloadEmvPix(
+            chavePix: 'financeiro@pedelivre.com.br',
+            nomeRecebedor: 'PEDELIVRE SAAS',
+            cidadeRecebedor: 'SAO PAULO',
+            valorCentavos: $valorCentavos,
+            txid: 'SAASINV' . $assinatura->id
+        );
         $mpPaymentId = 'SAAS_INV_' . $assinatura->id . '_' . time();
 
         if ($platformToken !== '' && !app()->environment('testing')) {
             $response = Http::withHeaders([
                 'Authorization' => "Bearer {$platformToken}",
-            ])->post(self::MP_PIX_URL, [
+                'X-Idempotency-Key' => $mpPaymentId,
+            ])->timeout(10)->post(self::MP_PIX_URL, [
                 'transaction_amount' => round($valorCentavos / 100, 2),
                 'description' => "Assinatura PedeLivre - Plano {$plano->nome}",
                 'payment_method_id' => 'pix',
+                'payer' => [
+                    'email' => "loja_{$assinatura->loja_id}@pedelivre.com.br",
+                    'first_name' => 'Lojista',
+                    'last_name' => 'PedeLivre',
+                ],
             ]);
 
             if ($response->successful()) {

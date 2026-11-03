@@ -1,85 +1,31 @@
-<!-- MÓDULO COZINHA (KDS) - DESIGN CLAUDE FIEL -->
+<!-- MÓDULO COZINHA (KDS) - 100% PRODUÇÃO -->
 <div x-cloak x-show="moduloAtivo === 'kds'" 
      x-data="{
-         modoDemoKds: false,
          estacaoSelecionada: 'todas',
          itensConcluidos: {},
-         demoTickets: [
-             {
-                 id: 101,
-                 codigo_publico: '24PT',
-                 canal: 'delivery',
-                 cliente: 'Maria S.',
-                 minutos: 2,
-                 status: 'novo',
-                 itens: [
-                     { id: 1011, nome: 'Especial da Casa', qtd: 2, estacao: 'Chapa' },
-                     { id: 1012, nome: 'Coca-Cola lata', qtd: 1, estacao: 'Bar' }
-                 ]
-             },
-             {
-                 id: 102,
-                 codigo_publico: '25PT',
-                 canal: 'mesa',
-                 cliente: 'Mesa 4',
-                 minutos: 5,
-                 status: 'novo',
-                 itens: [
-                     { id: 1021, nome: 'Pizza Calabresa', qtd: 1, estacao: 'Forno' },
-                     { id: 1022, nome: 'Suco de laranja', qtd: 2, estacao: 'Bar' }
-                 ]
-             },
-             {
-                 id: 103,
-                 codigo_publico: '22PT',
-                 canal: 'balcao',
-                 cliente: 'João P.',
-                 minutos: 12,
-                 status: 'em_preparo',
-                 itens: [
-                     { id: 1031, nome: 'Combo Duplo', qtd: 1, estacao: 'Chapa', checked: true },
-                     { id: 1032, nome: 'Batata frita', qtd: 1, estacao: 'Fritadeira', checked: false }
-                 ]
-             },
-             {
-                 id: 104,
-                 codigo_publico: '21PT',
-                 canal: 'delivery',
-                 cliente: 'Ana L.',
-                 minutos: 21,
-                 atrasado: true,
-                 status: 'em_preparo',
-                 itens: [
-                     { id: 1041, nome: 'Especial da Casa', qtd: 1, estacao: 'Chapa', checked: true },
-                     { id: 1042, nome: 'Coca-Cola lata', qtd: 1, estacao: 'Bar', checked: true }
-                 ]
-             },
-             {
-                 id: 105,
-                 codigo_publico: '20PT',
-                 canal: 'delivery',
-                 cliente: 'Carlos M.',
-                 minutos: 28,
-                 status: 'pronto',
-                 itens: [
-                     { id: 1051, nome: 'Açaí 500ml', qtd: 1, estacao: 'Bar', checked: true }
-                 ]
-             }
-         ],
 
          initKds() {
-             // Iniciar itens concluídos do demo
-             this.demoTickets.forEach(t => {
-                 t.itens.forEach(i => {
-                     if (i.checked) {
-                         this.itensConcluidos[i.id] = true;
+             // Sincroniza estado inicial de itens prontos da API
+             (this.pedidos || []).forEach(p => {
+                 (p.itens || []).forEach(it => {
+                     if (it.id && it.status_kds === 'pronto') {
+                         this.itensConcluidos[it.id] = true;
                      }
                  });
              });
          },
 
-         toggleCheckItem(itemId) {
-             this.itensConcluidos[itemId] = !this.itensConcluidos[itemId];
+         async toggleCheckItem(itemId) {
+             const novoEstado = !this.itensConcluidos[itemId];
+             this.itensConcluidos[itemId] = novoEstado;
+             if (itemId && Number.isInteger(Number(itemId)) && Number(itemId) < 100000000) {
+                 try {
+                     await this.apiFetch(`/api/kds/itens/${itemId}/status`, {
+                         method: 'PATCH',
+                         body: JSON.stringify({ status_kds: novoEstado ? 'pronto' : 'em_preparo' })
+                     });
+                 } catch (e) {}
+             }
          },
 
          isItemChecked(itemId) {
@@ -87,58 +33,49 @@
          },
 
          avancarKds(ticket) {
-             if (this.modoDemoKds) {
-                 if (ticket.status === 'novo') ticket.status = 'em_preparo';
-                 else if (ticket.status === 'em_preparo') ticket.status = 'pronto';
-                 else if (ticket.status === 'pronto') {
-                     this.toastMsg = 'Pedido #' + ticket.codigo_publico + ' despachado / motoboy chamado!';
-                     this.demoTickets = this.demoTickets.filter(t => t.id !== ticket.id);
-                 }
-                 return;
-             }
-             // Modo Real: avança via API no backend
-             const realPedido = this.pedidos.find(p => p.id === ticket.id || p.codigo_publico === ticket.codigo_publico);
+             const realPedido = (this.pedidos || []).find(p => p.id === ticket.id || p.codigo_publico === ticket.codigo_publico);
              if (realPedido) {
                  this.avancarStatus(realPedido);
              }
          },
 
          pedidosAtivosKds() {
-             if (this.modoDemoKds) {
-                 return this.demoTickets;
-             }
-
-             // Gera lista a partir dos pedidos reais da loja
-             const lista = (this.pedidos || [])
-                 .filter(p => ['novo', 'aceito', 'em_preparo', 'pronto', 'despachado'].includes(p.status))
+             const metaMin = Number(this.loja?.config_json?.tempo_medio_preparo_min || 15);
+             return (this.pedidos || [])
+                 .filter(p => ['novo', 'aceito', 'em_preparo', 'pronto', 'saiu_entrega'].includes(p.status))
                  .map(p => {
                      const mins = Math.max(1, Math.round((new Date() - new Date(p.created_at)) / 60000));
-                     const statusKds = (p.status === 'novo' || p.status === 'aceito') ? 'novo' : (p.status === 'em_preparo' ? 'em_preparo' : 'pronto');
+                     const statusKds = (p.status === 'novo' || p.status === 'aceito')
+                         ? 'novo'
+                         : (p.status === 'em_preparo' ? 'em_preparo' : 'pronto');
                      return {
                          id: p.id,
                          codigo_publico: p.codigo_publico,
                          canal: p.canal,
-                         cliente: p.cliente_nome || (p.mesa_id ? 'Mesa ' + (p.mesa?.numero || '') : 'Balcão'),
+                         cliente: p.cliente?.nome || p.cliente_nome || (p.mesa ? 'Mesa ' + (p.mesa.numero || '') : 'Balcão'),
                          minutos: mins,
-                         atrasado: mins > 15,
+                         atrasado: mins > metaMin && statusKds !== 'pronto',
                          status: statusKds,
+                         observacoes: p.observacoes || '',
                          itens: (p.itens || []).map((it, idx) => {
-                             const est = (it.produto && it.produto.estacao_kds) ? it.produto.estacao_kds : (it.estacao_kds || 'Chapa');
+                             const est = (it.produto && it.produto.estacao_kds)
+                                 ? it.produto.estacao_kds
+                                 : (it.estacao_kds || 'chapa');
+                             if (it.id && it.status_kds === 'pronto' && this.itensConcluidos[it.id] === undefined) {
+                                 this.itensConcluidos[it.id] = true;
+                             }
                              return {
-                                 id: it.id || (p.id * 100 + idx),
+                                 id: it.id || (p.id * 100000 + idx),
                                  nome: it.nome_snapshot || it.nome,
+                                 variacao: it.variacao_snapshot || it.variacao || null,
+                                 adicionais: Array.isArray(it.adicionais) ? it.adicionais : (Array.isArray(it.adicionais_json) ? it.adicionais_json : []),
+                                 obs: it.obs || null,
                                  qtd: it.qtd || 1,
                                  estacao: est.charAt(0).toUpperCase() + est.slice(1).toLowerCase()
                              };
                          })
                      };
                  });
-
-             // Se não houver pedidos reais na tela, ativa o modo demo para visualização imediata
-             if (lista.length === 0) {
-                 return this.demoTickets;
-             }
-             return lista;
          },
 
          ticketsFiltrados(status) {
@@ -160,33 +97,31 @@
          },
 
          tempoMedioMinutos() {
-             const todos = this.pedidosAtivosKds();
-             if (todos.length === 0) return 13;
+             const todos = this.pedidosAtivosKds().filter(t => t.status !== 'pronto');
+             if (todos.length === 0) return 0;
              const totalMins = todos.reduce((acc, t) => acc + (t.minutos || 0), 0);
-             return Math.round(totalMins / todos.length) || 13;
+             return Math.round(totalMins / todos.length) || 0;
          },
 
          totalAtrasados() {
-             return this.pedidosAtivosKds().filter(t => t.minutos > 15 && t.status !== 'pronto').length;
+             return this.pedidosAtivosKds().filter(t => t.atrasado && t.status !== 'pronto').length;
          }
      }"
      x-init="initKds()"
      class="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 space-y-6">
 
-    <!-- SUB-BARRA SUPERIOR DO KDS: SUBTÍTULO, TOGGLE MODO DEMO & AÇÕES -->
+    <!-- SUB-BARRA SUPERIOR DO KDS -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-            <h2 class="text-xl lg:text-2xl font-black text-white tracking-tight">Cozinha</h2>
-            <p class="text-xs text-slate-400 font-medium mt-0.5">Filtre por estação e acompanhe o tempo de cada pedido</p>
+            <h2 class="text-xl lg:text-2xl font-black text-white tracking-tight">Cozinha (KDS em Tempo Real)</h2>
+            <p class="text-xs text-slate-400 font-medium mt-0.5">Filtre por estação de preparo e acompanhe o SLA de cada pedido ao vivo</p>
         </div>
 
         <div class="flex items-center gap-2">
-            <!-- Botão Alternador de Demonstração / Dados Reais -->
-            <button @click="modoDemoKds = !modoDemoKds" 
-                class="px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5"
-                :class="modoDemoKds ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-[#131927] text-slate-400 border-[#1e2638] hover:text-white'">
-                <span class="w-2 h-2 rounded-full" :class="modoDemoKds ? 'bg-amber-400' : 'bg-slate-500'"></span>
-                <span>Dados de exemplo</span>
+            <button @click="carregarDadosIniciais()" 
+                class="bg-[#131927] hover:bg-[#1a2336] text-slate-300 hover:text-white border border-[#1e2638] px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                <span>🔄</span>
+                <span>Atualizar</span>
             </button>
 
             <!-- Modo TV Tela Cheia -->
@@ -199,7 +134,7 @@
         </div>
     </div>
 
-    <!-- 3 KPI CARDS SUPERIORES (Design Fiel Imagem 2) -->
+    <!-- 3 KPI CARDS SUPERIORES -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <!-- Card 1: Na fila -->
         <div class="bg-[#101422] border border-[#192136] rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
@@ -207,16 +142,16 @@
             <div class="mt-2 flex items-baseline gap-2">
                 <span class="text-3xl sm:text-4xl font-black text-white" x-text="totalNaFila()"></span>
             </div>
-            <span class="text-xs text-slate-400 mt-1">Pedidos abertos</span>
+            <span class="text-xs text-slate-400 mt-1">Pedidos em preparo / aguardando</span>
         </div>
 
         <!-- Card 2: Tempo médio -->
         <div class="bg-[#101422] border border-[#192136] rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tempo médio</span>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tempo médio na fila</span>
             <div class="mt-2 flex items-baseline gap-2">
                 <span class="text-3xl sm:text-4xl font-black text-emerald-400" x-text="tempoMedioMinutos() + ' min'"></span>
             </div>
-            <span class="text-xs text-slate-400 mt-1">Meta: 15 min</span>
+            <span class="text-xs text-slate-400 mt-1" x-text="'Meta da loja: ' + (loja?.config_json?.tempo_medio_preparo_min || 15) + ' min'"></span>
         </div>
 
         <!-- Card 3: Atrasados -->
@@ -225,13 +160,13 @@
             <div class="mt-2 flex items-baseline gap-2">
                 <span class="text-3xl sm:text-4xl font-black text-[#f43f5e]" x-text="totalAtrasados()"></span>
             </div>
-            <span class="text-xs text-slate-400 mt-1">Passaram da meta</span>
+            <span class="text-xs text-slate-400 mt-1">Acima do tempo médio</span>
         </div>
     </div>
 
-    <!-- BARRA DE CHIPS DE ESTAÇÃO (Todas, Chapa, Forno, Fritadeira, Bar) -->
+    <!-- BARRA DE CHIPS DE ESTAÇÃO (Todas, Chapa, Forno, Fritadeira, Bar, Sobremesa) -->
     <div class="bg-[#0f1422] border border-[#192136] rounded-2xl p-1.5 flex overflow-x-auto no-scrollbar gap-1.5">
-        <template x-for="est in ['todas', 'chapa', 'forno', 'fritadeira', 'bar']" :key="est">
+        <template x-for="est in ['todas', 'chapa', 'forno', 'fritadeira', 'bar', 'sobremesa']" :key="est">
             <button @click="estacaoSelecionada = est"
                 class="px-4 py-2 rounded-xl text-xs font-bold capitalize transition flex items-center gap-1.5 shrink-0"
                 :class="estacaoSelecionada === est ? 'bg-[#1b2338] text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'">
@@ -246,28 +181,24 @@
         
         <!-- ==================== COLUNA 1: NOVOS ==================== -->
         <div class="bg-[#0b0f19] space-y-3.5">
-            <!-- Header Coluna -->
             <div class="flex items-center justify-between px-1">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-[#f43f5e]"></span>
-                    <h3 class="font-extrabold text-sm text-white">Novos</h3>
+                    <h3 class="font-extrabold text-sm text-white">Novos / Recebidos</h3>
                 </div>
                 <span class="w-5 h-5 rounded-full bg-[#161c2d] text-slate-300 font-bold text-xs flex items-center justify-center"
                       x-text="ticketsFiltrados('novo').length"></span>
             </div>
 
-            <!-- Empty State -->
             <template x-if="ticketsFiltrados('novo').length === 0">
                 <div class="bg-[#0e1220] border border-dashed border-[#1e2638] rounded-2xl py-12 px-4 text-center text-slate-500 text-xs font-medium">
                     Nenhum pedido novo na fila
                 </div>
             </template>
 
-            <!-- Cards Novos -->
             <div class="space-y-3">
                 <template x-for="ticket in ticketsFiltrados('novo')" :key="'novo-' + ticket.id">
                     <div class="bg-[#121626] border border-[#1d243a] rounded-2xl p-4 space-y-3 shadow-md hover:border-slate-600 transition">
-                        <!-- Topo Card -->
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-black text-white" x-text="'#' + ticket.codigo_publico"></span>
@@ -278,33 +209,34 @@
                                   x-text="ticket.minutos + ' min'"></span>
                         </div>
 
-                        <!-- Cliente -->
                         <div class="font-bold text-sm text-white" x-text="ticket.cliente"></div>
 
-                        <!-- Checklist de Itens -->
                         <div class="space-y-2 pt-1">
                             <template x-for="it in ticket.itens" :key="it.id">
-                                <div class="flex items-center justify-between text-xs py-1 cursor-pointer group"
-                                     @click="toggleCheckItem(it.id)">
-                                    <div class="flex items-center gap-2 min-w-0 pr-2">
-                                        <span class="font-extrabold text-slate-300" x-text="it.qtd + 'x'"></span>
-                                        <span class="font-medium text-slate-200 truncate group-hover:text-white"
-                                              :class="isItemChecked(it.id) ? 'line-through text-slate-500' : ''"
-                                              x-text="it.nome"></span>
+                                <div class="text-xs py-1 cursor-pointer group" @click="toggleCheckItem(it.id)">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2 min-w-0 pr-2">
+                                            <span class="font-extrabold text-slate-300" x-text="it.qtd + 'x'"></span>
+                                            <span class="font-medium text-slate-200 truncate group-hover:text-white"
+                                                  :class="isItemChecked(it.id) ? 'line-through text-slate-500' : ''"
+                                                  x-text="it.nome"></span>
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#182033] text-slate-400"
+                                                  x-text="it.estacao"></span>
+                                            <span class="w-5 h-5 rounded-full border flex items-center justify-center transition"
+                                                  :class="isItemChecked(it.id) ? 'bg-emerald-500 border-emerald-500 text-white font-black text-[10px]' : 'border-slate-600 hover:border-slate-400'">
+                                                <span x-show="isItemChecked(it.id)">✓</span>
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div class="flex items-center gap-2 shrink-0">
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#182033] text-slate-400"
-                                              x-text="it.estacao"></span>
-                                        <span class="w-5 h-5 rounded-full border flex items-center justify-center transition"
-                                              :class="isItemChecked(it.id) ? 'bg-emerald-500 border-emerald-500 text-white font-black text-[10px]' : 'border-slate-600 hover:border-slate-400'">
-                                            <span x-show="isItemChecked(it.id)">✓</span>
-                                        </span>
-                                    </div>
+                                    <template x-if="it.obs">
+                                        <div class="text-[11px] text-amber-400 pl-6 mt-0.5" x-text="'⚠️ ' + it.obs"></div>
+                                    </template>
                                 </div>
                             </template>
                         </div>
 
-                        <!-- Botão Iniciar Preparo -->
                         <button @click="avancarKds(ticket)"
                             class="w-full py-2.5 rounded-xl font-black text-xs bg-[#fb7185] hover:bg-[#f43f5e] text-slate-950 transition active:scale-95 shadow-md">
                             Iniciar preparo
@@ -316,7 +248,6 @@
 
         <!-- ==================== COLUNA 2: EM PREPARO ==================== -->
         <div class="bg-[#0b0f19] space-y-3.5">
-            <!-- Header Coluna -->
             <div class="flex items-center justify-between px-1">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span>
@@ -326,26 +257,22 @@
                       x-text="ticketsFiltrados('em_preparo').length"></span>
             </div>
 
-            <!-- Empty State -->
             <template x-if="ticketsFiltrados('em_preparo').length === 0">
                 <div class="bg-[#0e1220] border border-dashed border-[#1e2638] rounded-2xl py-12 px-4 text-center text-slate-500 text-xs font-medium">
                     Nada na cozinha agora
                 </div>
             </template>
 
-            <!-- Cards Em Preparo -->
             <div class="space-y-3">
                 <template x-for="ticket in ticketsFiltrados('em_preparo')" :key="'prep-' + ticket.id">
                     <div class="bg-[#121626] border rounded-2xl p-4 space-y-3 shadow-md hover:border-slate-500 transition"
                          :class="ticket.atrasado ? 'border-rose-500/70 ring-1 ring-rose-500/20' : 'border-[#1d243a]'">
-                        <!-- Topo Card -->
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-black text-white" x-text="'#' + ticket.codigo_publico"></span>
                                 <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-[#1d243a] text-slate-300"
                                       x-text="ticket.canal"></span>
                             </div>
-                            <!-- Badge de Tempo ou Atraso -->
                             <template x-if="ticket.atrasado">
                                 <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-[#331422] text-[#f43f5e] border border-rose-500/30"
                                       x-text="ticket.minutos + ' min · atrasado'"></span>
@@ -356,33 +283,34 @@
                             </template>
                         </div>
 
-                        <!-- Cliente -->
                         <div class="font-bold text-sm text-white" x-text="ticket.cliente"></div>
 
-                        <!-- Checklist de Itens -->
                         <div class="space-y-2 pt-1">
                             <template x-for="it in ticket.itens" :key="it.id">
-                                <div class="flex items-center justify-between text-xs py-1 cursor-pointer group"
-                                     @click="toggleCheckItem(it.id)">
-                                    <div class="flex items-center gap-2 min-w-0 pr-2">
-                                        <span class="font-extrabold text-slate-300" x-text="it.qtd + 'x'"></span>
-                                        <span class="font-medium text-slate-200 truncate group-hover:text-white"
-                                              :class="isItemChecked(it.id) ? 'line-through text-slate-500' : ''"
-                                              x-text="it.nome"></span>
+                                <div class="text-xs py-1 cursor-pointer group" @click="toggleCheckItem(it.id)">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2 min-w-0 pr-2">
+                                            <span class="font-extrabold text-slate-300" x-text="it.qtd + 'x'"></span>
+                                            <span class="font-medium text-slate-200 truncate group-hover:text-white"
+                                                  :class="isItemChecked(it.id) ? 'line-through text-slate-500' : ''"
+                                                  x-text="it.nome"></span>
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#182033] text-slate-400"
+                                                  x-text="it.estacao"></span>
+                                            <span class="w-5 h-5 rounded-full border flex items-center justify-center transition"
+                                                  :class="isItemChecked(it.id) ? 'bg-emerald-500 border-emerald-500 text-white font-black text-[10px]' : 'border-slate-600 hover:border-slate-400'">
+                                                <span x-show="isItemChecked(it.id)">✓</span>
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div class="flex items-center gap-2 shrink-0">
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#182033] text-slate-400"
-                                              x-text="it.estacao"></span>
-                                        <span class="w-5 h-5 rounded-full border flex items-center justify-center transition"
-                                              :class="isItemChecked(it.id) ? 'bg-emerald-500 border-emerald-500 text-white font-black text-[10px]' : 'border-slate-600 hover:border-slate-400'">
-                                            <span x-show="isItemChecked(it.id)">✓</span>
-                                        </span>
-                                    </div>
+                                    <template x-if="it.obs">
+                                        <div class="text-[11px] text-amber-400 pl-6 mt-0.5" x-text="'⚠️ ' + it.obs"></div>
+                                    </template>
                                 </div>
                             </template>
                         </div>
 
-                        <!-- Botão Marcar como pronto -->
                         <button @click="avancarKds(ticket)"
                             class="w-full py-2.5 rounded-xl font-black text-xs bg-[#f59e0b] hover:bg-[#d97706] text-slate-950 transition active:scale-95 shadow-md">
                             Marcar como pronto
@@ -394,42 +322,35 @@
 
         <!-- ==================== COLUNA 3: PRONTOS ==================== -->
         <div class="bg-[#0b0f19] space-y-3.5">
-            <!-- Header Coluna -->
             <div class="flex items-center justify-between px-1">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-[#10b981]"></span>
-                    <h3 class="font-extrabold text-sm text-white">Prontos</h3>
+                    <h3 class="font-extrabold text-sm text-white">Prontos para Expedição</h3>
                 </div>
                 <span class="w-5 h-5 rounded-full bg-[#161c2d] text-slate-300 font-bold text-xs flex items-center justify-center"
                       x-text="ticketsFiltrados('pronto').length"></span>
             </div>
 
-            <!-- Empty State -->
             <template x-if="ticketsFiltrados('pronto').length === 0">
                 <div class="bg-[#0e1220] border border-dashed border-[#1e2638] rounded-2xl py-12 px-4 text-center text-slate-500 text-xs font-medium">
                     Nenhum pedido aguardando despacho
                 </div>
             </template>
 
-            <!-- Cards Prontos -->
             <div class="space-y-3">
                 <template x-for="ticket in ticketsFiltrados('pronto')" :key="'pronto-' + ticket.id">
                     <div class="bg-[#121626] border border-[#1d243a] rounded-2xl p-4 space-y-3 shadow-md hover:border-slate-500 transition">
-                        <!-- Topo Card -->
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-black text-white" x-text="'#' + ticket.codigo_publico"></span>
                                 <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-[#1d243a] text-slate-300"
                                       x-text="ticket.canal"></span>
                             </div>
-                            <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-[#122b22] text-emerald-400"
-                                  x-text="'Pronto'"></span>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-[#122b22] text-emerald-400">Pronto</span>
                         </div>
 
-                        <!-- Cliente -->
                         <div class="font-bold text-sm text-white" x-text="ticket.cliente"></div>
 
-                        <!-- Checklist de Itens -->
                         <div class="space-y-2 pt-1">
                             <template x-for="it in ticket.itens" :key="it.id">
                                 <div class="flex items-center justify-between text-xs py-1 cursor-pointer group"
@@ -452,10 +373,9 @@
                             </template>
                         </div>
 
-                        <!-- Botão Chamar motoboy / Despachar -->
                         <button @click="avancarKds(ticket)"
                             class="w-full py-2.5 rounded-xl font-black text-xs bg-[#38bdf8] hover:bg-[#0ea5e9] text-slate-950 transition active:scale-95 shadow-md">
-                            <span x-text="ticket.canal === 'delivery' ? 'Chamar motoboy' : 'Entregar ao cliente'"></span>
+                            <span x-text="ticket.canal === 'delivery' ? 'Despachar p/ Entrega' : 'Entregar ao Cliente'"></span>
                         </button>
                     </div>
                 </template>

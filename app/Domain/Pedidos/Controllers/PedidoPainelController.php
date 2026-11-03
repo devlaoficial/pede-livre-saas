@@ -9,6 +9,9 @@ use App\Domain\Autenticacao\Models\Usuario;
 use App\Domain\Bot\Services\EvolutionApiService;
 use App\Domain\Clientes\Models\Cliente;
 use App\Domain\Entregas\Models\Entregador;
+use App\Domain\Pagamentos\Models\Pagamento;
+use App\Domain\Pedidos\Events\PagamentoConfirmado;
+use App\Domain\Pedidos\Events\PedidoAtualizado;
 use App\Domain\Pedidos\Events\PedidoCriado;
 use App\Domain\Pedidos\Models\Pedido;
 use App\Domain\Pedidos\Models\PedidoEvento;
@@ -44,7 +47,7 @@ final class PedidoPainelController
     {
         $statusFiltro = $request->query('status');
 
-        $query = Pedido::with(['cliente', 'itens', 'mesa', 'entregador', 'eventos.usuario'])
+        $query = Pedido::with(['cliente', 'itens.produto', 'mesa', 'entregador', 'eventos.usuario'])
             ->orderBy('created_at', 'desc');
 
         if (is_string($statusFiltro) && $statusFiltro !== '') {
@@ -62,7 +65,7 @@ final class PedidoPainelController
 
     public function show(int $id): JsonResponse
     {
-        $pedido = Pedido::with(['cliente', 'itens', 'mesa', 'entregador', 'eventos.usuario'])->findOrFail($id);
+        $pedido = Pedido::with(['cliente', 'itens.produto', 'mesa', 'entregador', 'eventos.usuario'])->findOrFail($id);
 
         return response()->json(new PedidoPainelResource($pedido));
     }
@@ -86,7 +89,7 @@ final class PedidoPainelController
 
             return response()->json([
                 'message' => "Status do pedido atualizado para [{$pedidoAtualizado->status}].",
-                'pedido' => new PedidoPainelResource($pedidoAtualizado->load(['cliente', 'itens', 'mesa', 'entregador', 'eventos.usuario'])),
+                'pedido' => new PedidoPainelResource($pedidoAtualizado->load(['cliente', 'itens.produto', 'mesa', 'entregador', 'eventos.usuario'])),
             ]);
         } catch (DomainException $e) {
             return response()->json([
@@ -94,6 +97,50 @@ final class PedidoPainelController
                 'message' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+    }
+
+    /**
+     * POST /api/painel/pedidos/{id}/confirmar-pagamento
+     * Confirma manualmente o recebimento do pagamento de um pedido no painel.
+     */
+    public function confirmarPagamento(Request $request, int $id): JsonResponse
+    {
+        $pedido = Pedido::with(['pagamento', 'cliente', 'itens.produto', 'mesa', 'entregador', 'eventos.usuario'])->findOrFail($id);
+        /** @var Usuario $usuario */
+        $usuario = $request->user();
+
+        DB::transaction(function () use ($pedido, $usuario): void {
+            $pedido->update(['pagamento_status' => 'aprovado']);
+
+            if ($pedido->pagamento !== null) {
+                $pedido->pagamento->update(['status' => 'aprovado']);
+            } else {
+                Pagamento::create([
+                    'loja_id' => $pedido->loja_id,
+                    'pedido_id' => $pedido->id,
+                    'metodo' => $pedido->forma_pagamento,
+                    'valor' => $pedido->total,
+                    'status' => 'aprovado',
+                    'idempotency_key' => 'manual_pay_' . $pedido->id . '_' . time(),
+                ]);
+            }
+
+            PedidoEvento::create([
+                'pedido_id' => $pedido->id,
+                'status_de' => $pedido->status,
+                'status_para' => $pedido->status,
+                'usuario_id' => $usuario->id,
+                'observacao' => 'Pagamento confirmado manualmente pelo operador no painel.',
+            ]);
+        });
+
+        event(new PagamentoConfirmado($pedido));
+        event(new PedidoAtualizado($pedido, $pedido->status));
+
+        return response()->json([
+            'message' => "Pagamento do pedido #{$pedido->codigo_publico} confirmado com sucesso!",
+            'pedido' => new PedidoPainelResource($pedido->fresh(['cliente', 'itens.produto', 'mesa', 'entregador', 'eventos.usuario'])),
+        ]);
     }
 
     /**
@@ -105,7 +152,7 @@ final class PedidoPainelController
         /** @var Usuario $usuario */
         $usuario = $request->user();
         /** @var Loja|null $loja */
-        $loja = $usuario->loja;
+        $loja = $usuario->loja ?? $this->context->getLoja();
 
         if ($loja === null) {
             return response()->json(['error' => 'LOJA_NAO_ENCONTRADA'], Response::HTTP_NOT_FOUND);
@@ -133,7 +180,8 @@ final class PedidoPainelController
         ]);
 
         $dados = $request->all();
-        $dados['idempotency_key'] = 'pdv_' . now()->timestamp . '_' . Str::random(6);
+        $idempotencyKey = 'pdv_' . now()->timestamp . '_' . Str::random(6);
+        $dados['idempotency_key'] = $idempotencyKey;
 
         // Identifica ou cadastra o cliente com Blind Index
         $telRaw = trim((string) ($dados['cliente']['telefone'] ?? ''));
@@ -154,17 +202,24 @@ final class PedidoPainelController
             $cliente->update(['nome' => trim((string) $dados['cliente']['nome'])]);
         }
 
-        // Se canal for retirada, passa como balcão para validações de produto caso aplicável
+        // Calcula itens, adicionais e subtotal com precisão (sem falhar caso o bairro manual não esteja cadastrado na tabela de áreas)
         $dadosCalculo = $dados;
-        if (($dadosCalculo['canal'] ?? '') === 'retirada') {
+        $canalOriginal = (string) $dados['canal'];
+        if ($canalOriginal === 'retirada' || ($canalOriginal === 'delivery' && $request->has('taxa_entrega_centavos'))) {
             $dadosCalculo['canal'] = 'balcao';
         }
 
-        // Calcula itens, adicionais e subtotal com precisão
-        $calculo = $this->calculoPedido->calcular($loja, $dadosCalculo);
+        try {
+            $calculo = $this->calculoPedido->calcular($loja, $dadosCalculo);
+        } catch (DomainException $e) {
+            return response()->json([
+                'error' => 'ERRO_VALIDACAO_ITEM',
+                'message' => $e->getMessage(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
         // Ajusta taxa de entrega manual se o lojista definiu
-        if ($request->has('taxa_entrega_centavos')) {
+        if ($canalOriginal === 'delivery' && $request->has('taxa_entrega_centavos')) {
             $taxaManual = (int) $request->input('taxa_entrega_centavos', 0);
             $difTaxa = $taxaManual - $calculo['taxa_entrega_centavos'];
             $calculo['taxa_entrega_centavos'] = $taxaManual;
@@ -180,11 +235,12 @@ final class PedidoPainelController
 
         $statusInicial = (string) $request->input('status_inicial', 'aceito');
         $formaPagto = (string) $dados['forma_pagamento'];
+        // Strict ENUM compliance: ['pendente', 'aprovado', 'recusado', 'estornado']
         $pagamentoStatus = in_array($formaPagto, ['pix', 'cartao_maquina', 'cartao_online'], true) && $statusInicial !== 'novo'
-            ? 'pago'
+            ? 'aprovado'
             : 'pendente';
 
-        $pedido = DB::transaction(function () use ($loja, $cliente, $dados, $calculo, $statusInicial, $formaPagto, $pagamentoStatus): Pedido {
+        $pedido = DB::transaction(function () use ($loja, $cliente, $dados, $calculo, $statusInicial, $formaPagto, $pagamentoStatus, $idempotencyKey): Pedido {
             $codigoPublico = strtoupper(Str::random(4));
             $tokenHash = hash_hmac('sha256', "{$loja->id}:{$codigoPublico}:" . now()->timestamp, (string) config('app.key'));
 
@@ -207,6 +263,7 @@ final class PedidoPainelController
                 'troco_para' => $dados['troco_para'] ?? null,
                 'observacao' => $dados['observacao'] ?? null,
                 'endereco_json' => $dados['endereco'] ?? null,
+                'aceito_em' => in_array($statusInicial, ['aceito', 'em_preparo'], true) ? now() : null,
                 'origem' => 'painel',
             ]);
 
@@ -225,6 +282,15 @@ final class PedidoPainelController
                 ]);
             }
 
+            Pagamento::create([
+                'loja_id' => $loja->id,
+                'pedido_id' => $pedido->id,
+                'metodo' => $formaPagto,
+                'valor' => $calculo['total_centavos'],
+                'status' => $pagamentoStatus,
+                'idempotency_key' => $idempotencyKey,
+            ]);
+
             PedidoEvento::create([
                 'pedido_id' => $pedido->id,
                 'status_de' => null,
@@ -242,20 +308,19 @@ final class PedidoPainelController
         $cliente->update(['ultimo_pedido_em' => now()]);
 
         // Dispara evento em tempo real para sincronização com outros navegadores/telas
-        event(new PedidoCriado($pedido->load(['cliente', 'itens', 'mesa'])));
+        event(new PedidoCriado($pedido->load(['cliente', 'itens.produto', 'mesa'])));
 
         // Notifica cliente via WhatsApp se ativado
         $configWpp = $loja->config_json['whatsapp'] ?? [];
         if (!empty($configWpp['notificar_pedidos']) && !empty($configWpp['connected'])) {
             try {
-                $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
                 $this->evolutionApi->notificarMudancaStatus($pedido->load('cliente'), $statusInicial);
             } catch (\Throwable) {}
         }
 
         return response()->json([
             'message' => "Pedido #{$pedido->codigo_publico} lançado com sucesso!",
-            'pedido' => new PedidoPainelResource($pedido->load(['cliente', 'itens', 'mesa', 'entregador', 'eventos.usuario'])),
+            'pedido' => new PedidoPainelResource($pedido->load(['cliente', 'itens.produto', 'mesa', 'entregador', 'eventos.usuario'])),
         ], Response::HTTP_CREATED);
     }
 
@@ -280,21 +345,9 @@ final class PedidoPainelController
                 $request->input('motivo')
             );
 
-            // Notifica cliente via WhatsApp se conectado
-            $loja = $pedido->loja ?? Loja::find($pedido->loja_id);
-            if ($loja !== null) {
-                $configWpp = $loja->config_json['whatsapp'] ?? [];
-                if (!empty($configWpp['notificar_pedidos']) && !empty($configWpp['connected'])) {
-                    try {
-                        $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
-                        $this->evolutionApi->notificarMudancaStatus($pedido->load('cliente'), 'cancelado');
-                    } catch (\Throwable) {}
-                }
-            }
-
             return response()->json([
                 'message' => "Pedido #{$pedidoAtualizado->codigo_publico} cancelado com sucesso.",
-                'pedido' => new PedidoPainelResource($pedidoAtualizado->load(['cliente', 'itens', 'mesa', 'entregador', 'eventos.usuario'])),
+                'pedido' => new PedidoPainelResource($pedidoAtualizado->load(['cliente', 'itens.produto', 'mesa', 'entregador', 'eventos.usuario'])),
             ]);
         } catch (DomainException $e) {
             return response()->json([
@@ -335,6 +388,8 @@ final class PedidoPainelController
             'observacao' => "Despachado com motoboy {$entregador->nome}",
         ]);
 
+        event(new PedidoAtualizado($pedido, $statusAnterior));
+
         if ($pedido->canal === 'delivery') {
             $loja = $pedido->loja ?? Loja::find($pedido->loja_id);
             if ($loja !== null) {
@@ -348,7 +403,7 @@ final class PedidoPainelController
 
         return response()->json([
             'message' => "Pedido despachado com sucesso com {$entregador->nome}!",
-            'pedido' => new PedidoPainelResource($pedido->load(['cliente', 'itens', 'entregador'])),
+            'pedido' => new PedidoPainelResource($pedido->load(['cliente', 'itens.produto', 'entregador', 'mesa', 'eventos.usuario'])),
         ]);
     }
 }

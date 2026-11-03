@@ -109,18 +109,31 @@
                         </template>
                     </div>
 
-                    <!-- Resumo Financeiro do Pedido -->
+                    <!-- Resumo Financeiro do Pedido + Confirmação de Pagamento -->
                     <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-1.5">
                         <div class="flex justify-between text-slate-400"><span>Subtotal:</span><span x-text="formatarCentavos(pedidoSelecionado.subtotal_centavos)"></span></div>
                         <div class="flex justify-between text-slate-400" x-show="pedidoSelecionado.taxa_entrega_centavos > 0"><span>Taxa de Entrega:</span><span x-text="formatarCentavos(pedidoSelecionado.taxa_entrega_centavos)"></span></div>
                         <div class="flex justify-between text-emerald-400" x-show="pedidoSelecionado.desconto_centavos > 0"><span>Desconto Cupom:</span><span x-text="'- ' + formatarCentavos(pedidoSelecionado.desconto_centavos)"></span></div>
                         <div class="flex justify-between text-emerald-400" x-show="pedidoSelecionado.desconto_cashback_centavos > 0"><span>Cashback Fidelidade:</span><span x-text="'- ' + formatarCentavos(pedidoSelecionado.desconto_cashback_centavos)"></span></div>
-                        <div class="flex justify-between text-white font-black text-sm pt-1.5 border-t border-slate-800">
-                            <span x-text="'Total (' + (pedidoSelecionado.forma_pagamento || '').toUpperCase() + ')'"></span>
+                        <div class="flex justify-between items-center text-white font-black text-sm pt-1.5 border-t border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <span x-text="'Total (' + (pedidoSelecionado.forma_pagamento || '').toUpperCase() + ')'"></span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full uppercase"
+                                      :class="pedidoSelecionado.pagamento_status === 'aprovado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'"
+                                      x-text="pedidoSelecionado.pagamento_status === 'aprovado' ? '✓ Pago' : '⏳ Pendente'"></span>
+                            </div>
                             <span class="text-emerald-400" x-text="formatarCentavos(pedidoSelecionado.total_centavos)"></span>
                         </div>
                         <template x-if="pedidoSelecionado.troco_para">
                             <div class="text-amber-300 font-bold pt-1" x-text="'💵 Levar troco para: ' + formatarCentavos(pedidoSelecionado.troco_para)"></div>
+                        </template>
+                        <template x-if="pedidoSelecionado.pagamento_status !== 'aprovado' && pedidoSelecionado.status !== 'cancelado'">
+                            <div class="pt-2">
+                                <button type="button" @click="confirmarPagamentoPedido(pedidoSelecionado)"
+                                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl text-xs shadow transition">
+                                    ✓ Confirmar Recebimento do Pagamento
+                                </button>
+                            </div>
                         </template>
                     </div>
 

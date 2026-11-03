@@ -1,12 +1,15 @@
         <div x-cloak x-show="moduloAtivo === 'catalogo'" class="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 space-y-5">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
                 <div>
-                    <h2 class="font-bold text-base text-white">Gestão Completa de Cardápio, Promoções &amp; Cupons</h2>
-                    <p class="text-xs text-slate-400">Edite fotos WebP, preços promocionais ("De/Por"), variações de tamanho e cupons de desconto.</p>
+                    <h2 class="font-bold text-base text-white">Gestão Completa de Cardápio, Adicionais, Promoções &amp; Cupons</h2>
+                    <p class="text-xs text-slate-400">Cadastre categorias, produtos com fotos WebP, grupos de adicionais/complementos e cupons de desconto.</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button @click="modalNovoCupom = true" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-emerald-500/30">
                         🎟️ + Novo Cupom
+                    </button>
+                    <button @click="abrirModalGrupoAdicional()" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-amber-500/30">
+                        ➕ + Grupo de Adicionais
                     </button>
                     <button @click="modalNovaCategoria = true" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-700">
                         + Nova Categoria
@@ -17,7 +20,7 @@
                 </div>
             </div>
 
-            <!-- Faixa de Cupons de Desconto Ativos (Etapa 2) -->
+            <!-- Faixa de Cupons de Desconto Ativos -->
             <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
@@ -49,7 +52,34 @@
                 </div>
             </div>
 
-            <!-- Filtro por Categoria -->
+            <!-- Grupos de Adicionais / Complementos -->
+            <template x-if="gruposAdicionais && gruposAdicionais.length > 0">
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-black text-white">➕ Grupos de Adicionais &amp; Complementos</span>
+                            <span class="text-[11px] bg-amber-500/15 text-amber-300 font-bold px-2 py-0.5 rounded-full" x-text="gruposAdicionais.length + ' grupos'"></span>
+                        </div>
+                        <button @click="abrirModalGrupoAdicional()" class="text-xs font-bold text-amber-400 hover:underline">+ Novo Grupo</button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                        <template x-for="grp in gruposAdicionais" :key="grp.id">
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2 text-xs">
+                                <div class="min-w-0 flex-1">
+                                    <div class="font-bold text-white truncate" x-text="grp.nome"></div>
+                                    <div class="text-[10px] text-slate-400" x-text="(grp.obrigatorio ? 'Obrigatório' : 'Opcional') + ' • Máx: ' + grp.max_escolhas + ' • ' + (grp.opcoes?.length || 0) + ' opções'"></div>
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <button @click="abrirModalGrupoAdicional(grp)" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold">✏️</button>
+                                    <button @click="excluirGrupoAdicional(grp.id)" class="px-2 py-1 rounded-lg text-rose-400 hover:bg-rose-500/15 text-[11px] font-bold">✕</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Filtro por Categoria com Opção de Excluir Categoria -->
             <div class="flex overflow-x-auto no-scrollbar gap-2">
                 <button @click="filtroCategoriaId = ''"
                     class="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition"
@@ -57,10 +87,14 @@
                     Todas as Categorias (<span x-text="produtos.length"></span>)
                 </button>
                 <template x-for="cat in categorias" :key="cat.id">
-                    <button @click="filtroCategoriaId = cat.id"
-                        class="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition"
-                        :class="filtroCategoriaId === cat.id ? 'bg-rose-600 text-white' : 'bg-slate-900 text-slate-400 border border-slate-800'"
-                        x-text="cat.nome"></button>
+                    <div class="inline-flex items-center rounded-xl overflow-hidden border"
+                         :class="filtroCategoriaId === cat.id ? 'bg-rose-600 border-rose-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400'">
+                        <button @click="filtroCategoriaId = cat.id"
+                            class="px-3 py-1.5 text-xs font-bold whitespace-nowrap transition"
+                            x-text="cat.nome"></button>
+                        <button @click.stop="excluirCategoria(cat)" title="Excluir categoria"
+                            class="pr-2.5 pl-1 py-1.5 text-[10px] opacity-70 hover:opacity-100">✕</button>
+                    </div>
                 </template>
             </div>
 
@@ -85,8 +119,8 @@
                                     </div>
                                 </template>
                             </div>
-                            <template x-if="prod.imagem && (prod.imagem.startsWith('http') || prod.imagem.startsWith('/'))">
-                                <img :src="prod.imagem" class="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-800">
+                            <template x-if="prod.imagem">
+                                <img :src="prod.imagem.startsWith('http') || prod.imagem.startsWith('/') ? prod.imagem : '/storage/' + prod.imagem" class="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-800">
                             </template>
                         </div>
 
@@ -96,13 +130,17 @@
                                 <span x-show="prod.preco_promocional_centavos" class="text-xs text-slate-500 line-through ml-1" x-text="formatarCentavos(prod.preco_centavos)"></span>
                             </div>
                             <div class="flex items-center gap-1.5">
-                                <button @click="abrirModalProduto(prod)" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200">
+                                <button @click="abrirModalProduto(prod)" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200">
                                     ✏️ Editar
                                 </button>
                                 <button @click="alternarEstoqueProduto(prod)"
-                                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition"
                                     :class="prod.esgotado ? 'bg-emerald-600 text-white' : 'bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700'">
                                     <span x-text="prod.esgotado ? '✓ Ativar' : '⏸️ Pausar'"></span>
+                                </button>
+                                <button @click="excluirProduto(prod)" title="Excluir produto"
+                                    class="px-2 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-rose-600/20 text-rose-400 border border-slate-700">
+                                    🗑️
                                 </button>
                             </div>
                         </div>

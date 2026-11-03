@@ -74,7 +74,7 @@
                             <div class="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center relative mb-2.5"
                                  :class="p.imagem ? 'bg-[#182033]' : ((p.nome.toUpperCase().charCodeAt(0) % 2 === 0) ? 'bg-[#261622]' : 'bg-[#292212]')">
                                 <template x-if="p.imagem">
-                                    <img :src="p.imagem" :alt="p.nome" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                    <img :src="p.imagem.startsWith('http') || p.imagem.startsWith('/') ? p.imagem : '/storage/' + p.imagem" :alt="p.nome" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                                 </template>
                                 <template x-if="!p.imagem">
                                     <span class="text-4xl sm:text-5xl font-black select-none tracking-tighter"

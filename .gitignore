@@ -1,14 +1,15 @@
-/.phpunit.cache
 /node_modules
-/public/build
 /public/hot
 /public/storage
 /storage/*.key
+/storage/logs/*.log
 /vendor
+/scratch
 .env
 .env.backup
 .env.production
 .phpunit.result.cache
+.phpactor.json
 Homestead.json
 Homestead.yaml
 auth.json
@@ -17,4 +18,5 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
-/scratch
+/pedelivre-producao/
+pedelivre-producao.zip

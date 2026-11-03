@@ -67,17 +67,33 @@
 </head>
 <body class="min-h-full bg-[#0a0b0e] text-slate-100 antialiased pb-28 lg:pb-16 relative overflow-x-hidden" x-data="cardapioApp()" x-init="initApp()">
 
+    @php
+        $rawCapa = $loja->capa_url ?: ($loja->capa ?? null);
+        $capaUrl = null;
+        if ($rawCapa) {
+            $capaUrl = (str_starts_with($rawCapa, 'http') || str_starts_with($rawCapa, '/'))
+                ? $rawCapa
+                : '/storage/' . ltrim($rawCapa, '/');
+        }
+        $rawLogo = $loja->logo_url ?: ($loja->logo ?? null);
+        $logoUrl = null;
+        if ($rawLogo) {
+            $logoUrl = (str_starts_with($rawLogo, 'http') || str_starts_with($rawLogo, '/'))
+                ? $rawLogo
+                : '/storage/' . ltrim($rawLogo, '/');
+        }
+    @endphp
+
     <!-- ============================================================== -->
     <!-- 1. BANNER DE CAPA PANORÂMICO (HERO COVER BANNER)               -->
     <!-- ============================================================== -->
     <div class="relative w-full cover-banner overflow-hidden bg-[#121318]">
-        @php
-            $capaUrl = $loja->capa && str_starts_with($loja->capa, 'http')
-                ? $loja->capa
-                : 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1600&q=80';
-        @endphp
-        <img src="{{ $capaUrl }}" alt="Capa {{ $loja->nome }}" 
-             class="w-full h-full object-cover object-center filter brightness-90 transform scale-105 hover:scale-100 transition duration-1000">
+        @if($capaUrl)
+            <img src="{{ $capaUrl }}" alt="Capa {{ $loja->nome }}" 
+                 class="w-full h-full object-cover object-center filter brightness-90 transform scale-105 hover:scale-100 transition duration-1000">
+        @else
+            <div class="w-full h-full" style="background: radial-gradient(circle at 20% 20%, {{ $loja->cor_primaria ?: '#ff5a1f' }}44, #121318 70%);"></div>
+        @endif
 
         <!-- Gradientes de Vinheta para Legibilidade e Integração Perfeita -->
         <div class="absolute inset-0 bg-gradient-to-t from-[#0a0b0e] via-[#0a0b0e]/50 to-black/40"></div>
@@ -87,10 +103,11 @@
         <div class="absolute top-4 inset-x-4 sm:inset-x-6 lg:inset-x-8 max-w-7xl mx-auto flex items-center justify-between z-20 pointer-events-auto">
             <!-- Badge de Status de Funcionamento -->
             <div class="flex items-center gap-2">
-                <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md text-emerald-400 border border-emerald-500/30 shadow-lg">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 -ml-3.5"></span>
-                    <span x-text="lojaStatus.aberto_agora ? 'Aberto agora' : 'Fechado para pedidos'"></span>
+                <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border shadow-lg"
+                      :class="lojaStatus.aberto_agora ? 'text-emerald-400 border-emerald-500/30' : 'text-rose-400 border-rose-500/30'">
+                    <span class="w-2 h-2 rounded-full" :class="lojaStatus.aberto_agora ? 'bg-emerald-400 animate-ping' : 'bg-rose-400'"></span>
+                    <span class="w-2 h-2 rounded-full -ml-3.5" :class="lojaStatus.aberto_agora ? 'bg-emerald-400' : 'bg-rose-400'"></span>
+                    <span x-text="lojaStatus.aberto_agora ? 'Aberto agora' : (lojaStatus.mensagem || 'Fechado no momento')"></span>
                 </span>
                 
                 @if($mesa)
@@ -128,10 +145,9 @@
                 
                 <!-- Logo & Dados Principais -->
                 <div class="flex items-center gap-3.5 sm:gap-4">
-                    <!-- Logo / Avatar da Loja com Borda Grossa e Sombra -->
                     <div class="relative shrink-0">
-                        @if($loja->logo && str_starts_with($loja->logo, 'http'))
-                            <img src="{{ $loja->logo }}" alt="{{ $loja->nome }}" 
+                        @if($logoUrl)
+                            <img src="{{ $logoUrl }}" alt="{{ $loja->nome }}" 
                                  style="width: 72px; height: 72px; min-width: 72px;" 
                                  class="sm:w-20 sm:h-20 rounded-2xl object-cover shadow-2xl border-4 border-[#13141a] bg-[#1a1c24]">
                         @else
@@ -147,26 +163,30 @@
                         <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
                             <h1 class="text-base sm:text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight">{{ $loja->nome }}</h1>
                             <span class="text-[11px] sm:text-xs font-bold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
-                                <span>⭐</span> 4.9
+                                <span>⭐</span> {{ number_format($mediaAvaliacao ?? 5.0, 1, ',', '') }}
                             </span>
                         </div>
 
-                        <!-- Metadados: Categoria, Tempo, Entrega e Endereço -->
+                        <!-- Metadados: Tempo, Entrega, Pedido Mínimo e Endereço -->
                         <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-slate-300 mt-1 font-medium">
                             <span class="flex items-center gap-1 text-slate-300">
                                 <span>⏱️</span>
-                                <span>{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }}–45 min</span>
+                                <span>{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }}–{{ ($loja->config_json['tempo_medio_preparo_min'] ?? 35) + 15 }} min</span>
                             </span>
-                            <span class="text-slate-600">•</span>
-                            <span class="flex items-center gap-1 text-emerald-400 font-bold">
-                                <span>🛵</span>
-                                <span x-text="freteCentavos === 0 ? 'Frete Grátis' : 'Taxa ' + formatarCentavos(freteCentavos)"></span>
-                            </span>
-                            <span class="text-slate-600">•</span>
-                            <span class="flex items-center gap-1 text-slate-400">
-                                <span>💰</span>
-                                <span>Mín. R$ 20</span>
-                            </span>
+                            <template x-if="checkout.canal === 'delivery' && !mesaAtiva">
+                                <span class="flex items-center gap-1 text-emerald-400 font-bold">
+                                    <span class="text-slate-600 mr-1">•</span>
+                                    <span>🛵</span>
+                                    <span x-text="freteCentavos === 0 ? 'Frete Grátis' : 'Taxa ' + formatarCentavos(freteCentavos)"></span>
+                                </span>
+                            </template>
+                            <template x-if="pedidoMinimoCentavos > 0">
+                                <span class="flex items-center gap-1 text-slate-400">
+                                    <span class="text-slate-600 mr-1">•</span>
+                                    <span>💰</span>
+                                    <span x-text="'Mín. ' + formatarCentavos(pedidoMinimoCentavos)"></span>
+                                </span>
+                            </template>
                             @if($loja->endereco)
                                 <span class="text-slate-600 hidden md:inline">•</span>
                                 <span class="hidden md:inline truncate max-w-sm text-slate-400 hover:text-white cursor-pointer transition" @click="modalInfoLoja = true">
@@ -208,93 +228,117 @@
                 </div>
             </div>
 
-            <!-- Faixa de Cupom Ativo com 1-Clique -->
-            <div class="bg-gradient-to-r from-[#1c1815] to-[#171419] border border-[#3e271a] rounded-2xl p-2 sm:p-2.5 px-3 sm:px-4 flex items-center justify-between gap-2 shadow-md">
-                <div class="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-orange-200/90 font-medium min-w-0">
-                    <span class="text-orange-400 text-sm sm:text-base shrink-0">🎟️</span>
-                    <span class="truncate">Cupom <strong class="font-black text-white bg-black/40 px-1.5 py-0.5 rounded border border-orange-500/30">BEMVINDO10</strong>: 10% OFF</span>
+            <!-- Aviso se Loja estiver fechada no momento -->
+            <template x-if="!lojaStatus.aberto_agora">
+                <div class="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-3 px-4 flex items-center justify-between gap-2 text-xs text-rose-300 font-semibold">
+                    <span>⏰ No momento estamos fechados para novos pedidos. Você pode navegar pelo cardápio!</span>
+                    <button type="button" @click="modalInfoLoja = true" class="underline font-bold text-white shrink-0">Ver horários</button>
                 </div>
-                <button type="button" @click="aplicarCupomRapido('BEMVINDO10')"
-                    class="px-2.5 sm:px-3.5 py-1 rounded-xl text-[11px] sm:text-xs font-black text-white transition shrink-0 hover:brightness-110 shadow-sm active:scale-95 flex items-center gap-1 whitespace-nowrap"
-                    :style="'background-color: var(--cor-loja)'">
-                    <span x-text="cupomAplicado?.codigo === 'BEMVINDO10' ? '✓ Ativo' : 'Ativar'"></span>
-                </button>
-            </div>
+            </template>
+
+            <!-- Atalho para Último Pedido em Andamento -->
+            <template x-if="ultimoPedido && ultimoPedido.tracking_url">
+                <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-2.5 px-4 flex items-center justify-between gap-2 text-xs">
+                    <div class="flex items-center gap-2 text-emerald-300 font-bold truncate">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span x-text="'Pedido recente #' + ultimoPedido.codigo_publico"></span>
+                    </div>
+                    <a :href="ultimoPedido.tracking_url" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-3 py-1 rounded-xl text-[11px] shrink-0 transition">
+                        Acompanhar Pedido →
+                    </a>
+                </div>
+            </template>
+
+            <!-- Faixa Dinâmica de Cupom Ativo (Exibida apenas quando a loja possui cupom ativo real) -->
+            <template x-if="cupomDestaque">
+                <div class="bg-gradient-to-r from-[#1c1815] to-[#171419] border border-[#3e271a] rounded-2xl p-2 sm:p-2.5 px-3 sm:px-4 flex items-center justify-between gap-2 shadow-md">
+                    <div class="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-orange-200/90 font-medium min-w-0">
+                        <span class="text-orange-400 text-sm sm:text-base shrink-0">🎟️</span>
+                        <span class="truncate">
+                            Cupom <strong class="font-black text-white bg-black/40 px-1.5 py-0.5 rounded border border-orange-500/30" x-text="cupomDestaque.codigo"></strong>:
+                            <span x-text="cupomDestaque.tipo === 'percentual' ? (cupomDestaque.valor + '% OFF') : (cupomDestaque.tipo === 'frete_gratis' ? 'Frete Grátis' : (formatarCentavos(cupomDestaque.valor) + ' OFF'))"></span>
+                            <template x-if="cupomDestaque.pedido_minimo > 0">
+                                <span class="text-slate-400" x-text="'(mín. ' + formatarCentavos(cupomDestaque.pedido_minimo) + ')'"></span>
+                            </template>
+                        </span>
+                    </div>
+                    <button type="button" @click="aplicarCupomRapido(cupomDestaque)"
+                        class="px-2.5 sm:px-3.5 py-1 rounded-xl text-[11px] sm:text-xs font-black text-white transition shrink-0 hover:brightness-110 shadow-sm active:scale-95 flex items-center gap-1 whitespace-nowrap"
+                        :style="'background-color: var(--cor-loja)'">
+                        <span x-text="cupomAplicado?.codigo === cupomDestaque.codigo ? '✓ Ativo' : 'Ativar'"></span>
+                    </button>
+                </div>
+            </template>
         </header>
 
         <!-- ============================================================== -->
-        <!-- 3. DESTAQUES DA PROMOÇÃO & COMBOS (SEÇÃO PROMOCIONAL HERO)     -->
+        <!-- 3. DESTAQUES DA PROMOÇÃO (EXIBIDO APENAS QUANDO HÁ OFERTA REAL)-->
         <!-- ============================================================== -->
-        <section class="space-y-3">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <span class="text-lg">🔥</span>
-                    <h2 class="text-lg sm:text-xl font-black text-white tracking-tight">Destaques da Promoção</h2>
-                    <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse">Ofertas da Semana</span>
+        <template x-if="!termoBusca.trim() && produtoPromocaoDestaque">
+            <section class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🔥</span>
+                        <h2 class="text-lg sm:text-xl font-black text-white tracking-tight">Oferta em Destaque</h2>
+                        <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">Promoção Ativa</span>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Card Banner de Promoção em Destaque (Gourmet Promo Showcase) -->
-            <div class="relative overflow-hidden rounded-3xl border border-[#2d2824] bg-gradient-to-r from-[#1b1512] via-[#16141a] to-[#121319] p-4 sm:p-7 shadow-2xl">
-                <!-- Luz de fundo sutil com a cor da loja -->
-                <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full pointer-events-none opacity-20 filter blur-3xl"
-                     style="background-color: var(--cor-loja);"></div>
+                <div class="relative overflow-hidden rounded-3xl border border-[#2d2824] bg-gradient-to-r from-[#1b1512] via-[#16141a] to-[#121319] p-4 sm:p-7 shadow-2xl">
+                    <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full pointer-events-none opacity-20 filter blur-3xl"
+                         style="background-color: var(--cor-loja);"></div>
 
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 items-center relative z-10">
-                    <!-- Informações da Promoção -->
-                    <div class="md:col-span-7 space-y-2.5 sm:space-y-3">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-[10px] sm:text-[11px] font-black uppercase px-2.5 py-1 rounded-full text-white shadow-sm"
-                                  :style="'background-color: var(--cor-loja)'">
-                                💥 COMBO CASAL BRASA
-                            </span>
-                            <span class="text-[10px] sm:text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded-full">
-                                Economize R$ 18,00
-                            </span>
-                        </div>
-
-                        <h3 class="text-lg sm:text-2xl lg:text-3xl font-black text-white leading-tight">
-                            2x Burgers Artesanais + Batata Rústica Grande + 2 Bebidas
-                        </h3>
-
-                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-                            A combinação perfeita para dois: 2 hambúrgueres artesanais com blend de costela 160g no fogo forte, queijo cheddar derretido, fatias de bacon crocante, acompanhados de porção generosa de batata rústica temperada e 2 refrigerantes trincando de gelados.
-                        </p>
-
-                        <!-- Preço & CTA -->
-                        <div class="flex flex-wrap items-center gap-4 pt-2">
-                            <div>
-                                <span class="text-xs text-slate-400 line-through block">De R$ 78,80</span>
-                                <div class="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                                    R$ 59,90
-                                </div>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 items-center relative z-10">
+                        <div class="md:col-span-7 space-y-2.5 sm:space-y-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-[10px] sm:text-[11px] font-black uppercase px-2.5 py-1 rounded-full text-white shadow-sm"
+                                      :style="'background-color: var(--cor-loja)'">
+                                    💥 OFERTA ESPECIAL
+                                </span>
+                                <span class="text-[10px] sm:text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded-full"
+                                      x-text="'Economize ' + formatarCentavos(produtoPromocaoDestaque.preco_centavos - produtoPromocaoDestaque.preco_promocional_centavos)">
+                                </span>
                             </div>
 
-                            <button type="button" @click="pedirComboDestaque()"
-                                class="px-5 py-3 rounded-2xl text-xs sm:text-sm font-black text-white shadow-xl hover:brightness-110 active:scale-95 transition flex items-center gap-2"
-                                :style="'background-color: var(--cor-loja)'">
-                                <span>Aproveitar Combo</span>
-                                <span>→</span>
-                            </button>
-                        </div>
-                    </div>
+                            <h3 class="text-lg sm:text-2xl lg:text-3xl font-black text-white leading-tight"
+                                x-text="produtoPromocaoDestaque.nome"></h3>
 
-                    <!-- Imagem Gourmet do Combo Promocional -->
-                    <div class="md:col-span-5 flex justify-center md:justify-end">
-                        <div class="relative w-full max-w-xs aspect-video sm:aspect-square md:aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 group cursor-pointer"
-                             @click="pedirComboDestaque()">
-                            <img src="https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=80" 
-                                 alt="Combo Casal Brasa" 
-                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                            <span class="absolute bottom-2.5 left-3 text-xs font-black text-amber-300 flex items-center gap-1 drop-shadow">
-                                <span>⭐</span> Mais pedido da semana
-                            </span>
+                            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl"
+                               x-text="produtoPromocaoDestaque.descricao || 'Aproveite nossa oferta especial preparada com ingredientes frescos e selecionados.'"></p>
+
+                            <div class="flex flex-wrap items-center gap-4 pt-2">
+                                <div>
+                                    <span class="text-xs text-slate-400 line-through block"
+                                          x-text="'De ' + formatarCentavos(produtoPromocaoDestaque.preco_centavos)"></span>
+                                    <div class="text-2xl sm:text-3xl font-black text-white tracking-tight"
+                                         x-text="formatarCentavos(produtoPromocaoDestaque.preco_promocional_centavos)">
+                                    </div>
+                                </div>
+
+                                <button type="button" @click="abrirModalProduto(produtoPromocaoDestaque)"
+                                    class="px-5 py-3 rounded-2xl text-xs sm:text-sm font-black text-white shadow-xl hover:brightness-110 active:scale-95 transition flex items-center gap-2"
+                                    :style="'background-color: var(--cor-loja)'">
+                                    <span>Aproveitar Oferta</span>
+                                    <span>→</span>
+                                </button>
+                            </div>
                         </div>
+
+                        <template x-if="imagemProduto(produtoPromocaoDestaque)">
+                            <div class="md:col-span-5 flex justify-center md:justify-end">
+                                <div class="relative w-full max-w-xs aspect-video sm:aspect-square md:aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 group cursor-pointer"
+                                     @click="abrirModalProduto(produtoPromocaoDestaque)">
+                                    <img :src="imagemProduto(produtoPromocaoDestaque)" 
+                                         :alt="produtoPromocaoDestaque.nome" 
+                                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </template>
 
         <!-- ============================================================== -->
         <!-- 4. BARRA FIXA DE BUSCA E NAVEGAÇÃO POR CATEGORIAS              -->
@@ -302,7 +346,7 @@
         <div class="sticky top-0 z-30 bg-[#0a0b0e]/95 backdrop-blur-xl py-3 -mx-4 px-4 sm:mx-0 sm:px-0 flex flex-col md:flex-row md:items-center gap-3 border-b border-[#232631]/80 shadow-xl">
             <!-- Campo de Busca Refinado -->
             <div class="relative md:w-72 shrink-0">
-                <input type="text" x-model="termoBusca" placeholder="Buscar prato, porção ou bebida..."
+                <input type="text" x-model="termoBusca" placeholder="Buscar no cardápio..."
                     class="w-full bg-[#13141a] border border-[#232631] text-xs text-white rounded-2xl pl-9 pr-8 py-2.5 placeholder-slate-500 focus:outline-none focus:border-slate-400 transition shadow-inner">
                 <svg class="w-4 h-4 text-slate-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <button x-show="termoBusca" @click="termoBusca = ''" class="absolute right-3 top-2.5 text-slate-500 hover:text-white text-xs font-bold">✕</button>
@@ -333,15 +377,15 @@
             <!-- COLUNA DA ESQUERDA: CATÁLOGO DE PRODUTOS -->
             <main class="lg:col-span-8 space-y-10">
                 
-                <!-- SEÇÃO 1: MAIS PEDIDOS (RANKING DOS CAMPEÕES) -->
-                <template x-if="!termoBusca.trim() && produtosDestaque.length > 0">
+                <!-- SEÇÃO 1: MAIS PEDIDOS / SUGESTÕES DA CASA -->
+                <template x-if="!termoBusca.trim() && produtosDestaque.length >= 2">
                     <section class="space-y-4">
                         <div class="flex items-center justify-between">
                             <h2 class="text-xl font-black text-white flex items-center gap-2">
                                 <span>🏆</span>
-                                <span>Mais pedidos</span>
+                                <span>Sugestões da Casa</span>
                             </h2>
-                            <span class="text-xs text-slate-400">Os favoritos da casa</span>
+                            <span class="text-xs text-slate-400">Os favoritos do cardápio</span>
                         </div>
 
                         <!-- Grid 2x2 no Desktop com Numeração Estilizada 1, 2, 3, 4 -->
@@ -349,14 +393,19 @@
                             <template x-for="(dest, idx) in produtosDestaque.slice(0, 4)" :key="'dest-desk-' + dest.id">
                                 <div @click="abrirModalProduto(dest)"
                                      class="bg-[#13141a] border border-[#232631] hover:border-slate-500 rounded-2xl p-3.5 flex items-center gap-3.5 cursor-pointer transition group shadow-md hover:shadow-xl relative">
-                                    <!-- Número do Rank: 1, 2, 3, 4 -->
                                     <span class="text-2xl font-black shrink-0 w-6 text-center select-none"
                                           :style="'color: var(--cor-loja)'"
                                           x-text="idx + 1"></span>
 
-                                    <!-- Foto Quadrada Estrita 58x58 -->
-                                    <div class="rounded-xl overflow-hidden bg-[#1e2029] shrink-0 border border-[#232631]">
-                                        <img :src="imagemProduto(dest)" :alt="dest.nome" class="thumb-mais-pedidos group-hover:scale-110 transition duration-300">
+                                    <!-- Foto Quadrada Estrita 58x58 ou Inicial -->
+                                    <div class="rounded-xl overflow-hidden bg-[#1e2029] shrink-0 border border-[#232631] flex items-center justify-center"
+                                         style="width: 58px; height: 58px; min-width: 58px;">
+                                        <template x-if="imagemProduto(dest)">
+                                            <img :src="imagemProduto(dest)" :alt="dest.nome" class="thumb-mais-pedidos group-hover:scale-110 transition duration-300">
+                                        </template>
+                                        <template x-if="!imagemProduto(dest)">
+                                            <span class="text-xl font-black select-none" :style="'color: var(--cor-loja)'" x-text="dest.nome.trim().charAt(0).toUpperCase()"></span>
+                                        </template>
                                     </div>
 
                                     <!-- Título e Preço -->
@@ -366,7 +415,6 @@
                                         <div class="text-xs font-black text-white mt-1.5" x-text="formatarCentavos(dest.preco_efetivo_centavos)"></div>
                                     </div>
 
-                                    <!-- Botão + rápido -->
                                     <button type="button" 
                                         class="w-7 h-7 rounded-full text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition"
                                         :style="'background-color: var(--cor-loja)'">
@@ -381,8 +429,13 @@
                             <template x-for="dest in produtosDestaque" :key="'dest-mob-' + dest.id">
                                 <div @click="abrirModalProduto(dest)"
                                      class="w-44 shrink-0 bg-[#13141a] border border-[#232631] rounded-2xl p-3 flex flex-col justify-between cursor-pointer group shadow-md">
-                                    <div class="w-full aspect-square rounded-xl overflow-hidden bg-[#1e2029] mb-2.5">
-                                        <img :src="imagemProduto(dest)" :alt="dest.nome" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                    <div class="w-full aspect-square rounded-xl overflow-hidden bg-[#1e2029] mb-2.5 flex items-center justify-center">
+                                        <template x-if="imagemProduto(dest)">
+                                            <img :src="imagemProduto(dest)" :alt="dest.nome" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                        </template>
+                                        <template x-if="!imagemProduto(dest)">
+                                            <span class="text-3xl font-black select-none" :style="'color: var(--cor-loja)'" x-text="dest.nome.trim().charAt(0).toUpperCase()"></span>
+                                        </template>
                                     </div>
                                     <div>
                                         <div class="font-bold text-white text-xs line-clamp-2 leading-snug" x-text="dest.nome"></div>
@@ -398,13 +451,13 @@
                     </section>
                 </template>
 
-                <!-- Estado Vazio de Busca -->
+                <!-- Estado Vazio de Busca ou Cardápio em Cadastro -->
                 <template x-if="categoriasFiltradas.length === 0">
                     <div class="bg-[#13141a] border border-[#232631] rounded-3xl p-12 text-center space-y-3">
-                        <div class="text-4xl">🔍</div>
-                        <h3 class="text-base font-bold text-white">Nenhum produto encontrado</h3>
-                        <p class="text-xs text-slate-400 max-w-sm mx-auto">Tente buscar por termos mais genéricos como "burger", "pizza", "batata" ou "refrigerante".</p>
-                        <button @click="termoBusca = ''" 
+                        <div class="text-4xl" x-text="termoBusca ? '🔍' : '🍽️'"></div>
+                        <h3 class="text-base font-bold text-white" x-text="termoBusca ? 'Nenhum produto encontrado' : 'Cardápio em atualização'"></h3>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto" x-text="termoBusca ? 'Tente buscar por outro termo ou limpar o filtro.' : 'Os produtos desta loja estão sendo atualizados e estarão disponíveis em instantes.'"></p>
+                        <button x-show="termoBusca" @click="termoBusca = ''" 
                                 class="mt-2 inline-flex text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md"
                                 :style="'background-color: var(--cor-loja)'">
                             Limpar busca e ver cardápio
@@ -417,7 +470,6 @@
                 <!-- ============================================================== -->
                 <template x-for="categoria in categoriasFiltradas" :key="categoria.id">
                     <section :id="'categoria-' + categoria.id" class="space-y-4 scroll-mt-24">
-                        <!-- Título da Categoria com Ícone e Subtítulo -->
                         <div class="border-b border-[#232631] pb-2.5 flex items-baseline justify-between gap-2">
                             <div>
                                 <h2 class="text-lg sm:text-xl font-black text-white flex items-center gap-2">
@@ -430,7 +482,6 @@
                             <span class="text-xs font-bold text-slate-500 shrink-0" x-text="categoria.produtos.length + (categoria.produtos.length === 1 ? ' item' : ' itens')"></span>
                         </div>
 
-                        <!-- Grade de Produtos: 1 Coluna no Celular, 2 Colunas no Desktop -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <template x-for="produto in categoria.produtos" :key="produto.id">
                                 <article @click="abrirModalProduto(produto)"
@@ -439,20 +490,15 @@
                                     <!-- Informações do Item (Esquerda) -->
                                     <div class="flex-1 min-w-0 flex flex-col justify-between pr-2">
                                         <div>
-                                            <!-- Tag de Desconto se Promoção -->
                                             <template x-if="produto.preco_promocional_centavos && produto.preco_promocional_centavos < produto.preco_centavos">
                                                 <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[10px] font-black px-2 py-0.5 rounded-md inline-block mb-1.5"
                                                       x-text="'-' + Math.round((1 - produto.preco_promocional_centavos / produto.preco_centavos) * 100) + '% OFF'"></span>
                                             </template>
 
-                                            <!-- Título -->
                                             <h3 class="font-bold text-white text-sm sm:text-base leading-snug group-hover:text-amber-400 transition" x-text="produto.nome"></h3>
-                                            
-                                            <!-- Descrição -->
                                             <p class="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed" x-text="produto.descricao"></p>
                                         </div>
 
-                                        <!-- Preço & Preço Riscado -->
                                         <div class="mt-3 flex items-baseline gap-2">
                                             <template x-if="produto.variacoes && produto.variacoes.length > 0">
                                                 <span class="text-[11px] text-slate-400 font-medium">A partir de</span>
@@ -481,7 +527,6 @@
                                             </template>
                                         </div>
 
-                                        <!-- Botão de Adição com Indicador de Quantidade caso já esteja na Sacola -->
                                         <template x-if="qtdProdutoNaSacola(produto.id) > 0">
                                             <div class="absolute right-1.5 bottom-1.5 px-2 py-0.5 rounded-full text-white font-black text-xs flex items-center gap-1 shadow-lg"
                                                  :style="'background-color: var(--cor-loja)'">
@@ -511,7 +556,6 @@
             <aside class="hidden lg:block lg:col-span-4 sticky top-20">
                 <div class="bg-[#13141a] border border-[#232631] rounded-3xl p-5 shadow-2xl space-y-4">
                     
-                    <!-- Cabeçalho da Sacola -->
                     <div class="flex items-center justify-between border-b border-[#232631] pb-3">
                         <div>
                             <h3 class="font-black text-white text-base">Sua sacola</h3>
@@ -525,8 +569,8 @@
                         </template>
                     </div>
 
-                    <!-- Barra Progressiva de Frete Grátis -->
-                    <template x-if="checkout.canal === 'delivery' && !mesaAtiva">
+                    <!-- Barra Progressiva de Frete Grátis (Quando configurado pela loja) -->
+                    <template x-if="checkout.canal === 'delivery' && !mesaAtiva && metaFreteGratisCentavos > 0">
                         <div class="bg-[#0a0b0e] border border-[#232631] rounded-2xl p-3.5 text-xs space-y-2">
                             <div class="flex items-center justify-between font-bold">
                                 <span class="text-emerald-400 flex items-center gap-1.5">
@@ -545,9 +589,9 @@
                     <!-- Estado Vazio da Sacola -->
                     <template x-if="carrinho.length === 0">
                         <div class="text-center py-10 space-y-2">
-                            <div class="text-4xl">🍔</div>
+                            <div class="text-4xl">🛍️</div>
                             <p class="text-sm font-bold text-white">Sua sacola está vazia</p>
-                            <p class="text-xs text-slate-400">Escolha itens apetitosos no cardápio para montar seu pedido.</p>
+                            <p class="text-xs text-slate-400">Escolha seus itens favoritos no cardápio para montar seu pedido.</p>
                         </div>
                     </template>
 
@@ -566,9 +610,11 @@
                                             <template x-if="item.adicionais && item.adicionais.length > 0">
                                                 <div class="text-slate-500 text-[10px] truncate" x-text="'+ ' + item.adicionais.map(a => a.nome).join(', ')"></div>
                                             </template>
+                                            <template x-if="item.observacao">
+                                                <div class="text-amber-400/90 text-[10px] truncate" x-text="'Obs: ' + item.observacao"></div>
+                                            </template>
                                         </div>
 
-                                        <!-- Controle de Quantidade - 1 + -->
                                         <div class="flex items-center gap-1.5 bg-[#1c1e27] border border-[#2a2d39] rounded-xl px-2 py-0.5 shrink-0">
                                             <button type="button" @click="alterarQtdCarrinho(idx, -1)"
                                                 class="text-slate-400 hover:text-white font-black text-xs px-1">−</button>
@@ -607,7 +653,6 @@
                                     <span class="text-2xl font-black text-white" x-text="formatarCentavos(totalFinalCentavos)"></span>
                                 </div>
 
-                                <!-- Botão Finalizar Pedido -->
                                 <button @click="abrirCheckout()"
                                     class="w-full text-white font-black py-3.5 rounded-2xl text-sm shadow-xl hover:brightness-110 active:scale-98 transition flex items-center justify-center gap-2 mt-2"
                                     :style="'background-color: var(--cor-loja)'">
@@ -654,8 +699,13 @@
     <div x-cloak x-show="modalAberto" class="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div @click.away="modalAberto = false" class="bg-[#13141a] border border-[#232631] w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
             <!-- Capa do Produto no Modal -->
-            <div class="relative h-48 sm:h-56 w-full bg-[#1e2029] shrink-0">
-                <img :src="produtoSelecionado ? imagemProduto(produtoSelecionado) : ''" :alt="produtoSelecionado?.nome" class="w-full h-full object-cover">
+            <div class="relative h-48 sm:h-56 w-full bg-[#1e2029] shrink-0 flex items-center justify-center">
+                <template x-if="produtoSelecionado && imagemProduto(produtoSelecionado)">
+                    <img :src="imagemProduto(produtoSelecionado)" :alt="produtoSelecionado?.nome" class="w-full h-full object-cover">
+                </template>
+                <template x-if="!produtoSelecionado || !imagemProduto(produtoSelecionado)">
+                    <span class="text-6xl font-black select-none opacity-40" :style="'color: var(--cor-loja)'" x-text="produtoSelecionado?.nome ? produtoSelecionado.nome.charAt(0).toUpperCase() : ''"></span>
+                </template>
                 <div class="absolute inset-0 bg-gradient-to-t from-[#13141a] via-[#13141a]/40 to-transparent"></div>
                 <button @click="modalAberto = false" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/70 border border-white/10 text-white hover:bg-black font-black flex items-center justify-center shadow-md">✕</button>
                 <div class="absolute bottom-3 left-4 right-4 text-white">
@@ -756,25 +806,39 @@
     <div x-cloak x-show="modalInfoLoja" class="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
         <div @click.away="modalInfoLoja = false" class="bg-[#13141a] border border-[#232631] w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
             <div class="flex items-center justify-between border-b border-[#232631] pb-3">
-                <h3 class="font-black text-lg text-white">Sobre a Loja</h3>
+                <h3 class="font-black text-lg text-white">Sobre {{ $loja->nome }}</h3>
                 <button @click="modalInfoLoja = false" class="w-8 h-8 rounded-full bg-[#1e2029] text-slate-400 hover:text-white flex items-center justify-center font-bold">✕</button>
             </div>
 
             <div class="space-y-4 text-xs">
                 <div>
                     <span class="text-slate-400 block font-bold uppercase mb-1">📍 Endereço</span>
-                    <p class="text-white font-medium">{{ $loja->endereco ?: 'Endereço da Loja' }}, {{ $loja->cidade }}/{{ $loja->uf }}</p>
+                    <p class="text-white font-medium">{{ $loja->endereco ?: 'Consulte no WhatsApp' }}{{ $loja->cidade ? ', ' . $loja->cidade : '' }}{{ $loja->uf ? '/' . $loja->uf : '' }}</p>
                 </div>
 
                 <div>
-                    <span class="text-slate-400 block font-bold uppercase mb-1">⏱️ Tempo Médio</span>
-                    <p class="text-white font-medium">{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }} a 45 minutos</p>
+                    <span class="text-slate-400 block font-bold uppercase mb-1">⏱️ Tempo Médio de Preparo</span>
+                    <p class="text-white font-medium">{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }} a {{ ($loja->config_json['tempo_medio_preparo_min'] ?? 35) + 15 }} minutos</p>
                 </div>
 
+                <template x-if="areasEntrega.length > 0">
+                    <div>
+                        <span class="text-slate-400 block font-bold uppercase mb-1.5">🛵 Taxas por Região / Bairro</span>
+                        <div class="max-h-36 overflow-y-auto space-y-1 bg-[#0a0b0e] p-2.5 rounded-xl border border-[#232631]">
+                            <template x-for="area in areasEntrega" :key="area.id">
+                                <div class="flex justify-between text-[11px]">
+                                    <span class="text-slate-300" x-text="area.bairro_nome || area.nome"></span>
+                                    <span class="font-bold text-emerald-400" x-text="area.taxa_centavos === 0 ? 'Grátis' : formatarCentavos(area.taxa_centavos)"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
                 <div>
-                    <span class="text-slate-400 block font-bold uppercase mb-1">💳 Formas de Pagamento</span>
+                    <span class="text-slate-400 block font-bold uppercase mb-1">💳 Formas de Pagamento Aceitas</span>
                     <div class="flex flex-wrap gap-2 pt-1">
-                        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">⚡ PIX</span>
+                        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">⚡ PIX Instantâneo</span>
                         <span class="px-2.5 py-1 rounded-lg bg-[#1e2029] text-white border border-[#232631] font-bold">💳 Cartão de Crédito/Débito</span>
                         <span class="px-2.5 py-1 rounded-lg bg-[#1e2029] text-white border border-[#232631] font-bold">💵 Dinheiro</span>
                     </div>
@@ -793,7 +857,7 @@
     </div>
 
     <!-- ============================================================== -->
-    <!-- 10. MODAL DE CHECKOUT & PIX QR CODE                            -->
+    <!-- 10. MODAL DE CHECKOUT, ORDER BUMP, CUPOM & PIX QR CODE         -->
     <!-- ============================================================== -->
     <div x-cloak x-show="sacolaAberta" class="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div @click.away="sacolaAberta = false" class="bg-[#13141a] border border-[#232631] w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
@@ -809,12 +873,21 @@
                         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold">
                             ✓ Pedido registrado! Total: <span x-text="formatarCentavos(pedidoCriado.total_centavos)"></span>
                         </div>
+
+                        <!-- QR Code Base64 ou QR Code Gerado via BRCode -->
                         <template x-if="pedidoCriado.pix?.qr_code_base64">
                             <div class="flex flex-col items-center space-y-2">
                                 <img :src="'data:image/png;base64,' + pedidoCriado.pix.qr_code_base64" alt="QR Code PIX" class="w-52 h-52 bg-white rounded-2xl p-2 shadow-md">
                                 <span class="text-xs text-slate-400">Escaneie o QR Code no app do seu banco ou copie o código PIX:</span>
                             </div>
                         </template>
+                        <template x-if="!pedidoCriado.pix?.qr_code_base64 && pedidoCriado.pix?.copia_e_cola">
+                            <div class="flex flex-col items-center space-y-2">
+                                <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(pedidoCriado.pix.copia_e_cola)" alt="QR Code PIX" class="w-52 h-52 bg-white rounded-2xl p-2 shadow-md">
+                                <span class="text-xs text-slate-400">Escaneie o QR Code no app do seu banco ou copie o código PIX:</span>
+                            </div>
+                        </template>
+
                         <template x-if="pedidoCriado.pix?.copia_e_cola">
                             <div class="space-y-2">
                                 <textarea readonly x-text="pedidoCriado.pix.copia_e_cola" class="w-full text-[11px] font-mono bg-[#0a0b0e] text-white p-2.5 rounded-xl border border-[#232631] h-20"></textarea>
@@ -824,10 +897,11 @@
                                 </button>
                             </div>
                         </template>
+
                         <div class="flex flex-col sm:flex-row gap-2 pt-2">
                             <template x-if="pedidoCriado.tracking_url">
                                 <a :href="pedidoCriado.tracking_url" class="flex-1 bg-[#1e2029] hover:bg-[#252835] text-white font-extrabold py-3 rounded-xl text-xs text-center border border-[#232631]">
-                                    📍 Acompanhar Pedido →
+                                    📍 Acompanhar Pedido em Tempo Real →
                                 </a>
                             </template>
                             @if($loja->telefone_whatsapp)
@@ -848,16 +922,61 @@
                             <div class="bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold p-3 rounded-xl" x-text="erroCheckout"></div>
                         </template>
 
+                        <!-- Revisão Rápida dos Itens no Mobile -->
+                        <div class="bg-[#0a0b0e] border border-[#232631] rounded-2xl p-3 space-y-2">
+                            <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+                                <span x-text="'Itens na sacola (' + totalItensSacola + ')'"></span>
+                                <button type="button" @click="sacolaAberta = false" class="text-[11px] text-amber-400 hover:underline">+ Adicionar mais</button>
+                            </div>
+                            <div class="divide-y divide-[#1e2029] max-h-36 overflow-y-auto pr-1">
+                                <template x-for="(item, idx) in carrinho" :key="'chk-item-' + idx">
+                                    <div class="py-2 flex items-center justify-between gap-2 text-xs">
+                                        <div class="min-w-0 flex-1">
+                                            <span class="font-bold text-white" x-text="item.qtd + 'x ' + item.nome"></span>
+                                            <span class="text-slate-400 ml-1" x-text="formatarCentavos(item.total_centavos)"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1 bg-[#13141a] border border-[#232631] rounded-lg px-1.5 py-0.5">
+                                            <button type="button" @click="alterarQtdCarrinho(idx, -1)" class="text-slate-400 hover:text-white font-black px-1">−</button>
+                                            <span class="font-bold text-white text-[11px]" x-text="item.qtd"></span>
+                                            <button type="button" @click="alterarQtdCarrinho(idx, 1)" class="text-slate-400 hover:text-white font-black px-1">+</button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Order Bump: Sugestão Inteligente de Bebida / Acompanhamento -->
+                        <template x-if="sugestoesOrderBump.length > 0">
+                            <div class="bg-gradient-to-r from-[#171822] to-[#13141a] border border-amber-500/25 rounded-2xl p-3 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">⚡ Que tal adicionar para acompanhar?</span>
+                                </div>
+                                <div class="flex overflow-x-auto no-scrollbar gap-2.5 pb-1">
+                                    <template x-for="sug in sugestoesOrderBump" :key="'bump-' + sug.id">
+                                        <div class="shrink-0 w-44 bg-[#0a0b0e] border border-[#232631] rounded-xl p-2.5 flex items-center justify-between gap-2">
+                                            <div class="min-w-0 flex-1">
+                                                <div class="text-xs font-bold text-white truncate" x-text="sug.nome"></div>
+                                                <div class="text-[11px] font-black text-emerald-400" x-text="'+ ' + formatarCentavos(sug.preco_efetivo_centavos)"></div>
+                                            </div>
+                                            <button type="button" @click="adicionarOrderBumpRapido(sug)"
+                                                class="w-7 h-7 rounded-lg text-white font-black text-xs flex items-center justify-center shrink-0 shadow"
+                                                :style="'background-color: var(--cor-loja)'">+</button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
                         <!-- Dados do Cliente -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <div>
                                 <label class="text-[11px] font-bold uppercase text-slate-400 block mb-1">Seu Nome *</label>
-                                <input type="text" x-model="checkout.nome" placeholder="Ex: João Silva" 
+                                <input type="text" x-model="checkout.nome" placeholder="Digite seu nome completo" 
                                     class="w-full bg-[#0a0b0e] border border-[#232631] text-xs text-white rounded-xl px-3.5 py-2.5 focus:border-amber-500 focus:outline-none">
                             </div>
                             <div>
                                 <label class="text-[11px] font-bold uppercase text-slate-400 block mb-1">Seu WhatsApp *</label>
-                                <input type="tel" x-model="checkout.telefone" placeholder="(31) 99999-9999" 
+                                <input type="tel" x-model="checkout.telefone" placeholder="(00) 90000-0000" 
                                     class="w-full bg-[#0a0b0e] border border-[#232631] text-xs text-white rounded-xl px-3.5 py-2.5 focus:border-amber-500 focus:outline-none">
                             </div>
                         </div>
@@ -870,16 +989,37 @@
                                     <span class="text-emerald-400 font-bold" x-text="freteCentavos === 0 ? 'Frete Grátis!' : 'Taxa: ' + formatarCentavos(freteCentavos)"></span>
                                 </div>
                                 <div class="grid grid-cols-3 gap-2">
-                                    <input type="text" x-model="checkout.cep" @blur="buscarCep()" placeholder="CEP" class="bg-[#13141a] border border-[#232631] text-xs text-white rounded-xl px-3 py-2">
+                                    <input type="text" x-model="checkout.cep" @blur="buscarCep()" placeholder="CEP (opcional)" class="bg-[#13141a] border border-[#232631] text-xs text-white rounded-xl px-3 py-2">
                                     <input type="text" x-model="checkout.rua" placeholder="Rua / Avenida *" class="col-span-2 bg-[#13141a] border border-[#232631] text-xs text-white rounded-xl px-3 py-2">
                                 </div>
                                 <div class="grid grid-cols-3 gap-2">
                                     <input type="text" x-model="checkout.numero" placeholder="Nº *" class="bg-[#13141a] border border-[#232631] text-xs text-white rounded-xl px-3 py-2">
-                                    <input type="text" x-model="checkout.bairro" @change="calcularFrete()" placeholder="Bairro *" class="col-span-2 bg-[#13141a] border border-[#232631] text-xs text-white rounded-xl px-3 py-2">
+                                    <input type="text" x-model="checkout.bairro" list="bairros-atendidos" @change="calcularFrete()" @blur="calcularFrete()" placeholder="Bairro *" class="col-span-2 bg-[#13141a] border border-[#232631] text-xs text-white rounded-xl px-3 py-2">
+                                    <datalist id="bairros-atendidos">
+                                        <template x-for="area in areasEntrega" :key="'dl-' + area.id">
+                                            <option :value="area.bairro_nome || area.nome"></option>
+                                        </template>
+                                    </datalist>
                                 </div>
                                 <input type="text" x-model="checkout.complemento" placeholder="Complemento / Ponto de referência" class="w-full bg-[#13141a] border border-[#232631] text-xs text-white rounded-xl px-3 py-2">
                             </div>
                         </template>
+
+                        <!-- Cupom de Desconto -->
+                        <div class="bg-[#0a0b0e] p-3 rounded-2xl border border-[#232631] space-y-2">
+                            <label class="text-[11px] font-bold uppercase text-slate-400 block">🎟️ Cupom de Desconto</label>
+                            <div class="flex gap-2">
+                                <input type="text" x-model="cupomInput" placeholder="Digite seu cupom"
+                                    class="flex-1 bg-[#13141a] border border-[#232631] text-xs text-white uppercase font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500">
+                                <button type="button" @click="validarCupomApi()" :disabled="validandoCupom"
+                                    class="px-4 py-2 rounded-xl bg-[#1e2029] hover:bg-[#2a2d3a] text-white text-xs font-black border border-[#2e3244] transition">
+                                    <span x-text="validandoCupom ? '...' : 'Aplicar'"></span>
+                                </button>
+                            </div>
+                            <template x-if="mensagemCupom">
+                                <p class="text-[11px] font-bold" :class="cupomAplicado ? 'text-emerald-400' : 'text-rose-400'" x-text="mensagemCupom"></p>
+                            </template>
+                        </div>
 
                         <!-- Forma de Pagamento -->
                         <div class="space-y-2">
@@ -904,10 +1044,17 @@
 
                             <template x-if="checkout.forma_pagamento === 'dinheiro'">
                                 <div class="bg-[#0a0b0e] border border-[#232631] rounded-xl p-2.5 flex items-center justify-between gap-2 mt-2">
-                                    <input type="text" x-model="checkout.troco_reais" placeholder="Troco para quanto? (R$)"
+                                    <input type="number" step="0.01" x-model="checkout.troco_reais" placeholder="Precisa de troco para quanto? (Ex: 50)"
                                         class="flex-1 bg-[#13141a] border border-[#232631] rounded-lg px-2.5 py-1.5 text-xs text-white">
                                 </div>
                             </template>
+                        </div>
+
+                        <!-- Observação Geral do Pedido -->
+                        <div>
+                            <label class="text-[11px] font-bold uppercase text-slate-400 block mb-1">Observações da Entrega / Pedido (Opcional)</label>
+                            <input type="text" x-model="checkout.observacoes" placeholder="Ex: Interfone quebrado, chamar no portão, trazer sachês..."
+                                class="w-full bg-[#0a0b0e] border border-[#232631] text-xs text-white rounded-xl px-3.5 py-2 focus:border-amber-500 focus:outline-none">
                         </div>
 
                         <!-- Resumo Final e Confirmação -->
@@ -935,10 +1082,10 @@
                         </div>
 
                         <!-- Botão Confirmar Pedido -->
-                        <button @click="enviarPedido()" :disabled="enviandoPedido"
-                            class="w-full text-white font-black py-3.5 rounded-2xl text-sm shadow-xl hover:brightness-110 active:scale-98 transition flex items-center justify-center"
+                        <button @click="enviarPedido()" :disabled="enviandoPedido || !lojaStatus.aberto_agora"
+                            class="w-full text-white font-black py-3.5 rounded-2xl text-sm shadow-xl hover:brightness-110 active:scale-98 disabled:opacity-50 transition flex items-center justify-center"
                             :style="'background-color: var(--cor-loja)'">
-                            <span x-text="enviandoPedido ? 'Gerando seu pedido...' : 'Confirmar Pedido • ' + formatarCentavos(totalFinalCentavos)"></span>
+                            <span x-text="!lojaStatus.aberto_agora ? 'Loja Fechada no Momento' : (enviandoPedido ? 'Registrando seu pedido...' : 'Confirmar Pedido • ' + formatarCentavos(totalFinalCentavos))"></span>
                         </button>
                     </div>
                 </template>
@@ -947,12 +1094,16 @@
     </div>
 
     <!-- ============================================================== -->
-    <!-- 11. LÓGICA REATIVA ALPINE.JS (PRESERVAÇÃO TOTAL DOS RECURSOS)  -->
+    <!-- 11. LÓGICA REATIVA ALPINE.JS (100% DADOS REAIS DE PRODUÇÃO)    -->
     <!-- ============================================================== -->
     <script>
         function cardapioApp() {
             const mesaInicial = @json($mesa ?? null);
             const lojaSlug = @json($loja->slug);
+            const cuponsIniciais = @json($cuponsAtivos ?? []);
+            const areasIniciais = @json($areasEntrega ?? []);
+            const taxaInicialPadrao = areasIniciais.length > 0 ? Number(areasIniciais[0].taxa_centavos || 0) : 0;
+
             return {
                 lojaSlug: lojaSlug,
                 lojaStatus: @json($lojaStatus ?? ['aberto_agora' => true]),
@@ -961,6 +1112,8 @@
                 termoBusca: '',
                 categoriaAtiva: null,
                 categorias: @json($cardapio['categorias'] ?? []),
+                cuponsAtivos: cuponsIniciais,
+                areasEntrega: areasIniciais,
                 modalAberto: false,
                 modalInfoLoja: false,
                 sacolaAberta: false,
@@ -975,20 +1128,21 @@
                 cupomAplicado: null,
                 validandoCupom: false,
                 mensagemCupom: '',
-                freteCentavos: 400,
+                freteCentavos: taxaInicialPadrao,
                 checkout: {
                     canal: mesaInicial ? 'mesa' : 'delivery',
                     nome: '',
                     telefone: '',
-                    cep: '35170-001',
-                    rua: 'Av. Alberto Carazzai',
-                    numero: '1200',
+                    cep: '',
+                    rua: '',
+                    numero: '',
                     complemento: '',
-                    bairro: 'Centro',
-                    cidade: @json($loja->cidade ?? 'Coronel Fabriciano'),
-                    uf: @json($loja->uf ?? 'MG'),
+                    bairro: '',
+                    cidade: @json($loja->cidade ?? ''),
+                    uf: @json($loja->uf ?? ''),
                     forma_pagamento: 'pix',
-                    troco_reais: ''
+                    troco_reais: '',
+                    observacoes: ''
                 },
                 produtoSelecionado: null,
                 variacaoSelecionadaId: null,
@@ -997,63 +1151,119 @@
 
                 initApp() {
                     try {
+                        // Carrega sacola salva e filtra apenas produtos existentes no cardápio atual
+                        const idsValidos = new Set();
+                        for (const c of this.categorias) {
+                            for (const p of (c.produtos || [])) {
+                                idsValidos.add(Number(p.id));
+                            }
+                        }
+
                         const savedCart = localStorage.getItem('pedelivre_cart_' + this.lojaSlug);
                         if (savedCart) {
-                            this.carrinho = JSON.parse(savedCart) || [];
+                            const parsedCart = JSON.parse(savedCart) || [];
+                            this.carrinho = parsedCart.filter(it => idsValidos.has(Number(it.produto_id)));
                         } else {
-                            const p1 = this.encontrarProdutoPorNome('Brasa Bacon Burger Especial');
-                            const p2 = this.encontrarProdutoPorNome('Duplo Smash Cheddar & Cebola Crispy');
-                            if (p1 && p2) {
-                                this.carrinho = [
-                                    {
-                                        produto_id: p1.id,
-                                        nome: p1.nome,
-                                        variacao_id: null,
-                                        variacao_nome: null,
-                                        qtd: 1,
-                                        unitario_centavos: p1.preco_efetivo_centavos,
-                                        observacao: '',
-                                        adicionais: [],
-                                        total_centavos: p1.preco_efetivo_centavos
-                                    },
-                                    {
-                                        produto_id: p2.id,
-                                        nome: p2.nome,
-                                        variacao_id: null,
-                                        variacao_nome: null,
-                                        qtd: 1,
-                                        unitario_centavos: p2.preco_efetivo_centavos,
-                                        observacao: '',
-                                        adicionais: [],
-                                        total_centavos: p2.preco_efetivo_centavos
-                                    }
-                                ];
-                                this.aplicarCupomRapido('BEMVINDO10');
-                            }
+                            this.carrinho = [];
                         }
 
                         const savedCliente = localStorage.getItem('pedelivre_cliente');
                         if (savedCliente) {
                             const parsed = JSON.parse(savedCliente);
-                            this.checkout = { ...this.checkout, ...parsed, canal: this.mesaAtiva ? 'mesa' : (parsed.canal || 'delivery') };
+                            this.checkout = {
+                                ...this.checkout,
+                                ...parsed,
+                                canal: this.mesaAtiva ? 'mesa' : (parsed.canal || 'delivery')
+                            };
                         }
 
                         const savedOrder = localStorage.getItem('pedelivre_ultimo_pedido_' + this.lojaSlug);
-                        if (savedOrder) this.ultimoPedido = JSON.parse(savedOrder);
+                        if (savedOrder) {
+                            this.ultimoPedido = JSON.parse(savedOrder);
+                        }
+
+                        // Aplica automaticamente cupom se vier na URL (?cupom=CODIGO)
+                        const urlCupom = new URLSearchParams(window.location.search).get('cupom');
+                        if (urlCupom) {
+                            this.cupomInput = urlCupom.trim().toUpperCase();
+                            this.validarCupomApi();
+                        }
                     } catch (e) {}
 
-                    if (this.checkout.canal === 'delivery' && !this.mesaAtiva) {
+                    if (this.checkout.canal === 'delivery' && !this.mesaAtiva && (this.checkout.cep || this.checkout.bairro)) {
                         this.calcularFrete();
                     }
                 },
 
-                encontrarProdutoPorNome(nome) {
+                get cupomDestaque() {
+                    return (this.cuponsAtivos && this.cuponsAtivos.length > 0) ? this.cuponsAtivos[0] : null;
+                },
+
+                get produtoPromocaoDestaque() {
                     for (const cat of this.categorias) {
                         for (const p of (cat.produtos || [])) {
-                            if (p.nome.toLowerCase() === nome.toLowerCase()) return p;
+                            if (p.preco_promocional_centavos && p.preco_promocional_centavos > 0 && p.preco_promocional_centavos < p.preco_centavos) {
+                                return p;
+                            }
                         }
                     }
                     return null;
+                },
+
+                get pedidoMinimoCentavos() {
+                    if (!this.areasEntrega || this.areasEntrega.length === 0) return 0;
+                    const minimos = this.areasEntrega.map(a => Number(a.pedido_minimo || 0)).filter(v => v > 0);
+                    return minimos.length > 0 ? Math.min(...minimos) : 0;
+                },
+
+                get metaFreteGratisCentavos() {
+                    if (!this.areasEntrega || this.areasEntrega.length === 0) return 0;
+                    const metas = this.areasEntrega.map(a => Number(a.frete_gratis_acima || 0)).filter(v => v > 0);
+                    return metas.length > 0 ? Math.min(...metas) : 0;
+                },
+
+                get faltaParaFreteGratisCentavos() {
+                    if (!this.metaFreteGratisCentavos) return 0;
+                    return Math.max(0, this.metaFreteGratisCentavos - this.subtotalCarrinhoCentavos);
+                },
+
+                get progressoFreteGratisPct() {
+                    if (!this.metaFreteGratisCentavos) return 0;
+                    return Math.min(100, Math.round((this.subtotalCarrinhoCentavos / this.metaFreteGratisCentavos) * 100));
+                },
+
+                get sugestoesOrderBump() {
+                    const idsNaSacola = new Set(this.carrinho.map(i => Number(i.produto_id)));
+                    const candidatos = [];
+                    for (const cat of this.categorias) {
+                        const nomeCat = (cat.nome || '').toLowerCase();
+                        const ehBebidaOuPorcao = nomeCat.includes('bebida') || nomeCat.includes('refri') || nomeCat.includes('suco') || nomeCat.includes('sobremesa') || nomeCat.includes('doce') || nomeCat.includes('porç') || nomeCat.includes('acompanha');
+                        if (ehBebidaOuPorcao) {
+                            for (const p of (cat.produtos || [])) {
+                                if (!idsNaSacola.has(Number(p.id)) && (!p.grupos_adicionais || p.grupos_adicionais.length === 0)) {
+                                    candidatos.push(p);
+                                }
+                            }
+                        }
+                    }
+                    return candidatos.slice(0, 4);
+                },
+
+                adicionarOrderBumpRapido(produto) {
+                    const varPadrao = (produto.variacoes && produto.variacoes.length > 0) ? produto.variacoes[0] : null;
+                    const unitario = varPadrao ? varPadrao.preco_centavos : produto.preco_efetivo_centavos;
+                    this.carrinho.push({
+                        produto_id: produto.id,
+                        nome: produto.nome,
+                        variacao_id: varPadrao ? varPadrao.id : null,
+                        variacao_nome: varPadrao ? varPadrao.nome : null,
+                        qtd: 1,
+                        unitario_centavos: unitario,
+                        observacao: '',
+                        adicionais: [],
+                        total_centavos: unitario
+                    });
+                    this.salvarEstadoLocal();
                 },
 
                 obterIconeCategoria(nome) {
@@ -1079,24 +1289,24 @@
                 obterSubtituloCategoria(nome) {
                     const n = (nome || '').toLowerCase();
                     if (n.includes('hambúrguer') || n.includes('burger') || n.includes('lanche')) {
-                        return 'Carnes nobres grelhadas no fogo forte com pão brioche amanteigado';
+                        return 'Preparados na hora com ingredientes selecionados';
                     }
                     if (n.includes('pizza')) {
-                        return 'Massa de fermentação natural de 48h assada em forno a lenha';
+                        return 'Massa fresca e recheios generosos';
                     }
                     if (n.includes('acompanha') || n.includes('porç') || n.includes('petisco')) {
-                        return 'Para petiscar e compartilhar';
+                        return 'Para acompanhar e compartilhar';
                     }
                     if (n.includes('bebida')) {
-                        return 'Refrigerantes, sucos naturais e cervejas artesanais trincando de geladas';
+                        return 'Bebidas sempre geladas';
                     }
                     if (n.includes('sobremesa') || n.includes('doce')) {
                         return 'Para fechar a sua refeição com chave de ouro';
                     }
                     if (n.includes('combo')) {
-                        return 'Combinações completas com economia e muito sabor';
+                        return 'Combinações completas com economia';
                     }
-                    return 'Itens preparados artesanalmente com ingredientes selecionados';
+                    return 'Preparados com ingredientes selecionados';
                 },
 
                 salvarEstadoLocal() {
@@ -1117,7 +1327,7 @@
 
                 alterarCanal(novoCanal) {
                     this.checkout.canal = novoCanal;
-                    if (novoCanal === 'delivery') {
+                    if (novoCanal === 'delivery' && (this.checkout.cep || this.checkout.bairro)) {
                         this.calcularFrete();
                     }
                     this.salvarEstadoLocal();
@@ -1138,28 +1348,12 @@
                     }
                 },
 
-                pedirComboDestaque() {
-                    // Localiza o primeiro hambúrguer ou abre o modal
-                    const p = this.encontrarProdutoPorNome('Brasa Bacon Burger Especial') || this.produtosDestaque[0];
-                    if (p) this.abrirModalProduto(p);
-                },
-
                 imagemProduto(produto) {
-                    if (produto.imagem && produto.imagem.startsWith('http')) return produto.imagem;
-                    const nome = (produto.nome || '').toLowerCase();
-                    if (nome.includes('bacon')) return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('smash')) return 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('costela') || nome.includes('bbq')) return 'https://images.unsplash.com/photo-1553979459-d2229ba7433b?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('chicken') || nome.includes('crispy') || nome.includes('frango')) return 'https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('napolitana')) return 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('pizza') || nome.includes('calabresa')) return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('batata') || nome.includes('frita')) return 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('onion') || nome.includes('cebola')) return 'https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('coca') || nome.includes('refrigerante') || nome.includes('refri')) return 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('suco') || nome.includes('laranja')) return 'https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('cerveja') || nome.includes('heineken')) return 'https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('açaí') || nome.includes('acai')) return 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80';
-                    return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80';
+                    if (!produto) return null;
+                    const img = produto.imagem || produto.foto_principal_url || null;
+                    if (!img) return null;
+                    if (img.startsWith('http') || img.startsWith('/')) return img;
+                    return '/storage/' + img.replace(/^\/+/, '');
                 },
 
                 get categoriasFiltradas() {
@@ -1171,27 +1365,18 @@
                 },
 
                 get produtosDestaque() {
-                    const todos = [];
+                    const promocionais = [];
+                    const outros = [];
                     for (const cat of this.categorias) {
                         for (const p of (cat.produtos || [])) {
-                            todos.push(p);
+                            if (p.preco_promocional_centavos && p.preco_promocional_centavos < p.preco_centavos) {
+                                promocionais.push(p);
+                            } else {
+                                outros.push(p);
+                            }
                         }
                     }
-                    const burgers = todos.filter(p => (p.nome || '').toLowerCase().includes('burger') || (p.nome || '').toLowerCase().includes('smash') || (p.nome || '').toLowerCase().includes('supreme') || (p.nome || '').toLowerCase().includes('costela'));
-                    if (burgers.length >= 4) return burgers.slice(0, 4);
-                    return todos.slice(0, 4);
-                },
-
-                get metaFreteGratisCentavos() {
-                    return 8000;
-                },
-
-                get faltaParaFreteGratisCentavos() {
-                    return Math.max(0, this.metaFreteGratisCentavos - this.subtotalCarrinhoCentavos);
-                },
-
-                get progressoFreteGratisPct() {
-                    return Math.min(100, Math.round((this.subtotalCarrinhoCentavos / this.metaFreteGratisCentavos) * 100));
+                    return [...promocionais, ...outros].slice(0, 4);
                 },
 
                 get unitarioModalCentavos() {
@@ -1257,11 +1442,15 @@
 
                 get descontoCupomCentavos() {
                     if (!this.cupomAplicado) return 0;
-                    if (this.subtotalCarrinhoCentavos < 2000 && this.cupomAplicado.codigo === 'BEMVINDO10') return 0;
+                    const min = Number(this.cupomAplicado.pedido_minimo || 0);
+                    if (min > 0 && this.subtotalCarrinhoCentavos < min) return 0;
                     if (this.cupomAplicado.tipo === 'percentual') {
-                        return Math.round((this.subtotalCarrinhoCentavos * this.cupomAplicado.valor) / 100);
+                        return Math.round((this.subtotalCarrinhoCentavos * Number(this.cupomAplicado.valor || 0)) / 100);
                     }
-                    return Math.min(this.subtotalCarrinhoCentavos, this.cupomAplicado.desconto_centavos || 0);
+                    if (this.cupomAplicado.tipo === 'frete_gratis') {
+                        return (this.checkout.canal === 'delivery' && !this.mesaAtiva) ? this.freteCentavos : 0;
+                    }
+                    return Math.min(this.subtotalCarrinhoCentavos, Number(this.cupomAplicado.desconto_centavos || this.cupomAplicado.valor || 0));
                 },
 
                 get totalFinalCentavos() {
@@ -1341,15 +1530,24 @@
                     this.pedidoCriado = null;
                     this.erroCheckout = '';
                     this.sacolaAberta = true;
-                    if (this.checkout.canal === 'delivery' && !this.mesaAtiva) {
+                    if (this.checkout.canal === 'delivery' && !this.mesaAtiva && (this.checkout.cep || this.checkout.bairro)) {
                         this.calcularFrete();
                     }
                 },
 
-                aplicarCupomRapido(codigo) {
-                    this.cupomInput = codigo;
-                    this.cupomAplicado = { codigo: codigo, tipo: 'percentual', valor: 10, desconto_centavos: Math.round(this.subtotalCarrinhoCentavos * 0.10) };
-                    this.mensagemCupom = '✓ Cupom ' + codigo + ' (10% OFF) ativado!';
+                aplicarCupomRapido(cupomObj) {
+                    if (!cupomObj) return;
+                    this.cupomInput = cupomObj.codigo;
+                    this.cupomAplicado = {
+                        codigo: cupomObj.codigo,
+                        tipo: cupomObj.tipo,
+                        valor: cupomObj.valor,
+                        pedido_minimo: cupomObj.pedido_minimo || 0,
+                        desconto_centavos: cupomObj.tipo === 'percentual'
+                            ? Math.round((this.subtotalCarrinhoCentavos * cupomObj.valor) / 100)
+                            : cupomObj.valor
+                    };
+                    this.mensagemCupom = '✓ Cupom ' + cupomObj.codigo + ' ativado!';
                 },
 
                 validarCupomApi() {
@@ -1362,18 +1560,20 @@
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                         body: JSON.stringify({
                             codigo: this.cupomInput.trim().toUpperCase(),
-                            subtotal_centavos: Math.max(2000, this.subtotalCarrinhoCentavos),
+                            subtotal_centavos: Math.max(1000, this.subtotalCarrinhoCentavos),
                             canal: canalFinal,
                             telefone: this.checkout.telefone || null
                         })
                     })
                     .then(async r => {
                         const data = await r.json();
-                        if (!r.ok || !data.valido) throw new Error(data.message || 'Cupom inválido.');
+                        if (!r.ok || !data.valido) throw new Error(data.message || 'Cupom inválido ou expirado.');
+                        const cupomCat = (this.cuponsAtivos || []).find(c => c.codigo.toUpperCase() === data.codigo.toUpperCase());
                         this.cupomAplicado = {
                             codigo: data.codigo,
                             tipo: data.tipo,
-                            valor: data.tipo === 'percentual' ? 10 : data.desconto_centavos,
+                            valor: cupomCat ? cupomCat.valor : data.desconto_centavos,
+                            pedido_minimo: cupomCat ? cupomCat.pedido_minimo : 0,
                             desconto_centavos: data.desconto_centavos
                         };
                         this.mensagemCupom = '✓ ' + (data.message || 'Cupom aplicado com sucesso!');
@@ -1405,13 +1605,14 @@
                 },
 
                 calcularFrete() {
+                    if (!this.checkout.cep && !this.checkout.bairro) return;
                     fetch(`/api/p/${this.lojaSlug}/frete`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                         body: JSON.stringify({
-                            cep: this.checkout.cep,
-                            bairro: this.checkout.bairro || 'Centro',
-                            subtotal_centavos: this.subtotalCarrinhoCentavos || 3500
+                            cep: this.checkout.cep || null,
+                            bairro: this.checkout.bairro || null,
+                            subtotal_centavos: this.subtotalCarrinhoCentavos || 0
                         })
                     })
                     .then(r => r.json())
@@ -1440,17 +1641,24 @@
                 },
 
                 enviarPedido() {
-                    if (!this.checkout.nome || !this.checkout.telefone) {
+                    if (!this.checkout.nome.trim() || !this.checkout.telefone.trim()) {
                         this.erroCheckout = 'Por favor, informe seu nome e WhatsApp para continuar.';
                         return;
                     }
+                    const canalFinal = this.mesaAtiva ? 'mesa' : this.checkout.canal;
+                    if (canalFinal === 'delivery') {
+                        if (!this.checkout.rua.trim() || !this.checkout.numero.trim() || !this.checkout.bairro.trim()) {
+                            this.erroCheckout = 'Por favor, preencha Rua, Número e Bairro para entrega.';
+                            return;
+                        }
+                    }
+
                     this.enviandoPedido = true;
                     this.erroCheckout = '';
                     this.salvarEstadoLocal();
 
-                    const canalFinal = this.mesaAtiva ? 'mesa' : this.checkout.canal;
                     const trocoCentavos = (this.checkout.forma_pagamento === 'dinheiro' && this.checkout.troco_reais)
-                        ? Math.round(parseFloat(this.checkout.troco_reais) * 100)
+                        ? Math.round(parseFloat(String(this.checkout.troco_reais).replace(',', '.')) * 100)
                         : null;
 
                     const payload = {
@@ -1458,17 +1666,17 @@
                         canal: canalFinal,
                         mesa_token: this.mesaAtiva ? this.mesaAtiva.qr_token : null,
                         cliente: {
-                            nome: this.checkout.nome,
-                            telefone: this.checkout.telefone
+                            nome: this.checkout.nome.trim(),
+                            telefone: this.checkout.telefone.trim()
                         },
                         endereco: canalFinal === 'delivery' ? {
-                            cep: this.checkout.cep || '35170-001',
-                            rua: this.checkout.rua || 'Av. Alberto Carazzai',
-                            numero: this.checkout.numero || '1200',
-                            complemento: this.checkout.complemento || null,
-                            bairro: this.checkout.bairro || 'Centro',
-                            cidade: this.checkout.cidade || 'Coronel Fabriciano',
-                            uf: this.checkout.uf || 'MG'
+                            cep: this.checkout.cep.trim() || null,
+                            rua: this.checkout.rua.trim(),
+                            numero: this.checkout.numero.trim(),
+                            complemento: this.checkout.complemento.trim() || null,
+                            bairro: this.checkout.bairro.trim(),
+                            cidade: this.checkout.cidade.trim() || @json($loja->cidade ?? ''),
+                            uf: this.checkout.uf.trim() || @json($loja->uf ?? '')
                         } : null,
                         itens: this.carrinho.map(item => ({
                             produto_id: item.produto_id,
@@ -1479,7 +1687,8 @@
                         })),
                         cupom_codigo: (this.cupomAplicado && this.descontoCupomCentavos > 0) ? this.cupomAplicado.codigo : null,
                         forma_pagamento: this.checkout.forma_pagamento,
-                        troco_para: trocoCentavos
+                        troco_para: trocoCentavos,
+                        observacoes: this.checkout.observacoes ? this.checkout.observacoes.trim() : null
                     };
 
                     fetch(`/api/p/${this.lojaSlug}/pedidos`, {

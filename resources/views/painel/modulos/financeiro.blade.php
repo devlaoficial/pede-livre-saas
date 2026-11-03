@@ -18,7 +18,7 @@
                 </div>
             </div>
 
-            <!-- Controle de Frente de Caixa (Etapa 3) -->
+            <!-- Controle de Frente de Caixa -->
             <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                     <div class="space-y-1">
@@ -34,7 +34,6 @@
                         </p>
                     </div>
 
-                    <!-- Botões de Ação do Caixa -->
                     <div class="flex flex-wrap gap-2 shrink-0">
                         <template x-if="!caixaStatus.aberto">
                             <button @click="abrirModalAberturaCaixa()"
@@ -82,7 +81,6 @@
                 <!-- Estado Quando o Caixa está ABERTO -->
                 <template x-if="caixaStatus.aberto && caixaStatus.sessao">
                     <div class="space-y-4">
-                        <!-- Cards de Métricas do Turno Aberto -->
                         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
                             <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1">
                                 <span class="text-slate-400 font-bold uppercase text-[10px]">Fundo Inicial</span>
@@ -106,9 +104,7 @@
                             </div>
                         </div>
 
-                        <!-- Resumo Outras Formas + Lista de Movimentações -->
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
-                            <!-- Outros Meios de Pagamento -->
                             <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5">
                                 <h4 class="font-extrabold text-white text-xs uppercase tracking-wider">Outras Entradas do Turno</h4>
                                 <div class="flex justify-between items-center text-slate-300 border-b border-slate-800/80 pb-1.5">
@@ -125,7 +121,6 @@
                                 </div>
                             </div>
 
-                            <!-- Movimentações Manuais Registradas -->
                             <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5">
                                 <div class="flex justify-between items-center">
                                     <h4 class="font-extrabold text-white text-xs uppercase tracking-wider">Sangrias e Suprimentos</h4>
@@ -162,20 +157,20 @@
                 </template>
             </div>
 
-            <!-- Central Completa de Cadastro e Autorização PIX Mercado Pago (0% Custódia) -->
+            <!-- Central Completa de Recebimento PIX (Mercado Pago ou Chave PIX Direta) -->
             <div class="bg-slate-900 border-2 rounded-3xl p-6 space-y-5"
                  :class="mpStatus?.conectado ? 'border-emerald-500/40' : 'border-amber-500/40'">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                     <div class="space-y-1">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-base font-black text-white">⚡ Cadastro e Autorização da Conta Mercado Pago (PIX 0% Taxa)</span>
+                            <span class="text-base font-black text-white">⚡ Recebimento PIX (Mercado Pago ou Chave PIX Direta BCB)</span>
                             <span class="text-xs font-black px-3 py-0.5 rounded-full border"
                                   :class="mpStatus?.conectado ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'"
-                                  x-text="mpStatus?.conectado ? '✓ Conta Conectada (' + (mpStatus.mp_conta_nome || mpStatus.mp_user_id || 'Ativa') + ')' : '⚠️ Conta Ainda Não Vinculada'">
+                                  x-text="mpStatus?.conectado ? '✓ Configurado (' + (mpStatus.mp_conta_nome || mpStatus.chave_pix || 'Ativo') + ')' : '⚠️ Ainda Não Configurado'">
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">
-                            Os pagamentos PIX dos seus clientes geram QR Code dinâmico do Banco Central e o dinheiro cai <strong>100% direto na sua conta Mercado Pago</strong> em segundos.
+                            Os pagamentos PIX dos seus clientes geram QR Code oficial do Banco Central e o dinheiro cai <strong>100% direto na sua conta bancária</strong> sem intermediação.
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2 shrink-0">
@@ -185,7 +180,7 @@
                             </button>
                         </template>
                         <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
-                            🔗 Conectar com Mercado Pago (Login 1 Clique)
+                            🔗 Conectar com Mercado Pago (OAuth)
                         </button>
                         <template x-if="mpStatus?.conectado">
                             <button @click="desconectarMercadoPago()" class="bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl transition">
@@ -201,49 +196,49 @@
                         <template x-if="pixTesteResultado.pix_qr_base64">
                             <img :src="'data:image/png;base64,' + pixTesteResultado.pix_qr_base64" class="w-28 h-28 rounded-xl bg-white p-1.5 shrink-0">
                         </template>
+                        <template x-if="!pixTesteResultado.pix_qr_base64 && pixTesteResultado.pix_copia_cola">
+                            <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(pixTesteResultado.pix_copia_cola)" class="w-28 h-28 rounded-xl bg-white p-1.5 shrink-0">
+                        </template>
                         <div class="space-y-2 text-xs flex-1 min-w-0">
                             <div class="font-black text-emerald-400 text-sm" x-text="'✓ ' + pixTesteResultado.message"></div>
-                            <div class="text-slate-300">ID da Transação Mercado Pago: <strong class="text-white" x-text="pixTesteResultado.mp_payment_id"></strong></div>
+                            <div class="text-slate-300">Identificador: <strong class="text-white" x-text="pixTesteResultado.mp_payment_id"></strong></div>
                             <input type="text" readonly :value="pixTesteResultado.pix_copia_cola" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[11px] text-emerald-300 font-mono">
                         </div>
                         <button @click="pixTesteResultado = null" class="text-slate-400 font-bold text-sm self-start">✕</button>
                     </div>
                 </template>
 
-                <!-- Formulário Direto de Credenciais do Lojista (Access Token APP_USR-...) -->
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     <form @submit.prevent="salvarTokenMercadoPago()" class="lg:col-span-7 space-y-3 text-xs">
-                        <div class="font-extrabold text-sm text-white">🔐 Cadastrar / Autorizar via Credencial Oficial (Access Token)</div>
+                        <div class="font-extrabold text-sm text-white">🔐 Configurar Chave PIX Direta ou Credencial Mercado Pago</div>
                         <div>
-                            <label class="font-bold text-slate-300 block mb-1">Access Token de Produção do Mercado Pago (<code class="text-emerald-400">APP_USR-...</code>) *</label>
-                            <input type="password" x-model="formMp.access_token" required placeholder="Cole aqui seu token APP_USR-..."
-                                   class="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-white font-mono">
+                            <label class="font-bold text-slate-300 block mb-1">Sua Chave PIX Principal (CNPJ, CPF, E-mail, Celular ou Aleatória)</label>
+                            <input type="text" x-model="formMp.chave_pix" placeholder="Ex: 00.000.000/0001-00 ou pix@restaurante.com.br"
+                                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold">
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="font-bold text-slate-300 block mb-1">Access Token Mercado Pago (<code class="text-emerald-400">APP_USR-...</code>) (Opcional)</label>
+                                <input type="password" x-model="formMp.access_token" placeholder="Cole seu token APP_USR-..."
+                                       class="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-white font-mono">
+                            </div>
                             <div>
                                 <label class="font-bold text-slate-400 block mb-1">Public Key (Opcional)</label>
                                 <input type="text" x-model="formMp.public_key" placeholder="APP_USR-..."
                                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono">
                             </div>
-                            <div>
-                                <label class="font-bold text-slate-400 block mb-1">Sua Chave PIX Principal (Opcional)</label>
-                                <input type="text" x-model="formMp.chave_pix" placeholder="CNPJ, CPF, E-mail ou Celular"
-                                       class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white">
-                            </div>
                         </div>
                         <button type="submit" :disabled="salvandoMp" class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black py-3 rounded-xl text-sm shadow-lg transition">
-                            <span x-text="salvandoMp ? 'Validando conta no Mercado Pago...' : '✓ Validar e Autorizar Minha Conta Mercado Pago'"></span>
+                            <span x-text="salvandoMp ? 'Salvando configuração...' : '✓ Salvar Configuração de Recebimento PIX'"></span>
                         </button>
                     </form>
 
-                    <!-- Passo a Passo Rápido para o Lojista -->
                     <div class="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs">
-                        <div class="font-black text-sky-400 uppercase tracking-wider text-[11px]">📖 Como pegar seu Access Token em 1 minuto:</div>
-                        <ol class="list-decimal list-inside space-y-1.5 text-slate-300 leading-relaxed">
-                            <li>Acesse o <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" class="text-sky-400 underline font-bold">Painel Mercado Pago Developers ↗</a> com a conta da sua loja.</li>
-                            <li>Clique em <strong>Criar aplicação</strong> (ou abra a sua) e vá em <strong>Credenciais de Produção</strong> no menu lateral.</li>
-                            <li>Copie o <strong>Access Token</strong> (começa com <code class="text-emerald-400">APP_USR-</code>) e cole no campo ao lado.</li>
-                        </ol>
+                        <div class="font-black text-sky-400 uppercase tracking-wider text-[11px]">📖 2 Modos de Recebimento PIX:</div>
+                        <ul class="space-y-1.5 text-slate-300 leading-relaxed">
+                            <li><strong>1. Chave PIX Direta (Qualquer Banco):</strong> Basta informar sua Chave PIX acima. O sistema gera QR Code BRCode oficial do Banco Central com valor exato do pedido!</li>
+                            <li><strong>2. Mercado Pago Dinâmico (Baixa Automática):</strong> Conecte via OAuth ou informe seu <code class="text-emerald-400">APP_USR-...</code> do <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" class="text-sky-400 underline font-bold">Mercado Pago Developers ↗</a> para confirmação automática via Webhook.</li>
+                        </ul>
                         <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
                             <span>🔒 Criptografado em AES-256-GCM</span>
                             <span class="text-emerald-400 font-bold">0% Taxa do SaaS</span>

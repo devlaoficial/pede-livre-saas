@@ -21,7 +21,19 @@ final class HorarioFuncionamentoService
      */
     public function avaliarStatusLoja(Loja $loja, string $canal = 'delivery', ?CarbonImmutable $dataHoraReferencia = null): array
     {
-        $timezone = $loja->config_json['timezone'] ?? 'America/Sao_Paulo';
+        $config = is_array($loja->config_json) ? $loja->config_json : [];
+
+        // Check manual store pause toggle ("Loja aberta / fechada")
+        if (array_key_exists('aceita_pedidos', $config) && $config['aceita_pedidos'] === false) {
+            return [
+                'aberto_agora' => false,
+                'aceita_agendamento' => false,
+                'proximo_horario_abertura' => null,
+                'mensagem_status' => 'Fechado temporariamente pelo estabelecimento.',
+            ];
+        }
+
+        $timezone = $config['timezone'] ?? 'America/Sao_Paulo';
         $now = $dataHoraReferencia ? $dataHoraReferencia->setTimezone($timezone) : CarbonImmutable::now($timezone);
 
         $hojeData = $now->format('Y-m-d');
@@ -55,9 +67,22 @@ final class HorarioFuncionamentoService
             }
         }
 
-        // 2. Check Standard Weekly Shifts for this channel & weekday
+        // 2. If store has ZERO shifts configured in database across all days, consider open by default
+        $possuiAlgumHorario = Horario::where('loja_id', $loja->id)->exists();
+        if (!$possuiAlgumHorario) {
+            return [
+                'aberto_agora' => true,
+                'aceita_agendamento' => true,
+                'proximo_horario_abertura' => null,
+                'mensagem_status' => 'Aberto agora para pedidos',
+            ];
+        }
+
+        // 3. Check Standard Weekly Shifts for this channel & weekday (fallback to delivery channel if specific channel has no shifts)
+        $canalConsulta = Horario::where('loja_id', $loja->id)->where('canal', $canal)->exists() ? $canal : 'delivery';
+
         $turnosHoje = Horario::where('loja_id', $loja->id)
-            ->where('canal', $canal)
+            ->where('canal', $canalConsulta)
             ->where('dia_semana', $diaSemana)
             ->orderBy('abre')
             ->get();
@@ -86,7 +111,7 @@ final class HorarioFuncionamentoService
             }
         }
 
-        $proximaAbertura = $this->obterProximaAbertura($loja, $canal, $now);
+        $proximaAbertura = $this->obterProximaAbertura($loja, $canalConsulta, $now);
 
         return [
             'aberto_agora' => false,

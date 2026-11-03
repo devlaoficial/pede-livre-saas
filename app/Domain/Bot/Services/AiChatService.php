@@ -6,7 +6,6 @@ namespace App\Domain\Bot\Services;
 
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Catalogo\Models\Categoria;
-use App\Domain\Catalogo\Models\Produto;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -121,9 +120,11 @@ PROMPT;
             ];
 
             $modelos = array_unique(array_filter([
-                (string) config('services.groq.chat_model', 'openai/gpt-oss-120b'),
+                (string) config('services.groq.chat_model', 'llama-3.3-70b-versatile'),
+                'llama-3.3-70b-versatile',
+                'llama-3.1-8b-instant',
+                'openai/gpt-oss-120b',
                 'openai/gpt-oss-20b',
-                'qwen/qwen3.8-27b',
             ]));
 
             foreach ($modelos as $chatModel) {

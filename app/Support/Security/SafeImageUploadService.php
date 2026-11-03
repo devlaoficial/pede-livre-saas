@@ -22,7 +22,7 @@ final class SafeImageUploadService
 
     private const MAX_WIDTH = 800;
     private const MAX_HEIGHT = 600;
-    private const WEBP_QUALITY = 80;
+    private const WEBP_QUALITY = 82;
 
     /**
      * Inspects magic bytes, strips all EXIF/GPS metadata, resizes and stores as WebP under a tenant-isolated path.
@@ -32,6 +32,30 @@ final class SafeImageUploadService
      * @return array{path: string, url: string, width: int, height: int, size_bytes: int}
      */
     public function uploadProductImage(UploadedFile $file, int $lojaId): array
+    {
+        return $this->processAndStoreImage($file, "lojas/{$lojaId}/produtos", self::MAX_WIDTH, self::MAX_HEIGHT);
+    }
+
+    /**
+     * Uploads and converts store branding assets (logo or cover banner) to WebP.
+     *
+     * @param UploadedFile $file
+     * @param int $lojaId
+     * @param string $tipo ('logo' or 'capa')
+     * @return array{path: string, url: string, width: int, height: int, size_bytes: int}
+     */
+    public function uploadStoreAsset(UploadedFile $file, int $lojaId, string $tipo = 'logo'): array
+    {
+        $maxWidth = $tipo === 'capa' ? 1400 : 400;
+        $maxHeight = $tipo === 'capa' ? 600 : 400;
+
+        return $this->processAndStoreImage($file, "lojas/{$lojaId}/marca", $maxWidth, $maxHeight);
+    }
+
+    /**
+     * @return array{path: string, url: string, width: int, height: int, size_bytes: int}
+     */
+    private function processAndStoreImage(UploadedFile $file, string $folder, int $maxWidth, int $maxHeight): array
     {
         if ($file->getSize() > self::MAX_FILE_SIZE_BYTES) {
             throw new InvalidArgumentException('Arquivo excede o tamanho máximo permitido de 4 MB.');
@@ -73,7 +97,7 @@ final class SafeImageUploadService
         $origWidth = imagesx($sourceImage);
         $origHeight = imagesy($sourceImage);
 
-        [$targetWidth, $targetHeight] = $this->calculateTargetDimensions($origWidth, $origHeight);
+        [$targetWidth, $targetHeight] = $this->calculateTargetDimensions($origWidth, $origHeight, $maxWidth, $maxHeight);
 
         $targetImage = imagecreatetruecolor($targetWidth, $targetHeight);
         if ($targetImage === false) {
@@ -113,7 +137,7 @@ final class SafeImageUploadService
         }
 
         $uuid = (string) Str::uuid();
-        $storagePath = "lojas/{$lojaId}/produtos/{$uuid}.webp";
+        $storagePath = "{$folder}/{$uuid}.webp";
 
         Storage::disk('public')->put($storagePath, $webpData);
 
@@ -129,13 +153,13 @@ final class SafeImageUploadService
     /**
      * @return array{0: int, 1: int}
      */
-    private function calculateTargetDimensions(int $width, int $height): array
+    private function calculateTargetDimensions(int $width, int $height, int $maxWidth, int $maxHeight): array
     {
-        if ($width <= self::MAX_WIDTH && $height <= self::MAX_HEIGHT) {
+        if ($width <= $maxWidth && $height <= $maxHeight) {
             return [$width, $height];
         }
 
-        $ratio = min(self::MAX_WIDTH / $width, self::MAX_HEIGHT / $height);
+        $ratio = min($maxWidth / $width, $maxHeight / $height);
 
         return [
             (int) max(1, round($width * $ratio)),

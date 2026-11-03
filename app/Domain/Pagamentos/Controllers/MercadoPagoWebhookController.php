@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Pagamentos\Controllers;
 
+use App\Domain\Assinaturas\Models\Fatura;
+use App\Domain\Assinaturas\Services\AssinaturaPlataformaService;
 use App\Domain\Pagamentos\Models\Pagamento;
 use App\Domain\Pagamentos\Models\WebhookLog;
 use App\Domain\Pedidos\Events\PagamentoConfirmado;
-use App\Domain\Pedidos\Models\Pedido;
 use App\Domain\Pedidos\Services\FluxoStatusPedidoService;
 use App\Support\Security\SensitiveDataRedactor;
 use App\Support\Security\WebhookSignatureValidator;
@@ -22,7 +23,8 @@ final class MercadoPagoWebhookController
     public function __construct(
         private readonly WebhookSignatureValidator $signatureValidator,
         private readonly SensitiveDataRedactor $redactor,
-        private readonly FluxoStatusPedidoService $fluxoService
+        private readonly FluxoStatusPedidoService $fluxoService,
+        private readonly AssinaturaPlataformaService $assinaturaService
     ) {}
 
     /**
@@ -35,13 +37,14 @@ final class MercadoPagoWebhookController
         $payload = $request->all();
 
         $dataId = $payload['data']['id'] ?? ($payload['id'] ?? null);
-        $type = $payload['type'] ?? ($payload['action'] ?? null);
 
         // 1. Cryptographic Signature & Timestamp Freshness Check
-        $secretKey = (string) config('services.mercadopago.webhook_secret', 'test-webhook-secret-32-chars-long!');
-        $isValid = $this->signatureValidator->isValid($signatureHeader, $xRequestId, $dataId, $secretKey);
+        $secretKey = (string) config('services.mercadopago.webhook_secret', '');
+        $platformSecret = (string) config('services.mercadopago.platform_webhook_secret', '');
 
-        // In test mode with dummy data, allow mock bypass if header equals test token
+        $isValid = $this->signatureValidator->isValid($signatureHeader, $xRequestId, $dataId, $secretKey)
+            || ($platformSecret !== '' && $this->signatureValidator->isValid($signatureHeader, $xRequestId, $dataId, $platformSecret));
+
         if (!$isValid) {
             return response()->json([
                 'error' => 'ASSINATURA_INVALIDA',
@@ -69,32 +72,39 @@ final class MercadoPagoWebhookController
         }
 
         try {
-            // Locate payment by mp_payment_id or external reference
+            // Locate order payment by mp_payment_id or external reference
             /** @var Pagamento|null $pagamento */
-            $pagamento = Pagamento::where('mp_payment_id', (string) $dataId)->first();
+            $pagamento = Pagamento::withoutGlobalScopes()->where('mp_payment_id', (string) $dataId)->first();
 
             if ($pagamento === null && isset($payload['data']['id'])) {
-                $pagamento = Pagamento::where('idempotency_key', 'LIKE', "%{$dataId}%")->first();
+                $pagamento = Pagamento::withoutGlobalScopes()->where('idempotency_key', 'LIKE', "%{$dataId}%")->first();
             }
 
+            // If not an order payment, check if it is a SaaS platform invoice (Fatura)
             if ($pagamento === null) {
-                // Not found locally yet (could be subscription or other payment)
+                $fatura = Fatura::withoutGlobalScopes()->where('mp_payment_id', (string) $dataId)->first();
+                if ($fatura !== null) {
+                    $this->assinaturaService->confirmarPagamentoFatura($fatura);
+                    $log->update(['processado' => true]);
+                    return response()->json(['message' => 'Fatura SaaS conciliada com sucesso'], Response::HTTP_OK);
+                }
+
                 $log->update(['processado' => true, 'erro' => 'Pagamento local não encontrado']);
                 return response()->json(['message' => 'Pagamento não localizado'], Response::HTTP_OK);
             }
 
             // 4. Defense-in-Depth Verification against Mercado Pago API
-            $loja = $pagamento->loja;
+            $loja = $pagamento->pedido?->loja ?? \App\Domain\Assinaturas\Models\Loja::withoutGlobalScopes()->find($pagamento->loja_id);
             $tokenLoja = $loja?->mp_access_token;
-            $statusPagamentoMp = 'approved'; // Default approved in test environment
+            $statusPagamentoMp = 'approved';
 
             if (!empty($tokenLoja) && !app()->environment('testing')) {
                 $mpResponse = Http::withHeaders([
                     'Authorization' => "Bearer {$tokenLoja}",
-                ])->get("https://api.mercadopago.com/v1/payments/{$dataId}");
+                ])->timeout(10)->get("https://api.mercadopago.com/v1/payments/{$dataId}");
 
                 if ($mpResponse->successful()) {
-                    $statusPagamentoMp = $mpResponse->json('status');
+                    $statusPagamentoMp = (string) $mpResponse->json('status');
                 }
             }
 
