@@ -5,7 +5,17 @@
                 temSessaoSuperAdmin: false,
                 moduloAtivo: 'pedidos',
                 abaPedidoMobile: 'novo',
-                somHabilitado: true,
+                menuMobileAberto: false,
+                modalInstrucoesPwa: false,
+                onlineStatus: navigator.onLine !== false,
+                pwaStandalone: (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true,
+                pwaDeferredPrompt: null,
+                pwaPromptDisponivel: false,
+                wakeLockAtivo: localStorage.getItem('pl_wakelock') !== '0',
+                wakeLockSentinel: null,
+                idsPedidosConhecidos: [],
+                primeiraCargaPedidosFeita: false,
+                somHabilitado: localStorage.getItem('pl_som_habilitado') !== '0',
                 autoImprimir80mm: localStorage.getItem('pl_auto_print_80mm') === '1',
                 onboardingOculto: localStorage.getItem('pl_onboarding_oculto') === '1',
                 audioCtx: null,
@@ -364,10 +374,19 @@
                             this.carregarConversasWhatsapp(true);
                             this.carregarCaixa();
                             this.carregarHorarios();
-                            if (new URLSearchParams(window.location.search).get('mp_oauth') === 'sucesso') {
+                            const params = new URLSearchParams(window.location.search);
+                            if (params.get('mp_oauth') === 'sucesso') {
                                 this.toastMsg = 'Conta Mercado Pago conectada com sucesso via login!';
                                 this.moduloAtivo = 'config';
                                 window.history.replaceState({}, '', '/painel');
+                            } else if (params.get('modulo')) {
+                                const modUrl = params.get('modulo');
+                                if (['pedidos', 'kds', 'mesas', 'entregas', 'catalogo', 'financeiro', 'crm', 'whatsapp', 'config'].includes(modUrl)) {
+                                    this.mudarModulo(modUrl);
+                                }
+                                if (params.get('acao') === 'pdv') {
+                                    setTimeout(() => this.abrirModalPdv(), 350);
+                                }
                             }
                             setInterval(() => {
                                 this.carregarPedidos();
@@ -379,6 +398,7 @@
                             window.location.replace('/login');
                         });
                     this.iniciarAudio();
+                    this.iniciarPwa();
 
                     window.addEventListener('keydown', (e) => {
                         if (e.key === 'F2') {
@@ -700,12 +720,34 @@
 
                 carregarPedidos() {
                     fetch('/api/painel/pedidos', { headers: this.headersAuth() })
-                        .then(r => r.json())
-                        .then(data => {
-                            this.pedidos = data.data || [];
-                            this.verificarAlertaSonoro();
+                        .then(r => {
+                            if (r.ok) this.onlineStatus = true;
+                            return r.json();
                         })
-                        .catch(() => {});
+                        .then(data => {
+                            const listaNova = data.data || [];
+                            if (this.primeiraCargaPedidosFeita) {
+                                const novosChegados = listaNova.filter(
+                                    p => p.status === 'novo' && !this.idsPedidosConhecidos.includes(p.id)
+                                );
+                                novosChegados.forEach(p => {
+                                    this.dispararNotificacaoNativa(
+                                        `🔔 Novo Pedido #${p.codigo_publico || p.id}!`,
+                                        `${this.nomeClienteOuBalcao(p)} • ${this.formatarCentavos(p.total_centavos)} (${(p.canal || 'delivery').toUpperCase()})`,
+                                        'pedidos',
+                                        p.id
+                                    );
+                                });
+                            }
+                            this.idsPedidosConhecidos = listaNova.map(p => p.id);
+                            this.primeiraCargaPedidosFeita = true;
+                            this.pedidos = listaNova;
+                            this.verificarAlertaSonoro();
+                            this.atualizarBadgeAplicativo();
+                        })
+                        .catch(() => {
+                            this.onlineStatus = false;
+                        });
                 },
 
                 confirmarPagamentoPedido(pedido) {
@@ -1865,12 +1907,159 @@
 
                 alternarSom() {
                     this.somHabilitado = !this.somHabilitado;
+                    localStorage.setItem('pl_som_habilitado', this.somHabilitado ? '1' : '0');
                     if (this.somHabilitado) {
                         this.tocarChime();
+                        this.toastMsg = '🔔 Alerta sonoro de novos pedidos ativado!';
+                    } else {
+                        this.toastMsg = '🔕 Alerta sonoro silenciado.';
                     }
                     if (!this.somHabilitado && this.somInterval) {
                         clearInterval(this.somInterval);
                         this.somInterval = null;
+                    }
+                },
+
+                iniciarPwa() {
+                    // 1. Registrar Service Worker (/sw.js)
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.register('/sw.js').catch(() => {});
+                        navigator.serviceWorker.addEventListener('message', (event) => {
+                            const data = event.data || {};
+                            if (data.type === 'NOTIFICATION_CLICKED') {
+                                if (data.modulo) this.mudarModulo(data.modulo);
+                                if (data.pedidoId) {
+                                    const p = (this.pedidos || []).find(item => Number(item.id) === Number(data.pedidoId));
+                                    if (p) this.abrirDetalhesPedido(p);
+                                }
+                            }
+                        });
+                    }
+
+                    // 2. Capturar evento nativo de instalação PWA (Chrome / Edge / Android)
+                    window.addEventListener('beforeinstallprompt', (e) => {
+                        e.preventDefault();
+                        this.pwaDeferredPrompt = e;
+                        this.pwaPromptDisponivel = true;
+                    });
+
+                    window.addEventListener('appinstalled', () => {
+                        this.pwaStandalone = true;
+                        this.pwaDeferredPrompt = null;
+                        this.pwaPromptDisponivel = false;
+                        this.modalInstrucoesPwa = false;
+                        this.toastMsg = '🎉 Aplicativo PedeLivre OS instalado com sucesso!';
+                    });
+
+                    // 3. Monitoramento Online / Offline em Tempo Real
+                    window.addEventListener('online', () => {
+                        this.onlineStatus = true;
+                        this.toastMsg = '🟢 Conexão restabelecida! Sincronizando pedidos...';
+                        this.atualizarTudo();
+                    });
+                    window.addEventListener('offline', () => {
+                        this.onlineStatus = false;
+                    });
+
+                    // 4. Screen Wake Lock (manter tela acesa no balcão/cozinha)
+                    if (this.wakeLockAtivo) {
+                        this.adquirirWakeLock();
+                    }
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState === 'visible' && this.wakeLockAtivo) {
+                            this.adquirirWakeLock();
+                        }
+                    });
+                },
+
+                async instalarAppPwa() {
+                    if (this.pwaDeferredPrompt) {
+                        this.pwaDeferredPrompt.prompt();
+                        const choice = await this.pwaDeferredPrompt.userChoice.catch(() => null);
+                        if (choice && choice.outcome === 'accepted') {
+                            this.pwaStandalone = true;
+                            this.pwaDeferredPrompt = null;
+                            this.pwaPromptDisponivel = false;
+                        }
+                        return;
+                    }
+                    this.modalInstrucoesPwa = true;
+                },
+
+                async adquirirWakeLock() {
+                    if (!('wakeLock' in navigator)) return;
+                    try {
+                        this.wakeLockSentinel = await navigator.wakeLock.request('screen');
+                    } catch (e) {}
+                },
+
+                async alternarWakeLock() {
+                    this.wakeLockAtivo = !this.wakeLockAtivo;
+                    localStorage.setItem('pl_wakelock', this.wakeLockAtivo ? '1' : '0');
+                    if (this.wakeLockAtivo) {
+                        await this.adquirirWakeLock();
+                        this.toastMsg = '☀️ Modo Tela Sempre Acesa ativado para operação contínua!';
+                    } else {
+                        if (this.wakeLockSentinel) {
+                            await this.wakeLockSentinel.release().catch(() => {});
+                            this.wakeLockSentinel = null;
+                        }
+                        this.toastMsg = 'Modo Tela Sempre Acesa desativado.';
+                    }
+                },
+
+                async ativarNotificacoesNativas() {
+                    if (!('Notification' in window)) {
+                        this.toastMsg = 'Este navegador não suporta notificações nativas.';
+                        return;
+                    }
+                    const perm = await Notification.requestPermission();
+                    if (perm === 'granted') {
+                        this.toastMsg = '🔔 Notificações nativas ativadas com sucesso!';
+                        this.modalInstrucoesPwa = false;
+                        this.dispararNotificacaoNativa(
+                            'PedeLivre OS Pronto!',
+                            'Você receberá alertas instantâneos de novos pedidos e chamados de mesa.',
+                            'pedidos'
+                        );
+                    } else {
+                        this.toastMsg = 'Permissão de notificação negada no navegador.';
+                    }
+                },
+
+                async dispararNotificacaoNativa(title, body, modulo = 'pedidos', pedidoId = null) {
+                    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+                    try {
+                        if ('serviceWorker' in navigator) {
+                            const reg = await navigator.serviceWorker.ready;
+                            if (reg && reg.active) {
+                                reg.active.postMessage({
+                                    type: 'SHOW_NOTIFICATION',
+                                    title,
+                                    body,
+                                    modulo,
+                                    pedidoId,
+                                    tag: pedidoId ? `pedido-${pedidoId}` : 'pedelivre-alerta'
+                                });
+                                return;
+                            }
+                        }
+                        new Notification(title, { body, icon: '/icons/icon-192.png' });
+                    } catch (e) {}
+                },
+
+                atualizarBadgeAplicativo() {
+                    const pendentes = (this.colunas?.novo?.length || 0) + (this.chamadosGarcom?.length || 0) + (this.totalAguardandoHumano || 0);
+                    if (pendentes > 0) {
+                        document.title = `(${pendentes}) Alerta Operacional — PedeLivre OS`;
+                        if ('setAppBadge' in navigator) {
+                            navigator.setAppBadge(pendentes).catch(() => {});
+                        }
+                    } else {
+                        document.title = `${this.loja?.nome || 'Painel do Lojista'} — PedeLivre OS`;
+                        if ('clearAppBadge' in navigator) {
+                            navigator.clearAppBadge().catch(() => {});
+                        }
                     }
                 },
 
