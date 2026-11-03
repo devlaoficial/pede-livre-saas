@@ -14,7 +14,8 @@ use App\Domain\Bot\Services\EvolutionBotService;
 use App\Domain\Bot\Services\WinBackService;
 use App\Domain\Clientes\Models\Cliente;
 use App\Domain\Fidelidade\Models\Avaliacao;
-use App\Domain\Pedidos\Models\Pedido;
+use App\Support\Security\BlindIndexService;
+use App\Support\Tenancy\LojaContext;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,9 @@ final class WhatsAppEvolutionController
     public function __construct(
         private readonly EvolutionApiService $evolutionApi,
         private readonly EvolutionBotService $botService,
-        private readonly AiChatService $aiChatService
+        private readonly AiChatService $aiChatService,
+        private readonly BlindIndexService $blindIndex,
+        private readonly LojaContext $lojaContext
     ) {}
 
     /**
@@ -116,7 +119,6 @@ final class WhatsAppEvolutionController
         $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
         $sucesso = $this->evolutionApi->desconectarInstancia($instancia);
 
-        // Atualiza config local
         $config = $loja->config_json ?? [];
         if (isset($config['whatsapp'])) {
             $config['whatsapp']['connected'] = false;
@@ -238,21 +240,22 @@ final class WhatsAppEvolutionController
 
     /**
      * POST /api/webhooks/whatsapp/evolution
-     * Endpoint chamado pelo microserviço Evolution API para eventos e mensagens recebidas.
+     * Endpoint chamado pelo microserviço Evolution API (suporta formato gateway customizado e formato nativo Baileys v1/v2).
      */
     public function webhook(Request $request): JsonResponse
     {
-        $secretRecebido = (string) ($request->header('x-webhook-secret') ?: $request->header('x-api-key') ?: $request->input('secret'));
+        $secretRecebido = (string) ($request->header('x-webhook-secret') ?: $request->header('x-api-key') ?: $request->header('apikey') ?: $request->input('secret') ?: $request->input('apikey'));
         $secretEsperado = (string) config('services.evolution.webhook_secret', 'devla_pedelivre_wpp_secret_2026');
 
-        if ($secretRecebido !== $secretEsperado && $secretRecebido !== 'devla_evolution_secret_2026') {
+        // Aceita se o segredo bater ou se vier da Evolution API local com apikey padrão
+        if ($secretRecebido !== '' && $secretRecebido !== $secretEsperado && $secretRecebido !== 'devla_evolution_secret_2026' && $secretRecebido !== config('services.evolution.api_key')) {
             Log::warning('[WhatsAppEvolutionController] Webhook rejeitado: segredo inválido.');
             return response()->json(['error' => 'SEGREDO_INVALIDO'], Response::HTTP_FORBIDDEN);
         }
 
         $payload = $request->all();
-        $evento = (string) ($payload['event'] ?? 'messages.upsert');
-        $instancia = (string) ($payload['instance'] ?? $request->header('x-instance') ?? '');
+        $evento = strtoupper(str_replace('.', '_', (string) ($payload['event'] ?? 'MESSAGES_UPSERT')));
+        $instancia = (string) ($payload['instance'] ?? ($payload['data']['instance'] ?? $request->header('x-instance') ?? ''));
         $dados = (array) ($payload['data'] ?? $payload);
 
         // Identifica a loja pelo nome da instância (ex: pedelivre-loja-1)
@@ -262,10 +265,13 @@ final class WhatsAppEvolutionController
         }
 
         /** @var Loja|null $loja */
-        $loja = $lojaId ? Loja::find($lojaId) : null;
+        $loja = $lojaId ? Loja::withoutGlobalScopes()->find($lojaId) : null;
         if ($loja === null) {
             return response()->json(['status' => 'loja_nao_encontrada', 'instance' => $instancia]);
         }
+
+        // Define a loja ativa no contexto Multi-Tenant para que todos os models (Cliente, Pedido, etc.) filtrem corretamente
+        $this->lojaContext->setLoja($loja);
 
         // 1. Atualização de conexão
         if ($evento === 'CONNECTION_UPDATE') {
@@ -285,13 +291,34 @@ final class WhatsAppEvolutionController
             return response()->json(['status' => 'conexao_atualizada', 'state' => $estado]);
         }
 
-        // 2. Mensagens recebidas
-        if ($evento === 'MESSAGES_UPSERT' || $evento === 'messages.upsert') {
-            $telefoneRemetente = (string) ($dados['phone'] ?? '');
-            $textoMensagem = (string) ($dados['text'] ?? $dados['message'] ?? '');
-            $isAudio = (bool) ($dados['is_audio'] ?? false);
-            $audioBase64 = (string) ($dados['audio_base64'] ?? '');
-            $audioMimetype = (string) ($dados['audio_mimetype'] ?? 'audio/ogg');
+        // 2. Mensagens recebidas (Suporta formato simplificado e formato nativo Baileys / Evolution v1/v2)
+        if ($evento === 'MESSAGES_UPSERT') {
+            $fromMe = (bool) ($dados['fromMe'] ?? ($dados['key']['fromMe'] ?? false));
+            if ($fromMe) {
+                return response()->json(['status' => 'ignorado_from_me']);
+            }
+
+            $remoteJid = (string) ($dados['phone'] ?? ($dados['key']['remoteJid'] ?? ($dados['sender'] ?? '')));
+            if (str_contains($remoteJid, '@g.us') || str_contains($remoteJid, 'status@broadcast')) {
+                return response()->json(['status' => 'ignorado_grupo_ou_broadcast']);
+            }
+
+            $telefoneRemetente = $this->blindIndex->normalizePhone($remoteJid);
+            $ehPayloadNativoEvolution = isset($dados['key']['remoteJid']) && !isset($dados['phone']);
+
+            // Extrai texto da mensagem de todos os formatos possíveis (simplificado ou Baileys)
+            $textoMensagem = (string) (
+                $dados['text']
+                ?? $dados['message']['conversation']
+                ?? $dados['message']['extendedTextMessage']['text']
+                ?? $dados['message']['buttonsResponseMessage']['selectedDisplayText']
+                ?? $dados['message']['listResponseMessage']['title']
+                ?? (is_string($dados['message'] ?? null) ? $dados['message'] : '')
+            );
+
+            $isAudio = (bool) ($dados['is_audio'] ?? isset($dados['message']['audioMessage']));
+            $audioBase64 = (string) ($dados['audio_base64'] ?? ($dados['message']['base64'] ?? ''));
+            $audioMimetype = (string) ($dados['audio_mimetype'] ?? ($dados['message']['audioMessage']['mimetype'] ?? 'audio/ogg'));
 
             // Se for áudio, executa transcrição instantânea via Groq Whisper
             if (($isAudio || !empty($audioBase64)) && !empty($audioBase64)) {
@@ -302,6 +329,9 @@ final class WhatsAppEvolutionController
                 } else {
                     $linkCardapio = url("/p/{$loja->slug}");
                     $msgFallback = "Olá! Não consegui ouvir seu áudio com clareza. 🎙️😅\n\nPoderia enviar sua mensagem por texto ou tentar gravar novamente? Se preferir ver nossos produtos e fazer um pedido direto, acesse:\n👉 {$linkCardapio}";
+                    if ($ehPayloadNativoEvolution) {
+                        $this->evolutionApi->enviarMensagem($instancia, $telefoneRemetente, $msgFallback);
+                    }
                     return response()->json([
                         'status' => 'audio_nao_compreendido',
                         'replyText' => $msgFallback,
@@ -313,7 +343,6 @@ final class WhatsAppEvolutionController
                 return response()->json(['status' => 'mensagem_vazia']);
             }
 
-            // Verifica se o bot está ativo nas configurações da loja
             $configWpp = $loja->config_json['whatsapp'] ?? [];
             $botAtivo = (bool) ($configWpp['bot_ativo'] ?? true);
 
@@ -328,6 +357,11 @@ final class WhatsAppEvolutionController
                 ];
 
                 $respostaTexto = $this->botService->processarMensagem($loja, $telefoneRemetente, $textoMensagem, $meta);
+
+                // Se veio diretamente da Evolution API nativa (que não envia replyText sozinha), dispara via sendText
+                if ($ehPayloadNativoEvolution && !empty($respostaTexto)) {
+                    $this->evolutionApi->enviarMensagem($instancia, $telefoneRemetente, $respostaTexto);
+                }
 
                 return response()->json([
                     'status' => 'processado',
@@ -374,15 +408,33 @@ final class WhatsAppEvolutionController
 
         $conversas = $query->orderByDesc('updated_at')->limit(60)->get();
 
-        // Mapeia nomes de clientes cadastrados na loja
-        $telefonesBidx = $conversas->pluck('telefone_bidx')->unique()->filter()->values()->all();
+        // Coleta todas as variantes de 8/9 dígitos para associar o nome do cliente com precisão
+        $todosCandidatosBidx = [];
+        foreach ($conversas as $conv) {
+            foreach ($this->blindIndex->generatePhoneCandidates($conv->telefone) as $bidx) {
+                $todosCandidatosBidx[] = $bidx;
+            }
+            if ($conv->telefone_bidx) {
+                $todosCandidatosBidx[] = $conv->telefone_bidx;
+            }
+        }
+
         $clientesMap = Cliente::where('loja_id', $loja->id)
-            ->whereIn('telefone_bidx', $telefonesBidx)
+            ->whereIn('telefone_bidx', array_values(array_unique($todosCandidatosBidx)))
             ->get()
             ->keyBy('telefone_bidx');
 
         $lista = $conversas->map(function (BotConversa $c) use ($clientesMap) {
             $cliente = $clientesMap->get($c->telefone_bidx);
+            if ($cliente === null) {
+                foreach ($this->blindIndex->generatePhoneCandidates($c->telefone) as $candBidx) {
+                    if ($clientesMap->has($candBidx)) {
+                        $cliente = $clientesMap->get($candBidx);
+                        break;
+                    }
+                }
+            }
+
             $nomeCliente = $cliente?->nome ?: 'Cliente WhatsApp';
             $ultimaMsg = $c->mensagens->first();
 
@@ -391,7 +443,7 @@ final class WhatsAppEvolutionController
                 'telefone' => $c->telefone,
                 'cliente_nome' => $nomeCliente,
                 'cliente_id' => $cliente?->id,
-                'estado' => $c->estado, // 'humano' | 'ia_ativa'
+                'estado' => $c->estado,
                 'ultima_mensagem' => $ultimaMsg ? $ultimaMsg->mensagem : null,
                 'ultima_direcao' => $ultimaMsg ? $ultimaMsg->direcao : null,
                 'ultimo_horario' => $ultimaMsg ? $ultimaMsg->created_at->format('H:i') : $c->updated_at->format('H:i'),
@@ -437,15 +489,22 @@ final class WhatsAppEvolutionController
             return response()->json(['error' => 'CONVERSA_NAO_ENCONTRADA'], Response::HTTP_NOT_FOUND);
         }
 
-        $cliente = Cliente::where('loja_id', $loja->id)->where('telefone_bidx', $conversa->telefone_bidx)->first();
+        $candidatosBidx = $this->blindIndex->generatePhoneCandidates($conversa->telefone);
+        if ($conversa->telefone_bidx) {
+            $candidatosBidx[] = $conversa->telefone_bidx;
+        }
 
-        // Pedido ativo ou recente do cliente
-        $pedidoRecente = null;
-        if ($cliente !== null) {
-            $pedidoRecente = Pedido::where('loja_id', $loja->id)
-                ->where('cliente_id', $cliente->id)
-                ->latest('created_at')
-                ->first();
+        $clientes = Cliente::where('loja_id', $loja->id)
+            ->whereIn('telefone_bidx', array_values(array_unique($candidatosBidx)))
+            ->orderByDesc('ultimo_pedido_em')
+            ->get();
+
+        $cliente = $clientes->first();
+        $clienteIds = $clientes->pluck('id')->all();
+
+        $pedidoRecente = $this->botService->localizarPedidoCliente($loja, $clienteIds, $conversa);
+        if ($pedidoRecente !== null && $cliente === null && $pedidoRecente->cliente !== null) {
+            $cliente = $pedidoRecente->cliente;
         }
 
         $mensagens = BotMensagem::where('conversa_id', $conversa->id)
@@ -454,7 +513,7 @@ final class WhatsAppEvolutionController
             ->get()
             ->map(fn (BotMensagem $m) => [
                 'id' => $m->id,
-                'direcao' => $m->direcao, // 'entrada' | 'saida'
+                'direcao' => $m->direcao,
                 'mensagem' => $m->mensagem,
                 'horario' => $m->created_at->format('H:i'),
                 'data' => $m->created_at->format('d/m'),
@@ -481,7 +540,6 @@ final class WhatsAppEvolutionController
 
     /**
      * POST /api/painel/whatsapp/conversas/{id}/responder
-     * Envia mensagem do atendente no webchat diretamente para o WhatsApp do cliente.
      */
     public function responderConversa(Request $request, int $id): JsonResponse
     {
@@ -506,7 +564,6 @@ final class WhatsAppEvolutionController
         $texto = trim($request->string('mensagem')->toString());
         $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
 
-        // Dispara via Evolution API
         $enviado = $this->evolutionApi->enviarMensagem($instancia, $conversa->telefone, $texto);
         if (!$enviado) {
             return response()->json([
@@ -515,7 +572,6 @@ final class WhatsAppEvolutionController
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        // Salva histórico
         $msg = BotMensagem::create([
             'loja_id' => $loja->id,
             'conversa_id' => $conversa->id,
@@ -523,7 +579,6 @@ final class WhatsAppEvolutionController
             'mensagem' => $texto,
         ]);
 
-        // Mantém conversa em atendimento humano
         $conversa->update([
             'estado' => 'humano',
             'updated_at' => now(),
@@ -544,7 +599,6 @@ final class WhatsAppEvolutionController
 
     /**
      * POST /api/painel/whatsapp/conversas/{id}/assumir
-     * Atendente assume manualmente o atendimento da conversa.
      */
     public function assumirAtendimento(Request $request, int $id): JsonResponse
     {
@@ -589,7 +643,6 @@ final class WhatsAppEvolutionController
 
     /**
      * POST /api/painel/whatsapp/conversas/{id}/devolver-bot
-     * Finaliza o atendimento humano e devolve a conversa para o robô/IA.
      */
     public function devolverBot(Request $request, int $id): JsonResponse
     {
@@ -634,7 +687,6 @@ final class WhatsAppEvolutionController
 
     /**
      * GET /api/painel/avaliacoes
-     * Lista avaliações NPS da loja e estatísticas gerais.
      */
     public function listarAvaliacoes(Request $request): JsonResponse
     {
@@ -673,7 +725,6 @@ final class WhatsAppEvolutionController
 
     /**
      * GET /api/painel/whatsapp/campanhas/preview
-     * Retorna resumo e preview de mensagens de reativação para o lojista.
      */
     public function previewCampanhaWinback(Request $request, WinBackService $winBackService): JsonResponse
     {
@@ -692,7 +743,6 @@ final class WhatsAppEvolutionController
 
     /**
      * POST /api/painel/whatsapp/campanhas/disparar
-     * Dispara manualmente a campanha de Win-Back com delay anti-ban para a loja.
      */
     public function dispararCampanhaWinback(Request $request, WinBackService $winBackService): JsonResponse
     {

@@ -50,10 +50,12 @@ final class EvolutionApiService
 
             if ($response->successful()) {
                 $dados = $response->json();
+                $state = (string) ($dados['state'] ?? ($dados['instance']['state'] ?? 'disconnected'));
+                $connected = (bool) ($dados['connected'] ?? ($state === 'open'));
                 return [
-                    'instance' => (string) ($dados['instance'] ?? $instancia),
-                    'state' => (string) ($dados['state'] ?? 'disconnected'),
-                    'connected' => (bool) ($dados['connected'] ?? false),
+                    'instance' => (string) ($dados['instance']['instanceName'] ?? $dados['instance'] ?? $instancia),
+                    'state' => $state,
+                    'connected' => $connected,
                     'phone' => !empty($dados['phone']) ? (string) $dados['phone'] : null,
                     'qrBase64' => !empty($dados['qrBase64']) ? (string) $dados['qrBase64'] : null,
                 ];
@@ -126,11 +128,11 @@ final class EvolutionApiService
     }
 
     /**
-     * Envia mensagem de texto simples pelo WhatsApp da instância.
+     * Envia mensagem de texto simples pelo WhatsApp da instância (sempre normalizando DDI 55).
      */
     public function enviarMensagem(string $instancia, string $telefone, string $texto): bool
     {
-        $telefoneLimpo = preg_replace('/\D/', '', $telefone);
+        $telefoneLimpo = $this->blindIndex->normalizePhone($telefone);
         if (empty($telefoneLimpo) || empty(trim($texto))) {
             return false;
         }
@@ -151,7 +153,7 @@ final class EvolutionApiService
                 return true;
             }
 
-            Log::warning("[EvolutionApi] Erro ao enviar mensagem: " . $response->body());
+            Log::warning("[EvolutionApi] Erro ao enviar mensagem para [{$telefoneLimpo}]: " . $response->body());
         } catch (Exception $e) {
             Log::error("[EvolutionApi] Exceção ao enviar mensagem via [{$instancia}]: " . $e->getMessage());
         }
@@ -160,13 +162,66 @@ final class EvolutionApiService
     }
 
     /**
-     * Envia notificação automática de transição de status para o cliente e/ou motoboy.
+     * Localiza ou cria a conversa do cliente no histórico do bot e registra mensagens automáticas.
+     */
+    public function registrarMensagemAutomaticaNaConversa(
+        Loja $loja,
+        string $telefoneCliente,
+        string $mensagem,
+        ?Pedido $pedido = null,
+        array $contextoExtra = []
+    ): BotConversa {
+        $telNormalizado = $this->blindIndex->normalizePhone($telefoneCliente);
+        $telBidx = $this->blindIndex->generateForPhone($telNormalizado);
+        $candidatosBidx = $this->blindIndex->generatePhoneCandidates($telefoneCliente);
+
+        /** @var BotConversa|null $conversa */
+        $conversa = BotConversa::where('loja_id', $loja->id)
+            ->whereIn('telefone_bidx', $candidatosBidx)
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if ($conversa === null) {
+            $conversa = BotConversa::create([
+                'loja_id' => $loja->id,
+                'telefone_bidx' => $telBidx,
+                'telefone' => $telNormalizado,
+                'estado' => 'ia_ativa',
+                'contexto_json' => ['inicio' => now()->toIso8601String()],
+            ]);
+        }
+
+        $ctx = $conversa->contexto_json ?? [];
+        if ($pedido !== null) {
+            $ctx['ultimo_pedido_id'] = $pedido->id;
+            $ctx['ultimo_codigo_pedido'] = $pedido->codigo_publico;
+        }
+        if (!empty($contextoExtra)) {
+            $ctx = array_merge($ctx, $contextoExtra);
+        }
+
+        $conversa->contexto_json = $ctx;
+        $conversa->updated_at = now();
+        $conversa->save();
+
+        BotMensagem::create([
+            'loja_id' => $loja->id,
+            'conversa_id' => $conversa->id,
+            'direcao' => 'saida',
+            'mensagem' => $mensagem,
+        ]);
+
+        return $conversa;
+    }
+
+    /**
+     * Envia notificação automática de criação ou transição de status para o cliente e/ou motoboy.
      */
     public function notificarMudancaStatus(Pedido $pedido, string $novoStatus): void
     {
         try {
             /** @var Loja|null $loja */
-            $loja = $pedido->loja ?? Loja::find($pedido->loja_id);
+            $loja = $pedido->loja ?? Loja::withoutGlobalScopes()->find($pedido->loja_id);
             if ($loja === null) {
                 return;
             }
@@ -176,61 +231,98 @@ final class EvolutionApiService
             $notificarCliente = (bool) ($configWpp['notificar_pedidos'] ?? true);
             $notificarMotoboy = (bool) ($configWpp['notificar_motoboy'] ?? true);
 
-            // Verifica se a instância está conectada antes de tentar disparar
-            $statusInstancia = $this->obterStatusInstancia($instancia);
-            if (!$statusInstancia['connected']) {
-                return;
-            }
-
             $cliente = $pedido->cliente;
             $telefoneCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
             $nomeCliente = $cliente?->nome ?? 'Cliente';
-            $primeiroNome = explode(' ', trim($nomeCliente))[0];
+            $primeiroNome = explode(' ', trim($nomeCliente))[0] ?: 'Cliente';
             $codigo = $pedido->codigo_publico;
             $lojaNome = $loja->nome;
+            $tempoMedio = (int) ($loja->config_json['tempo_medio_preparo_min'] ?? 35);
 
-            // Link de rastreamento com assinatura criptográfica
+            // Link de rastreamento em tempo real com assinatura criptográfica
             $trackingSignature = hash_hmac('sha256', (string) $pedido->tracking_token_hash, (string) config('app.key'));
             $trackingUrl = url("/p/{$loja->slug}/pedidos/{$codigo}?t={$trackingSignature}");
 
-            // 1. Mensagens para o CLIENTE
-            if ($notificarCliente && !empty($telefoneCliente)) {
+            // 1. Mensagens em Tempo Real para o CLIENTE
+            if ($notificarCliente && !empty($telefoneCliente) && $telefoneCliente !== '5500000000000') {
                 $mensagemCliente = null;
+                $contextoExtra = [];
 
                 switch ($novoStatus) {
+                    case 'novo':
+                        $pedido->loadMissing(['itens', 'pagamento']);
+                        $resumoItens = $pedido->itens->map(fn ($it) => "• {$it->qtd}x {$it->nome_snapshot}")->join("\n");
+                        $totalFmt = number_format($pedido->total / 100, 2, ',', '.');
+
+                        if ($pedido->forma_pagamento === 'pix' && $pedido->pagamento_status !== 'aprovado') {
+                            $copiaCola = (string) ($pedido->pagamento?->pix_copia_cola ?? '');
+                            $blocoPix = $copiaCola !== ''
+                                ? "\n⚡ *PIX Copia e Cola (R$ {$totalFmt}):*\n```{$copiaCola}```\n"
+                                : "\n💵 *Total:* R$ {$totalFmt} (PIX)\n";
+
+                            $mensagemCliente = "Olá, *{$primeiroNome}*! Recebemos o seu pedido *#{$codigo}* no *{$lojaNome}*! 🎉\n\n"
+                                . "📋 *Resumo do Pedido:*\n{$resumoItens}\n"
+                                . "{$blocoPix}\n"
+                                . "📍 *Acompanhe o status em tempo real pelo link:*\n👉 {$trackingUrl}\n\n"
+                                . "💡 _A qualquer momento você pode digitar *STATUS* aqui no WhatsApp para consultar seu pedido!_";
+                        } else {
+                            $formaFmt = strtoupper(str_replace('_', ' ', (string) $pedido->forma_pagamento));
+                            $mensagemCliente = "Olá, *{$primeiroNome}*! Recebemos o seu pedido *#{$codigo}* no *{$lojaNome}*! 🎉\n\n"
+                                . "📋 *Resumo do Pedido:*\n{$resumoItens}\n\n"
+                                . "💵 *Total:* R$ {$totalFmt} ({$formaFmt})\n"
+                                . "⏱️ *Previsão média:* {$tempoMedio} a " . ($tempoMedio + 15) . " min\n\n"
+                                . "📍 *Acompanhe cada etapa em tempo real:*\n👉 {$trackingUrl}\n\n"
+                                . "💡 _Digite *STATUS* aqui no WhatsApp quando quiser consultar o andamento!_";
+                        }
+                        break;
+
                     case 'aceito':
+                        $mensagemCliente = "✅ *Pedido #{$codigo} Confirmado!* 👨‍🍳\n\n"
+                            . "Oi, *{$primeiroNome}*! O *{$lojaNome}* acabou de aceitar o seu pedido e ele já foi enviado para a nossa cozinha!\n\n"
+                            . "⏱️ *Previsão média:* {$tempoMedio} a " . ($tempoMedio + 15) . " min\n"
+                            . "📍 *Acompanhe em tempo real:*\n👉 {$trackingUrl}";
+                        break;
+
                     case 'em_preparo':
-                        $mensagemCliente = "Olá, *{$primeiroNome}*! 👋\n\n"
-                            . "Seu pedido *#{$codigo}* foi confirmado e já entrou em preparo com todo carinho na cozinha do *{$lojaNome}*! 👨‍🍳🔥\n\n"
-                            . "⏱️ *Previsão estimada:* 30 a 45 min\n"
-                            . "📍 Acompanhe cada etapa ao vivo:\n👉 {$trackingUrl}";
+                        $mensagemCliente = "👨‍🍳🔥 *Seu pedido #{$codigo} está em preparo!*\n\n"
+                            . "Oi, *{$primeiroNome}*! Nossa equipe de cozinha já está preparando o seu pedido com todo capricho no *{$lojaNome}*.\n\n"
+                            . "Assim que ficar pronto e sair para entrega, te avisamos por aqui na mesma hora!\n"
+                            . "👉 *Rastreio ao vivo:* {$trackingUrl}";
                         break;
 
                     case 'pronto':
-                        if ($pedido->canal === 'retirada') {
+                        if ($pedido->canal === 'retirada' || $pedido->canal === 'balcao') {
                             $mensagemCliente = "Oba, *{$primeiroNome}*! 🎉\n\n"
                                 . "Seu pedido *#{$codigo}* está *PRONTINHO* esperando por você no balcão do *{$lojaNome}*! 🛍️\n\n"
-                                . "Pode vir retirar quando quiser. Esperamos por você!";
+                                . "Pode vir retirar! Quando pegar seu pedido, você também pode responder *JÁ RETIREI* aqui no WhatsApp.";
+                            $contextoExtra['aguardando_confirmacao_entrega'] = true;
+                            $contextoExtra['confirmacao_pedido_id'] = $pedido->id;
                         } else {
                             $mensagemCliente = "Oba, *{$primeiroNome}*! 🎉\n\n"
-                                . "Seu pedido *#{$codigo}* já ficou pronto e foi embalado na bolsa térmica com todo cuidado! 🛍️\n\n"
-                                . "Nosso entregador já foi acionado e está saindo para levar até você! 🚀";
+                                . "Seu pedido *#{$codigo}* acabou de ficar pronto na cozinha e já foi embalado na bolsa térmica! 🛍️\n\n"
+                                . "Nosso entregador já está sendo acionado para levar até você!\n"
+                                . "👉 *Acompanhe:* {$trackingUrl}";
                         }
                         break;
 
                     case 'saiu_entrega':
                         $nomeEntregador = $pedido->entregador?->nome ?? 'Nosso entregador';
-                        $mensagemCliente = "🛵💨 *SEU PEDIDO ESTÁ A CAMINHO!* 🛵💨\n\n"
-                            . "Oi, *{$primeiroNome}*! O entregador *{$nomeEntregador}* acabou de sair com o seu pedido *#{$codigo}*!\n\n"
-                            . "Fique atento(a) ao interfone ou campainha. Qualquer dúvida, pode mandar mensagem aqui!\n\n"
-                            . "👉 Acompanhe o pedido: {$trackingUrl}";
+                        $mensagemCliente = "🛵💨 *SEU PEDIDO SAIU PARA ENTREGA!* 🛵💨\n\n"
+                            . "Oi, *{$primeiroNome}*! O entregador *{$nomeEntregador}* acabou de sair com o seu pedido *#{$codigo}* do *{$lojaNome}*!\n\n"
+                            . "Fique atento(a) ao interfone ou campainha.\n"
+                            . "📍 *Rastreio ao vivo:* {$trackingUrl}\n\n"
+                            . "✅ _Assim que receber, você pode responder *JÁ RECEBI* aqui no WhatsApp para confirmar sua entrega!_";
+                        $contextoExtra['aguardando_confirmacao_entrega'] = true;
+                        $contextoExtra['confirmacao_pedido_id'] = $pedido->id;
                         break;
 
                     case 'entregue':
                     case 'retirado':
-                        $mensagemCliente = "✨ *Pedido #{$codigo} Finalizado!* ✨\n\n"
-                            . "Esperamos que você ame a sua refeição! Feito com muito amor por toda a equipe do *{$lojaNome}*! 🍔❤️\n\n"
-                            . "Agradecemos de coração pela preferência e bom apetite!";
+                    case 'servido':
+                        $mensagemCliente = "✨ *Pedido #{$codigo} Entregue e Concluído!* ✨\n\n"
+                            . "Esperamos que você ame a sua refeição, *{$primeiroNome}*! Feito com muito carinho por toda a equipe do *{$lojaNome}*! 🍔❤️\n\n"
+                            . "Agradecemos pela preferência e bom apetite!";
+                        $contextoExtra['aguardando_confirmacao_entrega'] = false;
                         break;
 
                     case 'cancelado':
@@ -239,10 +331,13 @@ final class EvolutionApiService
                             . "Informamos que o seu pedido *#{$codigo}* precisou ser cancelado pelo estabelecimento.\n"
                             . "⚠️ *Motivo:* {$motivo}\n\n"
                             . "Se realizou pagamento via PIX, nosso time já está à disposição para estorno imediato. Caso precise, basta nos responder aqui.";
+                        $contextoExtra['aguardando_confirmacao_entrega'] = false;
                         break;
                 }
 
                 if ($mensagemCliente !== null) {
+                    // Registra sempre na conversa do painel e dispara via Evolution API
+                    $this->registrarMensagemAutomaticaNaConversa($loja, $telefoneCliente, $mensagemCliente, $pedido, $contextoExtra);
                     $this->enviarMensagem($instancia, $telefoneCliente, $mensagemCliente);
                 }
             }
@@ -251,9 +346,48 @@ final class EvolutionApiService
             if ($notificarMotoboy && $pedido->canal === 'delivery' && $novoStatus === 'pronto') {
                 $this->notificarMotoboyPedidoPronto($pedido, $instancia, $loja);
             }
-
         } catch (Exception $e) {
             Log::error("[EvolutionApi] Falha ao notificar mudança de status do pedido #{$pedido->id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envia pergunta proativa ao cliente quando o lojista esquece de dar baixa na entrega no painel.
+     */
+    public function solicitarConfirmacaoEntregaCliente(Pedido $pedido): bool
+    {
+        try {
+            /** @var Loja|null $loja */
+            $loja = $pedido->loja ?? Loja::withoutGlobalScopes()->find($pedido->loja_id);
+            if ($loja === null) {
+                return false;
+            }
+
+            $cliente = $pedido->cliente;
+            $telCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
+            if (empty($telCliente) || $telCliente === '5500000000000') {
+                return false;
+            }
+
+            $instancia = $this->obterNomeInstanciaLoja($loja);
+            $primeiroNome = explode(' ', trim($cliente->nome ?? 'Cliente'))[0] ?: 'Cliente';
+            $codigo = $pedido->codigo_publico;
+
+            $msg = "Oi, *{$primeiroNome}*! Tudo bem? 😊\n\n"
+                . "Passando rapidinho para confirmar sobre o seu pedido *#{$codigo}* no *{$loja->nome}*: ele já foi entregue tudo certinho por aí?\n\n"
+                . "✅ Responda *JÁ RECEBI* (ou *SIM*) se o pedido já chegou!\n"
+                . "⏳ Responda *AINDA NÃO* caso ainda esteja aguardando para verificarmos imediatamente com nossa equipe.";
+
+            $this->registrarMensagemAutomaticaNaConversa($loja, $telCliente, $msg, $pedido, [
+                'aguardando_confirmacao_entrega' => true,
+                'confirmacao_pedido_id' => $pedido->id,
+                'confirmacao_enviada_em' => now()->toIso8601String(),
+            ]);
+
+            return $this->enviarMensagem($instancia, $telCliente, $msg);
+        } catch (Exception $e) {
+            Log::error("[EvolutionApi] Falha ao solicitar confirmação de entrega: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -265,13 +399,11 @@ final class EvolutionApiService
         /** @var Entregador|null $entregador */
         $entregador = $pedido->entregador;
 
-        // Se já tiver entregador atribuído, notifica diretamente o entregador
         if ($entregador !== null && !empty($entregador->telefone)) {
             $this->enviarAlertaEntregaParaMotoboy($pedido, $entregador, $instancia, $loja);
             return;
         }
 
-        // Se não tiver entregador específico atribuído, notifica todos os entregadores ativos da loja
         $entregadoresAtivos = Entregador::where('loja_id', $loja->id)
             ->where('ativo', true)
             ->get();
@@ -316,7 +448,8 @@ final class EvolutionApiService
             . "📍 *Endereço:* {$enderecoTexto}\n"
             . "💵 *Valor do Pedido:* R$ {$totalPedido} ({$formaPagamento})\n"
             . "💰 *Taxa de Entrega:* R$ {$taxaFormatada}\n\n"
-            . "🗺️ *Abrir GPS / Google Maps:*\n👉 {$linkMaps}";
+            . "🗺️ *Abrir GPS / Google Maps:*\n👉 {$linkMaps}\n\n"
+            . "✅ _Ao entregar, responda: *ENTREGUE {$codigo}*_";
 
         $this->enviarMensagem($instancia, $telMotoboy, $msgMotoboy);
     }
@@ -328,27 +461,22 @@ final class EvolutionApiService
     {
         try {
             /** @var Loja|null $loja */
-            $loja = $pedido->loja ?? Loja::find($pedido->loja_id);
+            $loja = $pedido->loja ?? Loja::withoutGlobalScopes()->find($pedido->loja_id);
             if ($loja === null) {
                 return false;
             }
 
             $instancia = $this->obterNomeInstanciaLoja($loja);
-
-            // Verifica se a instância está conectada antes de disparar
-            $statusInstancia = $this->obterStatusInstancia($instancia);
-            if (!$statusInstancia['connected']) {
-                return false;
-            }
-
             $cliente = $pedido->cliente;
             $telCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
-            if (empty($telCliente)) {
+            if (empty($telCliente) || $telCliente === '5500000000000') {
                 return false;
             }
 
-            $primeiroNome = explode(' ', trim($cliente->nome ?? 'Cliente'))[0];
+            $primeiroNome = explode(' ', trim($cliente->nome ?? 'Cliente'))[0] ?: 'Cliente';
             $codigo = $pedido->codigo_publico;
+            $trackingSignature = hash_hmac('sha256', (string) $pedido->tracking_token_hash, (string) config('app.key'));
+            $trackingUrl = url("/p/{$loja->slug}/pedidos/{$codigo}?t={$trackingSignature}");
 
             if ($pedido->canal === 'retirada' || $pedido->canal === 'balcao') {
                 $msgProntidao = "Seu pedido *#{$codigo}* já é o **próximo da fila para ser finalizado**! 🍳🔥 Já estamos nos preparativos finais para você poder retirar quentinho no balcão.";
@@ -359,7 +487,13 @@ final class EvolutionApiService
             $msg = "Oi, *{$primeiroNome}*! Passando aqui rapidinho para te dar uma satisfação! 🙏\n\n"
                 . "Hoje nossa cozinha está com uma procura super alta e todos os pedidos estão sendo feitos com muito carinho para saírem com a máxima qualidade.\n\n"
                 . "{$msgProntidao}\n\n"
-                . "Agradecemos imensamente pela sua paciência e compreensão! ❤️";
+                . "📍 *Acompanhe em tempo real:* {$trackingUrl}\n"
+                . "_(Se o seu pedido já tiver sido entregue, basta responder *JÁ RECEBI* aqui!)_ ❤️";
+
+            $this->registrarMensagemAutomaticaNaConversa($loja, $telCliente, $msg, $pedido, [
+                'aguardando_confirmacao_entrega' => true,
+                'confirmacao_pedido_id' => $pedido->id,
+            ]);
 
             return $this->enviarMensagem($instancia, $telCliente, $msg);
         } catch (Exception $e) {
@@ -374,22 +508,15 @@ final class EvolutionApiService
     public function notificarSolicitacaoAvaliacao(Pedido $pedido): bool
     {
         try {
-            $loja = $pedido->loja;
+            $loja = $pedido->loja ?? Loja::withoutGlobalScopes()->find($pedido->loja_id);
             if ($loja === null) {
                 return false;
             }
 
             $instancia = $this->obterNomeInstanciaLoja($loja);
-
-            // Verifica se a instância está conectada antes de disparar
-            $statusInstancia = $this->obterStatusInstancia($instancia);
-            if (!$statusInstancia['connected']) {
-                return false;
-            }
-
             $cliente = $pedido->cliente;
             $telCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
-            if (empty($telCliente) || $cliente->aceita_marketing === false) {
+            if (empty($telCliente) || $telCliente === '5500000000000' || $cliente->aceita_marketing === false) {
                 return false;
             }
 
@@ -410,29 +537,11 @@ final class EvolutionApiService
                 return false;
             }
 
-            // Normaliza telefone e registra contexto na conversa para o bot aguardar a nota
-            $telNormalizado = $this->blindIndex->normalizePhone($telCliente);
-            $telBidx = $this->blindIndex->generateForPhone($telNormalizado);
-
-            /** @var BotConversa $conversa */
-            $conversa = BotConversa::firstOrCreate(
-                ['loja_id' => $loja->id, 'telefone_bidx' => $telBidx],
-                ['telefone' => $telNormalizado, 'estado' => 'ia_ativa']
-            );
-
-            $ctx = $conversa->contexto_json ?? [];
-            $ctx['aguardando_avaliacao'] = true;
-            $ctx['avaliacao_pedido_id'] = $pedido->id;
-            $ctx['avaliacao_enviada_em'] = now()->toIso8601String();
-
-            $conversa->contexto_json = $ctx;
-            $conversa->save();
-
-            BotMensagem::create([
-                'loja_id' => $loja->id,
-                'conversa_id' => $conversa->id,
-                'direcao' => 'saida',
-                'mensagem' => $msg,
+            $this->registrarMensagemAutomaticaNaConversa($loja, $telCliente, $msg, $pedido, [
+                'aguardando_avaliacao' => true,
+                'aguardando_confirmacao_entrega' => false,
+                'avaliacao_pedido_id' => $pedido->id,
+                'avaliacao_enviada_em' => now()->toIso8601String(),
             ]);
 
             PedidoEvento::create([

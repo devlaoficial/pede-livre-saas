@@ -183,26 +183,33 @@ final class PedidoPainelController
         $idempotencyKey = 'pdv_' . now()->timestamp . '_' . Str::random(6);
         $dados['idempotency_key'] = $idempotencyKey;
 
-        // Identifica ou cadastra o cliente com Blind Index
+        // Identifica ou cadastra o cliente com Blind Index e suporte a variações 8/9 dígitos
         $telRaw = trim((string) ($dados['cliente']['telefone'] ?? ''));
         $telNormalizado = $telRaw !== '' ? $this->blindIndex->normalizePhone($telRaw) : '5500000000000';
         $telBidx = $this->blindIndex->generate($telNormalizado);
+        $candidatosBidx = $telRaw !== '' ? $this->blindIndex->generatePhoneCandidates($telRaw) : [$telBidx];
 
-        /** @var Cliente $cliente */
-        $cliente = Cliente::firstOrCreate(
-            ['loja_id' => $loja->id, 'telefone_bidx' => $telBidx],
-            [
+        /** @var Cliente|null $cliente */
+        $cliente = Cliente::where('loja_id', $loja->id)
+            ->whereIn('telefone_bidx', $candidatosBidx)
+            ->first();
+
+        if ($cliente === null) {
+            $cliente = Cliente::create([
+                'loja_id' => $loja->id,
+                'telefone_bidx' => $telBidx,
                 'nome' => trim((string) ($dados['cliente']['nome'] ?: 'Cliente Balcão')),
                 'telefone' => $telNormalizado,
                 'aceita_marketing' => true,
-            ]
-        );
-
-        if (!empty($dados['cliente']['nome']) && $cliente->nome !== $dados['cliente']['nome']) {
-            $cliente->update(['nome' => trim((string) $dados['cliente']['nome'])]);
+            ]);
+        } elseif (!empty($dados['cliente']['nome']) && $cliente->nome !== $dados['cliente']['nome']) {
+            $cliente->update([
+                'nome' => trim((string) $dados['cliente']['nome']),
+                'telefone' => $telNormalizado !== '5500000000000' ? $telNormalizado : $cliente->telefone,
+            ]);
         }
 
-        // Calcula itens, adicionais e subtotal com precisão (sem falhar caso o bairro manual não esteja cadastrado na tabela de áreas)
+        // Calcula itens, adicionais e subtotal com precisão
         $dadosCalculo = $dados;
         $canalOriginal = (string) $dados['canal'];
         if ($canalOriginal === 'retirada' || ($canalOriginal === 'delivery' && $request->has('taxa_entrega_centavos'))) {
@@ -218,7 +225,6 @@ final class PedidoPainelController
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        // Ajusta taxa de entrega manual se o lojista definiu
         if ($canalOriginal === 'delivery' && $request->has('taxa_entrega_centavos')) {
             $taxaManual = (int) $request->input('taxa_entrega_centavos', 0);
             $difTaxa = $taxaManual - $calculo['taxa_entrega_centavos'];
@@ -226,7 +232,6 @@ final class PedidoPainelController
             $calculo['total_centavos'] += $difTaxa;
         }
 
-        // Ajusta desconto manual se fornecido
         if ($request->has('desconto_manual_centavos')) {
             $descontoManual = (int) $request->input('desconto_manual_centavos', 0);
             $calculo['desconto_centavos'] += $descontoManual;
@@ -235,7 +240,6 @@ final class PedidoPainelController
 
         $statusInicial = (string) $request->input('status_inicial', 'aceito');
         $formaPagto = (string) $dados['forma_pagamento'];
-        // Strict ENUM compliance: ['pendente', 'aprovado', 'recusado', 'estornado']
         $pagamentoStatus = in_array($formaPagto, ['pix', 'cartao_maquina', 'cartao_online'], true) && $statusInicial !== 'novo'
             ? 'aprovado'
             : 'pendente';
@@ -302,19 +306,16 @@ final class PedidoPainelController
             return $pedido;
         });
 
-        // Atualiza métricas do cliente
         $cliente->increment('total_pedidos');
         $cliente->increment('total_gasto', $pedido->total);
         $cliente->update(['ultimo_pedido_em' => now()]);
 
-        // Dispara evento em tempo real para sincronização com outros navegadores/telas
         event(new PedidoCriado($pedido->load(['cliente', 'itens.produto', 'mesa'])));
 
-        // Notifica cliente via WhatsApp se ativado
-        $configWpp = $loja->config_json['whatsapp'] ?? [];
-        if (!empty($configWpp['notificar_pedidos']) && !empty($configWpp['connected'])) {
+        // Dispara acompanhamento em tempo real no WhatsApp do cliente (se telefone foi informado)
+        if ($telNormalizado !== '5500000000000') {
             try {
-                $this->evolutionApi->notificarMudancaStatus($pedido->load('cliente'), $statusInicial);
+                $this->evolutionApi->notificarMudancaStatus($pedido->load(['cliente', 'itens', 'pagamento']), $statusInicial);
             } catch (\Throwable) {}
         }
 
@@ -370,7 +371,6 @@ final class PedidoPainelController
         $pedido = Pedido::findOrFail($id);
         $statusAnterior = $pedido->status;
 
-        // Se o pedido estava pronto ou em preparo, avança automaticamente para "saiu_entrega" (Em Rota)
         $novoStatus = in_array($pedido->status, ['pronto', 'em_preparo', 'aceito'], true)
             ? 'saiu_entrega'
             : $pedido->status;
@@ -394,9 +394,7 @@ final class PedidoPainelController
             $loja = $pedido->loja ?? Loja::find($pedido->loja_id);
             if ($loja !== null) {
                 $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
-                // 1. Notifica o motoboy com todos os dados da rota e GPS
                 $this->evolutionApi->notificarMotoboyPedidoPronto($pedido->load('entregador', 'cliente'), $instancia, $loja);
-                // 2. Notifica o cliente que o pedido saiu para entrega com link de rastreamento
                 $this->evolutionApi->notificarMudancaStatus($pedido->load('cliente'), 'saiu_entrega');
             }
         }

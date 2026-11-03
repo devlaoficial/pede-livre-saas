@@ -26,42 +26,45 @@ final class FluxoStatusPedidoService
     ) {}
 
     /**
-     * Strict allowed transitions per channel.
+     * Allowed transitions per channel (including direct completion when confirmed by customer or operator).
      */
     private const TRANSIÇÕES_CANAL = [
         'delivery' => [
-            'novo' => ['aceito', 'cancelado'],
-            'aceito' => ['em_preparo', 'cancelado'],
-            'em_preparo' => ['pronto', 'cancelado'],
-            'pronto' => ['saiu_entrega', 'cancelado'],
+            'novo' => ['aceito', 'em_preparo', 'pronto', 'saiu_entrega', 'entregue', 'cancelado'],
+            'aceito' => ['em_preparo', 'pronto', 'saiu_entrega', 'entregue', 'cancelado'],
+            'em_preparo' => ['pronto', 'saiu_entrega', 'entregue', 'cancelado'],
+            'pronto' => ['saiu_entrega', 'entregue', 'cancelado'],
             'saiu_entrega' => ['entregue', 'cancelado'],
             'entregue' => [],
             'cancelado' => [],
         ],
         'retirada' => [
-            'novo' => ['aceito', 'cancelado'],
-            'aceito' => ['em_preparo', 'cancelado'],
-            'em_preparo' => ['pronto', 'cancelado'],
-            'pronto' => ['retirado', 'saiu_entrega', 'cancelado'],
-            'saiu_entrega' => ['entregue', 'cancelado'],
+            'novo' => ['aceito', 'em_preparo', 'pronto', 'retirado', 'entregue', 'cancelado'],
+            'aceito' => ['em_preparo', 'pronto', 'retirado', 'entregue', 'cancelado'],
+            'em_preparo' => ['pronto', 'retirado', 'entregue', 'cancelado'],
+            'pronto' => ['retirado', 'entregue', 'saiu_entrega', 'cancelado'],
+            'saiu_entrega' => ['entregue', 'retirado', 'cancelado'],
             'retirado' => [],
+            'entregue' => [],
             'cancelado' => [],
         ],
         'mesa' => [
-            'novo' => ['aceito', 'em_preparo', 'cancelado'],
-            'aceito' => ['em_preparo', 'cancelado'],
-            'em_preparo' => ['pronto', 'cancelado'],
-            'pronto' => ['servido', 'cancelado'],
+            'novo' => ['aceito', 'em_preparo', 'pronto', 'servido', 'entregue', 'cancelado'],
+            'aceito' => ['em_preparo', 'pronto', 'servido', 'entregue', 'cancelado'],
+            'em_preparo' => ['pronto', 'servido', 'entregue', 'cancelado'],
+            'pronto' => ['servido', 'entregue', 'cancelado'],
             'servido' => [],
+            'entregue' => [],
             'cancelado' => [],
         ],
         'balcao' => [
-            'novo' => ['aceito', 'em_preparo', 'cancelado'],
-            'aceito' => ['em_preparo', 'cancelado'],
-            'em_preparo' => ['pronto', 'cancelado'],
-            'pronto' => ['entregue', 'saiu_entrega', 'cancelado'],
-            'saiu_entrega' => ['entregue', 'cancelado'],
+            'novo' => ['aceito', 'em_preparo', 'pronto', 'entregue', 'retirado', 'cancelado'],
+            'aceito' => ['em_preparo', 'pronto', 'entregue', 'retirado', 'cancelado'],
+            'em_preparo' => ['pronto', 'entregue', 'retirado', 'cancelado'],
+            'pronto' => ['entregue', 'retirado', 'saiu_entrega', 'cancelado'],
+            'saiu_entrega' => ['entregue', 'retirado', 'cancelado'],
             'entregue' => [],
+            'retirado' => [],
             'cancelado' => [],
         ],
     ];
@@ -75,6 +78,7 @@ final class FluxoStatusPedidoService
      * @param string|null $motivoCancelamento
      * @param int|null $entregadorId
      * @param string|null $observacao
+     * @param bool $notificarWhatsApp
      * @return Pedido
      */
     public function transicionar(
@@ -83,10 +87,15 @@ final class FluxoStatusPedidoService
         ?Usuario $usuario = null,
         ?string $motivoCancelamento = null,
         ?int $entregadorId = null,
-        ?string $observacao = null
+        ?string $observacao = null,
+        bool $notificarWhatsApp = true
     ): Pedido {
         $canal = $pedido->canal;
         $statusAtual = $pedido->status;
+
+        if ($statusAtual === $novoStatus) {
+            return $pedido;
+        }
 
         // 1. Validate transition
         $transicoesPermitidas = self::TRANSIÇÕES_CANAL[$canal][$statusAtual] ?? [];
@@ -103,24 +112,24 @@ final class FluxoStatusPedidoService
             }
         }
 
-        return DB::transaction(function () use ($pedido, $novoStatus, $statusAtual, $usuario, $motivoCancelamento, $entregadorId, $observacao): Pedido {
+        return DB::transaction(function () use ($pedido, $novoStatus, $statusAtual, $usuario, $motivoCancelamento, $entregadorId, $observacao, $notificarWhatsApp): Pedido {
             $lojaId = $pedido->loja_id;
 
-            // 3. Atomic Inventory Deduction on 'aceito' or 'em_preparo' (if skipping aceito)
-            if (in_array($novoStatus, ['aceito', 'em_preparo'], true) && $statusAtual === 'novo') {
+            // 3. Atomic Inventory Deduction when leaving 'novo' to any active/completed status
+            if ($novoStatus !== 'cancelado' && $statusAtual === 'novo') {
                 $this->deduzirEstoqueAtômico($pedido, $lojaId);
                 $pedido->aceito_em = now();
 
-                // Tier 3: Auto-Print on Accept if configured in store settings
+                // Auto-Print on Accept if configured in store settings
                 $loja = $pedido->loja;
                 $autoPrint = $loja?->config_json['impressao_automatica_ao_aceitar'] ?? false;
-                if ($autoPrint) {
+                if ($autoPrint && in_array($novoStatus, ['aceito', 'em_preparo'], true)) {
                     $this->impressaoService->enfileirarImpressao($pedido, 'ambas');
                 }
             }
 
             // 4. Atomic Inventory Restoration if order is cancelled after stock was deducted
-            if ($novoStatus === 'cancelado' && in_array($statusAtual, ['aceito', 'em_preparo', 'pronto'], true)) {
+            if ($novoStatus === 'cancelado' && in_array($statusAtual, ['aceito', 'em_preparo', 'pronto', 'saiu_entrega'], true)) {
                 $this->estornarEstoqueAtômico($pedido, $lojaId);
             }
 
@@ -128,6 +137,9 @@ final class FluxoStatusPedidoService
             if ($novoStatus === 'pronto') {
                 $pedido->pronto_em = now();
             } elseif (in_array($novoStatus, ['entregue', 'retirado', 'servido'], true)) {
+                if ($pedido->pronto_em === null) {
+                    $pedido->pronto_em = now();
+                }
                 $pedido->entregue_em = now();
                 $pedido->status = $novoStatus;
                 $pedido->save();
@@ -158,7 +170,9 @@ final class FluxoStatusPedidoService
             event(new PedidoAtualizado($pedido, $statusAtual));
 
             // 8. Auto-dispatch WhatsApp updates to Customer and Motoboy via Evolution API
-            $this->evolutionApi->notificarMudancaStatus($pedido, $novoStatus);
+            if ($notificarWhatsApp) {
+                $this->evolutionApi->notificarMudancaStatus($pedido, $novoStatus);
+            }
 
             return $pedido;
         });
@@ -182,7 +196,6 @@ final class FluxoStatusPedidoService
                 $novoEstoque = $produto->estoque_qtd - $item->qtd;
                 $produto->estoque_qtd = $novoEstoque;
 
-                // Record atomic stock exit
                 EstoqueMovimento::create([
                     'loja_id' => $lojaId,
                     'produto_id' => $produto->id,
@@ -191,7 +204,6 @@ final class FluxoStatusPedidoService
                     'pedido_id' => $pedido->id,
                 ]);
 
-                // Auto-pause product if stock reaches zero
                 if ($novoEstoque <= 0) {
                     $produto->esgotado = true;
                     $cacheInvalidar = true;

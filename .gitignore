@@ -19,4 +19,5 @@ yarn-error.log
 /.idea
 /.vscode
 /pedelivre-producao/
-pedelivre-producao.zip
+pedelivre-producao*/
+pedelivre-producao*.zip

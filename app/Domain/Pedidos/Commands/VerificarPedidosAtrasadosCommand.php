@@ -12,14 +12,14 @@ use Illuminate\Support\Facades\Cache;
 final class VerificarPedidosAtrasadosCommand extends Command
 {
     protected $signature = 'pedelivre:verificar-atrasos';
-    protected $description = 'Verifica pedidos em preparo com tempo elevado e aciona aviso proativo tranquilizador via WhatsApp';
+    protected $description = 'Verifica pedidos em preparo com tempo elevado e solicita confirmação de entrega ao cliente caso o lojista esqueça de dar baixa no painel';
 
     public function handle(EvolutionApiService $evolutionApi): int
     {
-        $this->info('Verificando pedidos em preparo com tempo elevado na cozinha...');
+        $this->info('1. Verificando pedidos em preparo com tempo elevado na cozinha...');
 
-        // Busca pedidos em preparo recentes (últimas 3 horas)
-        $pedidos = Pedido::whereIn('canal', ['delivery', 'retirada', 'balcao'])
+        $pedidosPreparo = Pedido::withoutGlobalScopes()
+            ->whereIn('canal', ['delivery', 'retirada', 'balcao'])
             ->whereIn('status', ['aceito', 'em_preparo'])
             ->where('created_at', '>=', now()->subHours(3))
             ->with(['cliente', 'loja', 'entregador'])
@@ -27,22 +27,19 @@ final class VerificarPedidosAtrasadosCommand extends Command
 
         $totalNotificados = 0;
 
-        foreach ($pedidos as $pedido) {
+        foreach ($pedidosPreparo as $pedido) {
             $loja = $pedido->loja;
             if ($loja === null) {
                 continue;
             }
 
             $config = $loja->config_json['whatsapp'] ?? [];
-
-            // Verifica se o alerta proativo está habilitado na loja
             $alertaAtivo = (bool) ($config['alerta_atraso_ativo'] ?? true);
             $notificarGeral = (bool) ($config['notificar_pedidos'] ?? true);
             if (!$alertaAtivo || !$notificarGeral) {
                 continue;
             }
 
-            // Minutos configurados pelo lojista (padrão 35 min)
             $minutosLimite = (int) ($config['minutos_alerta_atraso'] ?? 35);
             $minutosDecorridos = (int) $pedido->created_at->diffInMinutes(now());
 
@@ -50,24 +47,68 @@ final class VerificarPedidosAtrasadosCommand extends Command
                 continue;
             }
 
-            // Prevenção de spam: notifica apenas UMA vez por pedido
             $cacheKey = "aviso_atraso_pedido_{$pedido->id}";
             if (Cache::has($cacheKey)) {
                 continue;
             }
 
-            // Dispara aviso gentil e tranquilizador para o cliente
             $enviado = $evolutionApi->notificarAtraso($pedido, $minutosDecorridos);
 
             if ($enviado) {
-                // Marca cache por 24 horas para nunca reenviar no mesmo pedido
                 Cache::put($cacheKey, now()->toIso8601String(), now()->addDay());
                 $totalNotificados++;
                 $this->line("✓ Alerta proativo enviado para Pedido #{$pedido->codigo_publico} da loja [{$loja->nome}] ({$minutosDecorridos} min decorridos).");
             }
         }
 
-        $this->info("Total de alertas proativos enviados: {$totalNotificados}.");
+        $this->info('2. Verificando pedidos em rota ou esquecidos abertos no painel para confirmação de entrega com o cliente...');
+
+        $pedidosAbertos = Pedido::withoutGlobalScopes()
+            ->whereIn('canal', ['delivery', 'retirada', 'balcao'])
+            ->whereIn('status', ['saiu_entrega', 'pronto', 'em_preparo', 'aceito'])
+            ->where('created_at', '>=', now()->subHours(6))
+            ->where('created_at', '<=', now()->subMinutes(40))
+            ->with(['cliente', 'loja'])
+            ->get();
+
+        $totalConfirmacoes = 0;
+
+        foreach ($pedidosAbertos as $pedido) {
+            $loja = $pedido->loja;
+            if ($loja === null) {
+                continue;
+            }
+
+            $config = $loja->config_json['whatsapp'] ?? [];
+            if (!($config['notificar_pedidos'] ?? true)) {
+                continue;
+            }
+
+            $minutosDesdeCriacao = (int) $pedido->created_at->diffInMinutes(now());
+            $minutosDesdeUpdate = (int) $pedido->updated_at->diffInMinutes(now());
+
+            // Se está em "saiu_entrega" há pelo menos 35 min, OU se ficou esquecido em "pronto"/"em_preparo"/"aceito" há pelo menos 65 min
+            $elegivelCheckin = ($pedido->status === 'saiu_entrega' && $minutosDesdeUpdate >= 35)
+                || (in_array($pedido->status, ['pronto', 'em_preparo', 'aceito'], true) && $minutosDesdeCriacao >= 65);
+
+            if (!$elegivelCheckin) {
+                continue;
+            }
+
+            $cacheKeyConfirmacao = "confirmacao_entrega_pedido_{$pedido->id}";
+            if (Cache::has($cacheKeyConfirmacao)) {
+                continue;
+            }
+
+            $enviado = $evolutionApi->solicitarConfirmacaoEntregaCliente($pedido);
+            if ($enviado) {
+                Cache::put($cacheKeyConfirmacao, now()->toIso8601String(), now()->addDay());
+                $totalConfirmacoes++;
+                $this->line("✓ Check-in de confirmação de entrega enviado para Pedido #{$pedido->codigo_publico} da loja [{$loja->nome}].");
+            }
+        }
+
+        $this->info("Total de alertas de preparo: {$totalNotificados} | Check-ins de entrega: {$totalConfirmacoes}.");
         return Command::SUCCESS;
     }
 }

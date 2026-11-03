@@ -19,8 +19,8 @@ final class SolicitarAvaliacoesCommand extends Command
     {
         $this->info('Verificando pedidos finalizados elegíveis para pesquisa de satisfação...');
 
-        // Busca pedidos entregues ou retirados recentes (últimas 4 horas)
-        $pedidos = Pedido::whereIn('status', ['entregue', 'retirado'])
+        $pedidos = Pedido::withoutGlobalScopes()
+            ->whereIn('status', ['entregue', 'retirado', 'servido'])
             ->where('updated_at', '>=', now()->subHours(4))
             ->whereNotNull('cliente_id')
             ->with(['cliente', 'loja'])
@@ -42,12 +42,10 @@ final class SolicitarAvaliacoesCommand extends Command
                 continue;
             }
 
-            // Minutos configurados pelo lojista (padrão 30 min)
             $minutosLimite = (int) ($config['minutos_solicitar_avaliacao'] ?? 30);
 
-            // Determina tempo decorrido desde a conclusão
             $eventoConclusao = $pedido->eventos()
-                ->whereIn('status_para', ['entregue', 'retirado'])
+                ->whereIn('status_para', ['entregue', 'retirado', 'servido'])
                 ->latest('created_at')
                 ->first();
 
@@ -59,17 +57,14 @@ final class SolicitarAvaliacoesCommand extends Command
                 continue;
             }
 
-            // Já avaliado?
-            if (Avaliacao::where('pedido_id', $pedido->id)->exists()) {
+            if (Avaliacao::withoutGlobalScopes()->where('pedido_id', $pedido->id)->exists()) {
                 continue;
             }
 
-            // Já enviada solicitação para este pedido?
             if ($pedido->eventos()->where('status_para', 'solicitacao_avaliacao')->exists()) {
                 continue;
             }
 
-            // Prevenção de spam por cliente (máximo 1 pesquisa NPS por cliente a cada 24h)
             $cliente = $pedido->cliente;
             if (!$cliente || empty($cliente->telefone) || $cliente->aceita_marketing === false) {
                 continue;

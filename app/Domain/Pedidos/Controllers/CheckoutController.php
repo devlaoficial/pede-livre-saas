@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\Domain\Pedidos\Controllers;
 
-use App\Domain\Assinaturas\Models\Loja;
+use App\Domain\Bot\Services\EvolutionApiService;
 use App\Domain\Clientes\Models\Cliente;
 use App\Domain\Entregas\Services\CalculadoraFreteService;
 use App\Domain\Mesas\Models\Mesa;
 use App\Domain\Pagamentos\Models\Pagamento;
-use App\Domain\Pedidos\Models\Pedido;
+use App\Domain\Pagamentos\Services\MercadoPagoPixService;
 use App\Domain\Pedidos\Events\PedidoCriado;
+use App\Domain\Pedidos\Models\Pedido;
 use App\Domain\Pedidos\Models\PedidoEvento;
 use App\Domain\Pedidos\Models\PedidoItem;
 use App\Domain\Pedidos\Requests\CalcularFreteRequest;
 use App\Domain\Pedidos\Requests\CriarPedidoRequest;
 use App\Domain\Pedidos\Requests\ValidarCupomRequest;
 use App\Domain\Pedidos\Resources\PedidoPublicoTrackingResource;
-use App\Domain\Pagamentos\Services\MercadoPagoPixService;
 use App\Domain\Pedidos\Services\CalculoPedidoService;
 use App\Support\Security\BlindIndexService;
 use App\Support\Tenancy\LojaContext;
@@ -37,7 +37,8 @@ final class CheckoutController
         private readonly CalculoPedidoService $calculoPedido,
         private readonly MercadoPagoPixService $pixService,
         private readonly BlindIndexService $blindIndex,
-        private readonly LojaContext $context
+        private readonly LojaContext $context,
+        private readonly EvolutionApiService $evolutionApi
     ) {}
 
     public function calcularFrete(CalcularFreteRequest $request): JsonResponse
@@ -153,23 +154,36 @@ final class CheckoutController
         try {
             $dados = $request->validated();
 
-            // Resolve Customer with blind indexing
-            $telefone = (string) $dados['cliente']['telefone'];
-            $telefoneBidx = $this->blindIndex->generateForPhone($telefone);
+            // Resolve Customer with normalized E.164 phone + 9th-digit candidate matching
+            $telefoneRaw = (string) $dados['cliente']['telefone'];
+            $telefoneNormalizado = $this->blindIndex->normalizePhone($telefoneRaw);
+            $telefoneBidx = $this->blindIndex->generateForPhone($telefoneNormalizado);
+            $candidatosBidx = $this->blindIndex->generatePhoneCandidates($telefoneRaw);
             $dados['cliente_telefone_bidx'] = $telefoneBidx;
 
-            /** @var Cliente $cliente */
-            $cliente = Cliente::firstOrCreate(
-                ['loja_id' => $loja->id, 'telefone_bidx' => $telefoneBidx],
-                [
-                    'nome' => (string) $dados['cliente']['nome'],
-                    'telefone' => $telefone,
+            /** @var Cliente|null $cliente */
+            $cliente = Cliente::where('loja_id', $loja->id)
+                ->whereIn('telefone_bidx', $candidatosBidx)
+                ->first();
+
+            if ($cliente === null) {
+                $cliente = Cliente::create([
+                    'loja_id' => $loja->id,
+                    'telefone_bidx' => $telefoneBidx,
+                    'nome' => trim((string) $dados['cliente']['nome']),
+                    'telefone' => $telefoneNormalizado,
                     'email' => $dados['cliente']['email'] ?? null,
                     'email_bidx' => isset($dados['cliente']['email']) ? $this->blindIndex->generateForEmail($dados['cliente']['email']) : null,
                     'aceita_marketing' => true,
                     'consentimento_em' => now(),
-                ]
-            );
+                ]);
+            } else {
+                // Keep customer name and normalized phone updated
+                $cliente->update([
+                    'nome' => trim((string) ($dados['cliente']['nome'] ?: $cliente->nome)),
+                    'telefone' => $telefoneNormalizado,
+                ]);
+            }
 
             $dados['cliente_saldo_cashback_centavos'] = $cliente->saldo_cashback_centavos;
 
@@ -192,7 +206,7 @@ final class CheckoutController
             // Execute 100% Server-Side Calculations
             $calculo = $this->calculoPedido->calcular($loja, $dados);
 
-            // Phase 5/6/7 Fix: Validate change (troco_para) for cash orders
+            // Validate change (troco_para) for cash orders
             if ($dados['forma_pagamento'] === 'dinheiro') {
                 if (isset($dados['troco_para']) && $dados['troco_para'] !== null) {
                     if ($dados['troco_para'] < $calculo['total_centavos']) {
@@ -201,11 +215,13 @@ final class CheckoutController
                     }
                 }
             } else {
-                $dados['troco_para'] = null; // Ignore change if not cash
+                $dados['troco_para'] = null;
             }
 
+            $observacaoGeral = $dados['observacao'] ?? ($request->input('observacoes') ? (string) $request->input('observacoes') : null);
+
             // Execute atomic persistence in DB Transaction
-            $pedido = DB::transaction(function () use ($loja, $cliente, $dados, $calculo, $mesaId, $comandaId, $idempotencyKey): Pedido {
+            $pedido = DB::transaction(function () use ($loja, $cliente, $dados, $calculo, $mesaId, $comandaId, $idempotencyKey, $observacaoGeral): Pedido {
                 $codigoPublico = strtoupper(Str::random(4));
                 $tokenHash = hash_hmac('sha256', "{$loja->id}:{$codigoPublico}:" . now()->timestamp, (string) config('app.key'));
 
@@ -228,17 +244,15 @@ final class CheckoutController
                     'forma_pagamento' => $dados['forma_pagamento'],
                     'pagamento_status' => 'pendente',
                     'troco_para' => $dados['troco_para'] ?? null,
-                    'observacao' => $dados['observacao'] ?? null,
+                    'observacao' => $observacaoGeral,
                     'endereco_json' => $dados['endereco'] ?? null,
                     'origem' => 'cardapio',
                 ]);
 
-                // Increment coupon usage atomically
                 if ($calculo['cupom'] !== null) {
                     $calculo['cupom']->increment('usos');
                 }
 
-                // Create Order Items
                 foreach ($calculo['itens_processados'] as $item) {
                     PedidoItem::create([
                         'pedido_id' => $pedido->id,
@@ -254,7 +268,6 @@ final class CheckoutController
                     ]);
                 }
 
-                // Record initial state machine event
                 PedidoEvento::create([
                     'pedido_id' => $pedido->id,
                     'status_de' => null,
@@ -262,7 +275,6 @@ final class CheckoutController
                     'observacao' => 'Pedido criado via cardápio online.',
                 ]);
 
-                // Create Payment Intent Record
                 Pagamento::create([
                     'loja_id' => $loja->id,
                     'pedido_id' => $pedido->id,
@@ -272,11 +284,9 @@ final class CheckoutController
                     'idempotency_key' => $idempotencyKey,
                 ]);
 
-                // Update customer lifetime metrics
                 $cliente->increment('total_pedidos');
                 $cliente->update(['ultimo_pedido_em' => now()]);
 
-                                // If payment method is PIX, automatically generate charge
                 if ($dados['forma_pagamento'] === 'pix') {
                     $pagamento = $pedido->pagamento;
                     if ($pagamento !== null) {
@@ -289,6 +299,11 @@ final class CheckoutController
 
             // Dispatch real-time WebSocket event for Merchant Kanban & Staff KDS
             event(new PedidoCriado($pedido->load('cliente')));
+
+            // Send immediate real-time WhatsApp confirmation + live tracking link (and PIX code if PIX)
+            try {
+                $this->evolutionApi->notificarMudancaStatus($pedido->load(['cliente', 'itens', 'pagamento']), 'novo');
+            } catch (\Throwable) {}
 
             $trackingSignature = hash_hmac('sha256', $pedido->tracking_token_hash, (string) config('app.key'));
             $trackingUrl = url("/p/{$loja->slug}/pedidos/{$pedido->codigo_publico}?t={$trackingSignature}");
@@ -333,7 +348,6 @@ final class CheckoutController
             return response()->json(['error' => 'PEDIDO_NAO_ENCONTRADO'], Response::HTTP_NOT_FOUND);
         }
 
-        // Verify cryptographic tracking signature (prevents guessing 4-char codes to harvest customer PII)
         $signature = $request->query('t');
         $expectedSignature = hash_hmac('sha256', $pedido->tracking_token_hash, (string) config('app.key'));
 

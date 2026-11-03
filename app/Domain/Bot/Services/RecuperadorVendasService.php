@@ -37,7 +37,8 @@ final class RecuperadorVendasService
         $limiteInferior = now()->subMinutes(25);
         $limiteSuperior = now()->subMinutes(5);
 
-        $pedidos = Pedido::where('forma_pagamento', 'pix')
+        $pedidos = Pedido::withoutGlobalScopes()
+            ->where('forma_pagamento', 'pix')
             ->where('pagamento_status', 'pendente')
             ->where('status', 'novo')
             ->whereBetween('created_at', [$limiteInferior, $limiteSuperior])
@@ -47,7 +48,6 @@ final class RecuperadorVendasService
         $enviados = 0;
 
         foreach ($pedidos as $pedido) {
-            // Verifica se já enviamos lembrete para este pedido
             $jaNotificado = PedidoEvento::where('pedido_id', $pedido->id)
                 ->where('status_para', 'recuperacao_pix')
                 ->exists();
@@ -70,11 +70,11 @@ final class RecuperadorVendasService
             $cliente = $pedido->cliente;
             $telCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
 
-            if (empty($telCliente)) {
+            if (empty($telCliente) || $telCliente === '5500000000000') {
                 continue;
             }
 
-            $primeiroNome = explode(' ', trim($cliente->nome ?? 'Cliente'))[0];
+            $primeiroNome = explode(' ', trim($cliente->nome ?? 'Cliente'))[0] ?: 'Cliente';
             $codigo = $pedido->codigo_publico;
             $totalFormatado = number_format($pedido->total / 100, 2, ',', '.');
             $copiaCola = (string) ($pedido->pagamento?->pix_copia_cola ?? '');
@@ -90,6 +90,7 @@ final class RecuperadorVendasService
                 . "👉 Acompanhe ao vivo: {$trackingUrl}\n\n"
                 . "💡 *Prefere pagar no Cartão ou Dinheiro na entrega?* Basta me responder aqui dizendo *CARTÃO* ou *DINHEIRO* que alteramos para você agora mesmo! 😊";
 
+            $this->evolutionApi->registrarMensagemAutomaticaNaConversa($loja, $telCliente, $msgLembrete, $pedido);
             $sucesso = $this->evolutionApi->enviarMensagem($instancia, $telCliente, $msgLembrete);
 
             if ($sucesso) {
@@ -114,7 +115,8 @@ final class RecuperadorVendasService
     {
         $limiteExpiracao = now()->subMinutes(40);
 
-        $pedidosExpirados = Pedido::where('forma_pagamento', 'pix')
+        $pedidosExpirados = Pedido::withoutGlobalScopes()
+            ->where('forma_pagamento', 'pix')
             ->where('pagamento_status', 'pendente')
             ->where('status', 'novo')
             ->where('created_at', '<=', $limiteExpiracao)
@@ -124,8 +126,6 @@ final class RecuperadorVendasService
         $cancelados = 0;
 
         foreach ($pedidosExpirados as $pedido) {
-            $loja = $pedido->loja;
-            $cliente = $pedido->cliente;
             $codigo = $pedido->codigo_publico;
 
             try {
@@ -150,7 +150,6 @@ final class RecuperadorVendasService
      */
     public function recriarPedidoAnterior(Loja $loja, Cliente $cliente, Pedido $pedidoAnterior): Pedido
     {
-        // Verifica previamente se todos os produtos do pedido anterior ainda estão disponíveis
         foreach ($pedidoAnterior->itens as $item) {
             /** @var Produto|null $prod */
             $prod = Produto::where('loja_id', $loja->id)->find($item->produto_id);
@@ -161,7 +160,6 @@ final class RecuperadorVendasService
         }
 
         return DB::transaction(function () use ($loja, $cliente, $pedidoAnterior): Pedido {
-            // Gera código público único de 4 caracteres (sem ambiguidades)
             do {
                 $codigoPublico = strtoupper(Str::random(4));
             } while (Pedido::where('loja_id', $loja->id)->where('codigo_publico', $codigoPublico)->where('created_at', '>=', now()->subHours(24))->exists());
@@ -169,7 +167,6 @@ final class RecuperadorVendasService
             $tokenHash = hash_hmac('sha256', bin2hex(random_bytes(24)), (string) config('app.blind_index_key'));
             $idempotencyKey = 'recompra_' . $loja->id . '_' . $cliente->id . '_' . time();
 
-            // 1. Cria o novo pedido
             $novoPedido = Pedido::create([
                 'loja_id' => $loja->id,
                 'codigo_publico' => $codigoPublico,
@@ -195,7 +192,6 @@ final class RecuperadorVendasService
                 'origem' => 'bot',
             ]);
 
-            // 2. Clona os itens do pedido anterior
             foreach ($pedidoAnterior->itens as $item) {
                 PedidoItem::create([
                     'pedido_id' => $novoPedido->id,
@@ -211,7 +207,6 @@ final class RecuperadorVendasService
                 ]);
             }
 
-            // 3. Registra evento de criação
             PedidoEvento::create([
                 'pedido_id' => $novoPedido->id,
                 'status_de' => null,
@@ -219,7 +214,6 @@ final class RecuperadorVendasService
                 'observacao' => "Re-compra 1-Clique WhatsApp clonada do pedido #{$pedidoAnterior->codigo_publico}",
             ]);
 
-            // 4. Cria o pagamento
             $pagamento = Pagamento::create([
                 'loja_id' => $loja->id,
                 'pedido_id' => $novoPedido->id,
@@ -229,7 +223,6 @@ final class RecuperadorVendasService
                 'idempotency_key' => $idempotencyKey,
             ]);
 
-            // Se for PIX, gera a cobrança imediatamente
             if ($novoPedido->forma_pagamento === 'pix') {
                 try {
                     $this->pixService->gerarPix($loja, $novoPedido, $pagamento);
@@ -238,11 +231,9 @@ final class RecuperadorVendasService
                 }
             }
 
-            // Atualiza métricas do cliente
             $cliente->increment('total_pedidos');
             $cliente->update(['ultimo_pedido_em' => now()]);
 
-            // Dispara evento em tempo real para o Kanban do lojista
             event(new PedidoCriado($novoPedido->load(['cliente', 'itens'])));
 
             return $novoPedido;
@@ -272,7 +263,6 @@ final class RecuperadorVendasService
             'observacao' => "Forma de pagamento alterada para [{$novaForma}] via WhatsApp pelo cliente.",
         ]);
 
-        // Dispara atualização em tempo real para o Kanban do lojista
         event(new PedidoAtualizado($pedido, 'novo'));
 
         return true;

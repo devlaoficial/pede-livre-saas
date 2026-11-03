@@ -6,6 +6,7 @@ namespace App\Domain\Bot\Services;
 
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Catalogo\Models\Categoria;
+use App\Domain\Pedidos\Models\Pedido;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -73,10 +74,14 @@ final class AiChatService
     }
 
     /**
-     * Responde dúvidas sobre o cardápio e a loja utilizando IA conversacional em alta velocidade (Groq LPU).
+     * Responde dúvidas sobre o cardápio, loja e pedido ativo utilizando IA conversacional (Groq LPU).
      */
-    public function responderDuvidaCardapio(Loja $loja, string $pergunta, array $historico = []): ?string
-    {
+    public function responderDuvidaCardapio(
+        Loja $loja,
+        string $pergunta,
+        array $historico = [],
+        ?Pedido $pedidoAtivo = null
+    ): ?string {
         $apiKey = (string) config('services.groq.api_key');
         if (empty($apiKey)) {
             return null;
@@ -86,16 +91,39 @@ final class AiChatService
             $cardapioResumo = $this->obterResumoCardapio($loja);
             $linkCardapio = url("/p/{$loja->slug}");
 
+            $contextoPedido = '';
+            if ($pedidoAtivo !== null) {
+                $pedidoAtivo->loadMissing(['itens', 'entregador']);
+                $codigo = $pedidoAtivo->codigo_publico;
+                $status = $pedidoAtivo->status;
+                $minutos = (int) $pedidoAtivo->created_at->diffInMinutes(now());
+                $itensTxt = $pedidoAtivo->itens->map(fn ($i) => "{$i->qtd}x {$i->nome_snapshot}")->join(', ');
+                $sig = hash_hmac('sha256', (string) $pedidoAtivo->tracking_token_hash, (string) config('app.key'));
+                $trackingUrl = url("/p/{$loja->slug}/pedidos/{$codigo}?t={$sig}");
+                $motoboyTxt = $pedidoAtivo->entregador?->nome ? " | Entregador: {$pedidoAtivo->entregador->nome}" : '';
+
+                $contextoPedido = <<<PEDIDO_INFO
+
+PEDIDO ATUAL DESTE CLIENTE EM TEMPO REAL:
+- Código: #{$codigo}
+- Status atual: {$status} (feito há {$minutos} min){$motoboyTxt}
+- Itens: {$itensTxt}
+- Link oficial para acompanhar em tempo real: {$trackingUrl}
+- Importante: Se o cliente perguntar sobre o pedido dele, informe o status real acima e envie o link de acompanhamento {$trackingUrl}. Se o cliente disser que o pedido já foi entregue, oriente-o a responder "JÁ RECEBI".
+PEDIDO_INFO;
+            }
+
             $systemPrompt = <<<PROMPT
 Você é o atendente virtual inteligente, educado, caloroso e ágil do restaurante "{$loja->nome}".
-Seu papel é ajudar clientes no WhatsApp com dúvidas sobre o cardápio, ingredientes, opções, sabores, horários e pedidos.
+Seu papel é ajudar clientes no WhatsApp com dúvidas sobre o cardápio, ingredientes, opções, sabores, horários e acompanhamento de pedidos.
 
 DIRETRIZES DE COMUNICAÇÃO:
 1. Responda em português brasileiro de forma acolhedora, objetiva e simpática (máximo de 2 a 3 frases curtas).
-2. Baseie sua resposta ESTRITAMENTE no cardápio real informado abaixo. NUNCA invente itens, adicionais ou preços que não constem na lista.
+2. Baseie sua resposta ESTRITAMENTE no cardápio real e nos dados de pedido informados abaixo. NUNCA invente itens, adicionais ou preços que não constem na lista.
 3. Se o cliente perguntar sobre um item ou sabor que o restaurante NÃO possui, avise com gentileza que não tem no momento e sugira uma opção similar do cardápio.
-4. Finalize incentivando o cliente a montar o pedido no cardápio online através do link: {$linkCardapio}
+4. Se o cliente estiver perguntando sobre o pedido em andamento e houver dados em "PEDIDO ATUAL DESTE CLIENTE", informe o status exato e envie o link de acompanhamento em tempo real. Caso contrário, convide-o a pedir pelo cardápio online: {$linkCardapio}
 5. Use poucos emojis com moderação (🍔, 🍕, 😋, ❤️, ✨). Mantenha tom de excelência e hospitalidade.
+{$contextoPedido}
 
 {$cardapioResumo}
 PROMPT;
@@ -104,7 +132,6 @@ PROMPT;
                 ['role' => 'system', 'content' => $systemPrompt],
             ];
 
-            // Adiciona histórico recente se houver
             foreach ($historico as $msg) {
                 if (isset($msg['role'], $msg['content'])) {
                     $messages[] = [
@@ -148,7 +175,6 @@ PROMPT;
                         $textoLimpo = trim($conteudo);
 
                         if (!empty($textoLimpo)) {
-                            // Garante que o link do cardápio está presente para conversão
                             if (!str_contains($textoLimpo, $loja->slug) && !str_contains($textoLimpo, 'http')) {
                                 $textoLimpo .= "\n\n👉 *Acesse nosso cardápio completo:* {$linkCardapio}";
                             }
@@ -223,7 +249,6 @@ PROMPT;
             $conteudo = $partes[1] ?? $conteudo;
         }
 
-        // Tenta decodificar base64
         $decodificado = base64_decode($conteudo, true);
         if ($decodificado !== false && strlen($decodificado) > 20) {
             return $decodificado;
