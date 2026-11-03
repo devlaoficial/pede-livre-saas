@@ -7,7 +7,7 @@ use App\Domain\Catalogo\Services\CardapioCacheService;
 use App\Domain\Catalogo\Services\HorarioFuncionamentoService;
 use App\Domain\Entregas\Models\AreaEntrega;
 use App\Domain\Fidelidade\Models\Avaliacao;
-use App\Domain\Fidelidade\Models\Cupom;
+use App\Domain\Pedidos\Models\Cupom;
 use App\Domain\Mesas\Models\Mesa;
 use App\Domain\Pedidos\Models\Pedido;
 use App\Support\Tenancy\LojaContext;
