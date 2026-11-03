@@ -73,16 +73,24 @@
         $rawCapa = $loja->capa_url ?: ($loja->capa ?? null);
         $capaUrl = null;
         if ($rawCapa) {
-            $capaUrl = (str_starts_with($rawCapa, 'http') || str_starts_with($rawCapa, '/'))
-                ? $rawCapa
-                : '/storage/' . ltrim($rawCapa, '/');
+            if (str_starts_with($rawCapa, 'http')) {
+                $capaUrl = $rawCapa;
+            } elseif (file_exists(public_path('storage/' . ltrim($rawCapa, '/')))) {
+                $capaUrl = '/storage/' . ltrim($rawCapa, '/');
+            }
         }
+        if (!$capaUrl) {
+            $capaUrl = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1600&q=80';
+        }
+
         $rawLogo = $loja->logo_url ?: ($loja->logo ?? null);
         $logoUrl = null;
         if ($rawLogo) {
-            $logoUrl = (str_starts_with($rawLogo, 'http') || str_starts_with($rawLogo, '/'))
-                ? $rawLogo
-                : '/storage/' . ltrim($rawLogo, '/');
+            if (str_starts_with($rawLogo, 'http')) {
+                $logoUrl = $rawLogo;
+            } elseif (file_exists(public_path('storage/' . ltrim($rawLogo, '/')))) {
+                $logoUrl = '/storage/' . ltrim($rawLogo, '/');
+            }
         }
     @endphp
 
@@ -104,7 +112,8 @@
     <!-- ============================================================== -->
     <div class="relative w-full cover-banner overflow-hidden bg-[#121318]">
         @if($capaUrl)
-            <img src="{{ $capaUrl }}" alt="Capa {{ $loja->nome }}" 
+            <img src="{{ $capaUrl }}" alt="" 
+                 onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1600&q=80';"
                  class="w-full h-full object-cover object-center filter brightness-90 transform scale-105 hover:scale-100 transition duration-1000">
         @else
             <div class="w-full h-full" style="background: radial-gradient(circle at 20% 20%, {{ $loja->cor_primaria ?: '#ff5a1f' }}44, #121318 70%);"></div>
@@ -163,14 +172,14 @@
                     <div class="relative shrink-0">
                         @if($logoUrl)
                             <img src="{{ $logoUrl }}" alt="{{ $loja->nome }}" 
+                                 onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');"
                                  style="width: 72px; height: 72px; min-width: 72px;" 
                                  class="sm:w-20 sm:h-20 rounded-2xl object-cover shadow-2xl border-4 border-[#13141a] bg-[#1a1c24]">
-                        @else
-                            <div style="width: 72px; height: 72px; min-width: 72px; background-color: var(--cor-loja);"
-                                 class="sm:w-20 sm:h-20 rounded-2xl shadow-2xl border-4 border-[#13141a] flex items-center justify-center text-white font-bold text-2xl sm:text-3xl">
-                                {{ substr($loja->nome, 0, 1) }}
-                            </div>
                         @endif
+                        <div style="width: 72px; height: 72px; min-width: 72px; background-color: var(--cor-loja);"
+                             class="{{ $logoUrl ? 'hidden' : '' }} sm:w-20 sm:h-20 rounded-2xl shadow-2xl border-4 border-[#13141a] flex items-center justify-center text-white font-bold text-2xl sm:text-3xl">
+                            {{ substr($loja->nome, 0, 1) }}
+                        </div>
                         <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-[#13141a] flex items-center justify-center text-[10px] text-white font-bold" title="Loja Verificada"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
                     </div>
 
