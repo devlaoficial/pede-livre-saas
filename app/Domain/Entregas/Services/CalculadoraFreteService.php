@@ -73,6 +73,28 @@ final class CalculadoraFreteService
             }
         }
 
+        // Se a loja ainda não cadastrou nenhuma área de entrega, permite o pedido com taxa padrão
+        $possuiAreasAtivas = AreaEntrega::where('loja_id', $loja->id)->where('ativa', true)->exists();
+        if (!$possuiAreasAtivas) {
+            return [
+                'taxa_centavos' => (int) ($loja->config_json['taxa_entrega_padrao_centavos'] ?? 0),
+                'tempo_estimado_min' => (int) ($loja->config_json['tempo_medio_preparo_min'] ?? 35),
+                'distancia_km' => null,
+                'frete_gratis' => ((int) ($loja->config_json['taxa_entrega_padrao_centavos'] ?? 0)) === 0,
+                'pedido_minimo_centavos' => 0,
+                'area_id' => 0,
+            ];
+        }
+
+        // Se a loja possui apenas regra por raio mas sem coordenadas cadastradas na loja, aplica a menor faixa de raio ativa
+        $temBairroAtivo = AreaEntrega::where('loja_id', $loja->id)->where('ativa', true)->where('tipo', 'bairro')->exists();
+        if (!$temBairroAtivo) {
+            $primeiraAreaRaio = AreaEntrega::where('loja_id', $loja->id)->where('ativa', true)->where('tipo', 'raio')->orderBy('taxa_centavos')->first();
+            if ($primeiraAreaRaio !== null) {
+                return $this->formatarRespostaArea($primeiraAreaRaio, $subtotalCentavos, null);
+            }
+        }
+
         throw new DomainException('Desculpe, o endereço informado está fora do nosso raio de entrega.');
     }
 

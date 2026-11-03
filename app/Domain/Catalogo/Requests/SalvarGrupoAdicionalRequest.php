@@ -13,6 +13,34 @@ final class SalvarGrupoAdicionalRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $minimo = $this->input('minimo', $this->input('min_escolhas', 0));
+        $maximo = $this->input('maximo', $this->input('max_escolhas', 1));
+        $obrigatorio = (bool) $this->input('obrigatorio', false);
+
+        $minInt = max(0, (int) $minimo);
+        $maxInt = max(1, (int) $maximo);
+        if ($obrigatorio && $minInt < 1) {
+            $minInt = 1;
+        }
+        if ($maxInt < $minInt) {
+            $maxInt = $minInt;
+        }
+
+        $tipo = $this->input('tipo');
+        if (!in_array($tipo, ['adicional', 'escolha_unica', 'sabor_meio_a_meio'], true)) {
+            $tipo = $maxInt === 1 ? 'escolha_unica' : 'adicional';
+        }
+
+        $this->merge([
+            'minimo' => $minInt,
+            'maximo' => $maxInt,
+            'obrigatorio' => $obrigatorio,
+            'tipo' => $tipo,
+        ]);
+    }
+
     /**
      * @return array<string, array<int, string>>
      */

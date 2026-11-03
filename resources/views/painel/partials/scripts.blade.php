@@ -24,6 +24,9 @@
                 somInterval: null,
                 toastMsg: '',
                 buscaPedido: '',
+                buscaCatalogo: '',
+                filtroStatusCatalogo: 'todos',
+                abaCatalogo: 'produtos',
                 filtroCategoriaId: '',
                 loja: null,
                 lojaAbertaManual: true,
@@ -130,7 +133,7 @@
                 arquivoFotoProduto: null,
                 novoProd: { id: null, categoria_id: '', nome: '', descricao: '', preco_reais: '', preco_promocional_reais: '', estacao_kds: 'chapa', imagem: '', variacoes: [], grupos_adicionais: [] },
                 novoCupom: { codigo: '', tipo: 'percentual', valor_input: '10', minimo_reais: '30,00' },
-                novaCat: { nome: '', descricao: '' },
+                novaCat: { id: null, nome: '', descricao: '' },
                 novoEnt: { nome: '', telefone: '', tipo: 'proprio', valor_reais: '7,00' },
                 novaArea: { tipo: 'bairro', nome_bairro: '', raio_km_de: 0, raio_km_ate: 5, taxa_reais: '5,00', pedido_minimo_reais: '20,00', frete_gratis_acima_reais: '', tempo_estimado_min: 30 },
                 
@@ -269,8 +272,34 @@
                 },
 
                 get produtosFiltrados() {
-                    if (!this.filtroCategoriaId) return this.produtos;
-                    return this.produtos.filter(p => Number(p.categoria_id) === Number(this.filtroCategoriaId));
+                    let lista = this.produtos || [];
+                    if (this.filtroCategoriaId) {
+                        lista = lista.filter(p => Number(p.categoria_id) === Number(this.filtroCategoriaId));
+                    }
+                    if (this.filtroStatusCatalogo === 'ativos') {
+                        lista = lista.filter(p => !p.esgotado);
+                    } else if (this.filtroStatusCatalogo === 'promocao') {
+                        lista = lista.filter(p => p.preco_promocional_centavos && p.preco_promocional_centavos < p.preco_centavos);
+                    } else if (this.filtroStatusCatalogo === 'esgotados') {
+                        lista = lista.filter(p => p.esgotado);
+                    }
+                    if (this.buscaCatalogo && this.buscaCatalogo.trim()) {
+                        const q = this.buscaCatalogo.toLowerCase().trim();
+                        lista = lista.filter(p =>
+                            (p.nome || '').toLowerCase().includes(q) ||
+                            (p.descricao || '').toLowerCase().includes(q)
+                        );
+                    }
+                    return lista;
+                },
+
+                nomeCategoriaPorId(catId) {
+                    const c = (this.categorias || []).find(item => Number(item.id) === Number(catId));
+                    return c ? c.nome : 'Cardápio';
+                },
+
+                contagemProdutosCategoria(catId) {
+                    return (this.produtos || []).filter(p => Number(p.categoria_id) === Number(catId)).length;
                 },
 
                 get produtosPdvFiltrados() {
@@ -783,8 +812,8 @@
                             id: grp.id,
                             nome: grp.nome,
                             obrigatorio: Boolean(grp.obrigatorio),
-                            min_escolhas: Number(grp.min_escolhas || 0),
-                            max_escolhas: Number(grp.max_escolhas || 1),
+                            min_escolhas: Number(grp.minimo ?? grp.min_escolhas ?? 0),
+                            max_escolhas: Number(grp.maximo ?? grp.max_escolhas ?? 1),
                             opcoes: (grp.opcoes || []).map(o => ({
                                 nome: o.nome,
                                 preco_reais: ((o.preco_centavos || 0) / 100).toFixed(2).replace('.', ',')
@@ -813,6 +842,8 @@
                             ativo: true
                         }));
 
+                    const minInt = Math.max(0, Number(this.formGrupoAdicional.min_escolhas || 0));
+                    const maxInt = Math.max(1, Number(this.formGrupoAdicional.max_escolhas || 1));
                     const url = this.formGrupoAdicional.id ? `/api/grupos-adicionais/${this.formGrupoAdicional.id}` : '/api/grupos-adicionais';
                     const method = this.formGrupoAdicional.id ? 'PUT' : 'POST';
 
@@ -822,16 +853,22 @@
                         body: JSON.stringify({
                             nome: this.formGrupoAdicional.nome,
                             obrigatorio: Boolean(this.formGrupoAdicional.obrigatorio),
-                            min_escolhas: Number(this.formGrupoAdicional.min_escolhas || 0),
-                            max_escolhas: Math.max(1, Number(this.formGrupoAdicional.max_escolhas || 1)),
+                            minimo: minInt,
+                            maximo: maxInt,
+                            min_escolhas: minInt,
+                            max_escolhas: maxInt,
+                            tipo: maxInt === 1 ? 'escolha_unica' : 'adicional',
                             opcoes
                         })
-                    }).then(r => {
+                    }).then(async r => {
                         if (r.ok) {
                             this.modalGrupoAdicional = false;
                             this.toastMsg = 'Grupo de adicionais salvo com sucesso!';
                             this.carregarGruposAdicionais();
                             this.carregarCatalogo();
+                        } else {
+                            const err = await r.json().catch(() => ({}));
+                            alert(err.message || 'Verifique os campos do grupo de adicionais.');
                         }
                     });
                 },
@@ -896,13 +933,27 @@
                     this.modalNovoProduto = true;
                 },
 
+                duplicarProduto(prod) {
+                    this.abrirModalProduto(prod);
+                    this.novoProd.id = null;
+                    this.novoProd.nome = (prod.nome || '') + ' (Cópia)';
+                },
+
                 alternarEstoqueProduto(prod) {
+                    const estadoAnterior = Boolean(prod.esgotado);
+                    prod.esgotado = !estadoAnterior;
                     fetch(`/api/produtos/${prod.id}/pausar`, {
                         method: 'POST',
                         headers: this.headersAuth()
-                    }).then(() => {
-                        this.toastMsg = `Status de estoque de "${prod.nome}" atualizado!`;
+                    }).then(r => {
+                        if (!r.ok) {
+                            prod.esgotado = estadoAnterior;
+                            return;
+                        }
+                        this.toastMsg = prod.esgotado ? `"${prod.nome}" pausado no cardápio.` : `"${prod.nome}" ativado no cardápio!`;
                         this.carregarCatalogo();
+                    }).catch(() => {
+                        prod.esgotado = estadoAnterior;
                     });
                 },
 
@@ -913,6 +964,23 @@
                             this.toastMsg = 'Produto removido do cardápio.';
                             this.carregarCatalogo();
                         });
+                },
+
+                abrirModalCategoria(cat = null) {
+                    if (cat) {
+                        this.novaCat = {
+                            id: cat.id,
+                            nome: cat.nome || '',
+                            descricao: cat.descricao || ''
+                        };
+                    } else {
+                        this.novaCat = {
+                            id: null,
+                            nome: '',
+                            descricao: ''
+                        };
+                    }
+                    this.modalNovaCategoria = true;
                 },
 
                 excluirCategoria(cat) {
@@ -939,6 +1007,12 @@
                             ordem: idx
                         }));
 
+                    const gruposPayload = (this.novoProd.grupos_adicionais || [])
+                        .map((id, idx) => ({
+                            grupo_id: Number(id),
+                            ordem: idx
+                        }));
+
                     const url = this.novoProd.id ? `/api/produtos/${this.novoProd.id}` : '/api/produtos';
                     const method = this.novoProd.id ? 'PUT' : 'POST';
 
@@ -954,12 +1028,19 @@
                             estacao_kds: this.novoProd.estacao_kds || 'chapa',
                             imagem: this.novoProd.imagem || null,
                             variacoes: variacoesPayload,
-                            grupos_adicionais: (this.novoProd.grupos_adicionais || []).map(id => Number(id)),
+                            grupos_adicionais: gruposPayload,
                             ativo: true,
                             canais: ['delivery', 'retirada', 'mesa', 'balcao']
                         })
                     })
-                    .then(r => r.ok ? r.json() : null)
+                    .then(async r => {
+                        const data = await r.json().catch(() => null);
+                        if (!r.ok) {
+                            alert(data?.message || 'Erro ao salvar produto. Verifique a categoria e os valores informados.');
+                            return null;
+                        }
+                        return data;
+                    })
                     .then(res => {
                         if (!res) return;
                         const prodId = this.novoProd.id || res.produto?.id || res.data?.id;
@@ -985,8 +1066,12 @@
                 },
 
                 salvarNovaCategoria() {
-                    fetch('/api/categorias', {
-                        method: 'POST',
+                    const isEdit = Boolean(this.novaCat.id);
+                    const url = isEdit ? `/api/categorias/${this.novaCat.id}` : '/api/categorias';
+                    const method = isEdit ? 'PUT' : 'POST';
+
+                    fetch(url, {
+                        method: method,
                         headers: this.headersAuth(),
                         body: JSON.stringify({
                             nome: this.novaCat.nome,
@@ -997,8 +1082,8 @@
                     }).then(r => {
                         if (r.ok) {
                             this.modalNovaCategoria = false;
-                            this.novaCat = { nome: '', descricao: '' };
-                            this.toastMsg = 'Nova categoria adicionada ao cardápio!';
+                            this.novaCat = { id: null, nome: '', descricao: '' };
+                            this.toastMsg = isEdit ? 'Categoria atualizada!' : 'Nova categoria adicionada ao cardápio!';
                             this.carregarCatalogo();
                         }
                     });
@@ -1115,6 +1200,7 @@
                             raio_km_ate: this.novaArea.tipo === 'raio' ? Number(this.novaArea.raio_km_ate || 5) : null,
                             taxa_centavos: taxaCentavos,
                             pedido_minimo_centavos: minCentavos,
+                            frete_gratis_acima_centavos: gratisCentavos,
                             frete_gratis_acima: gratisCentavos,
                             tempo_estimado_min: this.novaArea.tempo_estimado_min || 30,
                             ativa: true

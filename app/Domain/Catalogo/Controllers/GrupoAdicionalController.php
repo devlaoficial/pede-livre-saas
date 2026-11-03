@@ -8,6 +8,7 @@ use App\Domain\Catalogo\Models\GrupoAdicional;
 use App\Domain\Catalogo\Models\OpcaoAdicional;
 use App\Domain\Catalogo\Requests\SalvarGrupoAdicionalRequest;
 use App\Domain\Catalogo\Resources\GrupoAdicionalResource;
+use App\Domain\Catalogo\Services\CardapioCacheService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -17,6 +18,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class GrupoAdicionalController
 {
+    public function __construct(
+        private readonly CardapioCacheService $cacheService
+    ) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
         Gate::authorize('viewAny', GrupoAdicional::class);
@@ -47,6 +52,8 @@ final class GrupoAdicionalController
 
             return $grupo->load('opcoes');
         });
+
+        $this->cacheService->invalidar((int) $grupo->loja_id);
 
         return response()->json([
             'message' => 'Grupo de adicionais criado com sucesso.',
@@ -87,6 +94,8 @@ final class GrupoAdicionalController
             }
         });
 
+        $this->cacheService->invalidar((int) $grupo->loja_id);
+
         return response()->json([
             'message' => 'Grupo de adicionais atualizado com sucesso.',
             'grupo' => new GrupoAdicionalResource($grupo->load('opcoes')),
@@ -98,7 +107,9 @@ final class GrupoAdicionalController
         $grupo = GrupoAdicional::findOrFail($id);
         Gate::authorize('delete', $grupo);
 
+        $lojaId = (int) $grupo->loja_id;
         $grupo->delete();
+        $this->cacheService->invalidar($lojaId);
 
         return response()->json(['message' => 'Grupo removido com sucesso.']);
     }

@@ -103,8 +103,8 @@ final class RelatorioVendasController
                 $cardapioUrl = url("/p/{$loja->slug}");
 
                 $msgWinback = $c->saldo_cashback_centavos > 0
-                    ? "Olá {$c->nome}! Tudo bem? Sentimos sua falta aqui na {$loja->nome}! 🍔 Você ainda tem R$ {$cashbackReais} de Cashback disponível e preparamos o cupom VOLTE10 para você pedir hoje: {$cardapioUrl}"
-                    : "Olá {$c->nome}! Tudo bem? Faz um tempinho que você não pede na {$loja->nome}! 🍔 Preparamos um cupom especial VOLTE10 com 10% OFF para você matar a saudade hoje: {$cardapioUrl}";
+                    ? "Olá {$c->nome}! Tudo bem? Sentimos sua falta aqui na {$loja->nome}! Você ainda tem R$ {$cashbackReais} de Cashback disponível e preparamos o cupom VOLTE10 para você pedir hoje: {$cardapioUrl}"
+                    : "Olá {$c->nome}! Tudo bem? Faz um tempinho que você não pede na {$loja->nome}! Preparamos um cupom especial VOLTE10 com 10% OFF para você matar a saudade hoje: {$cardapioUrl}";
 
                 return [
                     'id' => $c->id,

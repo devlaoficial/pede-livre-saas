@@ -41,28 +41,46 @@ Route::get('/p/{slug}', function (
         ->where('ativo', true)
         ->where(fn ($q) => $q->whereNull('validade')->orWhere('validade', '>', now()))
         ->orderByDesc('id')
-        ->get()
-        ->map(fn ($c) => [
+        ->get(['id', 'codigo', 'tipo', 'valor', 'minimo_centavos', 'limite_por_cliente'])
+        ->map(fn (Cupom $c) => [
+            'id' => $c->id,
             'codigo' => $c->codigo,
             'tipo' => $c->tipo,
-            'valor' => $c->valor,
-            'pedido_minimo' => $c->minimo_centavos,
-            'uso_unico_por_cliente' => ($c->limite_por_cliente === 1),
-        ]);
+            'valor' => (int) $c->valor,
+            'minimo_centavos' => (int) $c->minimo_centavos,
+            'pedido_minimo' => (int) $c->minimo_centavos,
+            'uso_unico_por_cliente' => ((int) $c->limite_por_cliente) === 1,
+        ])
+        ->values();
 
     $areasEntrega = AreaEntrega::where('loja_id', $loja->id)
         ->where('ativa', true)
         ->orderBy('taxa_centavos')
-        ->get()
-        ->map(fn ($a) => [
+        ->get([
+            'id',
+            'tipo',
+            'nome_bairro',
+            'raio_km_de',
+            'raio_km_ate',
+            'taxa_centavos',
+            'pedido_minimo_centavos',
+            'tempo_estimado_min',
+            'frete_gratis_acima_centavos',
+        ])
+        ->map(fn (AreaEntrega $a) => [
             'id' => $a->id,
-            'nome' => $a->nome_bairro ?: 'Região Padrão',
             'tipo' => $a->tipo,
+            'nome' => $a->nome_bairro ?: ('Raio até ' . number_format((float) $a->raio_km_ate, 1, ',', '.') . ' km'),
+            'nome_bairro' => $a->nome_bairro,
             'bairro_nome' => $a->nome_bairro,
-            'taxa_centavos' => $a->taxa_centavos,
-            'pedido_minimo' => $a->pedido_minimo_centavos,
-            'frete_gratis_acima' => $a->frete_gratis_acima_centavos,
-        ]);
+            'taxa_centavos' => (int) $a->taxa_centavos,
+            'pedido_minimo_centavos' => (int) $a->pedido_minimo_centavos,
+            'pedido_minimo' => (int) $a->pedido_minimo_centavos,
+            'tempo_estimado_min' => (int) $a->tempo_estimado_min,
+            'frete_gratis_acima_centavos' => $a->frete_gratis_acima_centavos !== null ? (int) $a->frete_gratis_acima_centavos : null,
+            'frete_gratis_acima' => $a->frete_gratis_acima_centavos !== null ? (int) $a->frete_gratis_acima_centavos : null,
+        ])
+        ->values();
 
     $mediaAvaliacao = round((float) (Avaliacao::where('loja_id', $loja->id)->avg('nota') ?: 5.0), 1);
 
@@ -99,28 +117,46 @@ Route::get('/p/{slug}/{prefix}/{token}', function (
         ->where('ativo', true)
         ->where(fn ($q) => $q->whereNull('validade')->orWhere('validade', '>', now()))
         ->orderByDesc('id')
-        ->get()
-        ->map(fn ($c) => [
+        ->get(['id', 'codigo', 'tipo', 'valor', 'minimo_centavos', 'limite_por_cliente'])
+        ->map(fn (Cupom $c) => [
+            'id' => $c->id,
             'codigo' => $c->codigo,
             'tipo' => $c->tipo,
-            'valor' => $c->valor,
-            'pedido_minimo' => $c->minimo_centavos,
-            'uso_unico_por_cliente' => ($c->limite_por_cliente === 1),
-        ]);
+            'valor' => (int) $c->valor,
+            'minimo_centavos' => (int) $c->minimo_centavos,
+            'pedido_minimo' => (int) $c->minimo_centavos,
+            'uso_unico_por_cliente' => ((int) $c->limite_por_cliente) === 1,
+        ])
+        ->values();
 
     $areasEntrega = AreaEntrega::where('loja_id', $loja->id)
         ->where('ativa', true)
         ->orderBy('taxa_centavos')
-        ->get()
-        ->map(fn ($a) => [
+        ->get([
+            'id',
+            'tipo',
+            'nome_bairro',
+            'raio_km_de',
+            'raio_km_ate',
+            'taxa_centavos',
+            'pedido_minimo_centavos',
+            'tempo_estimado_min',
+            'frete_gratis_acima_centavos',
+        ])
+        ->map(fn (AreaEntrega $a) => [
             'id' => $a->id,
-            'nome' => $a->nome_bairro ?: 'Região Padrão',
             'tipo' => $a->tipo,
+            'nome' => $a->nome_bairro ?: ('Raio até ' . number_format((float) $a->raio_km_ate, 1, ',', '.') . ' km'),
+            'nome_bairro' => $a->nome_bairro,
             'bairro_nome' => $a->nome_bairro,
-            'taxa_centavos' => $a->taxa_centavos,
-            'pedido_minimo' => $a->pedido_minimo_centavos,
-            'frete_gratis_acima' => $a->frete_gratis_acima_centavos,
-        ]);
+            'taxa_centavos' => (int) $a->taxa_centavos,
+            'pedido_minimo_centavos' => (int) $a->pedido_minimo_centavos,
+            'pedido_minimo' => (int) $a->pedido_minimo_centavos,
+            'tempo_estimado_min' => (int) $a->tempo_estimado_min,
+            'frete_gratis_acima_centavos' => $a->frete_gratis_acima_centavos !== null ? (int) $a->frete_gratis_acima_centavos : null,
+            'frete_gratis_acima' => $a->frete_gratis_acima_centavos !== null ? (int) $a->frete_gratis_acima_centavos : null,
+        ])
+        ->values();
 
     $mediaAvaliacao = round((float) (Avaliacao::where('loja_id', $loja->id)->avg('nota') ?: 5.0), 1);
 

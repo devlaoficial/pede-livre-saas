@@ -86,6 +86,19 @@
         }
     @endphp
 
+        <!-- Toast Flutuante de Feedback Rápido -->
+    <div x-cloak x-show="toastCardapio"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-3"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 -translate-y-3"
+         class="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-emerald-500 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 pointer-events-none">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+        <span x-text="toastCardapio"></span>
+    </div>
+
     <!-- ============================================================== -->
     <!-- 1. BANNER DE CAPA PANORÂMICO (HERO COVER BANNER)               -->
     <!-- ============================================================== -->
@@ -127,7 +140,7 @@
                 </button>
                 <button type="button" @click="modalInfoLoja = true" title="Ver horários e informações da loja"
                     class="px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-xs font-bold text-white flex items-center gap-1.5 transition shadow-lg active:scale-95">
-                    <span>ℹ</span>
+                    <svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     <span class="hidden sm:inline">Sobre a loja</span>
                 </button>
             </div>
@@ -172,7 +185,7 @@
                         <!-- Metadados: Tempo, Entrega, Pedido Mínimo e Endereço -->
                         <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-slate-300 mt-1 font-medium">
                             <span class="flex items-center gap-1 text-slate-300">
-                                <span>⏱</span>
+                                <svg class="w-3.5 h-3.5 shrink-0 inline-block text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 <span>{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }}–{{ ($loja->config_json['tempo_medio_preparo_min'] ?? 35) + 15 }} min</span>
                             </span>
                             <template x-if="checkout.canal === 'delivery' && !mesaAtiva">
@@ -233,7 +246,7 @@
             <!-- Aviso se Loja estiver fechada no momento -->
             <template x-if="!lojaStatus.aberto_agora">
                 <div class="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-3 px-4 flex items-center justify-between gap-2 text-xs text-rose-300 font-semibold">
-                    <span>⏰ No momento estamos fechados para novos pedidos. Você pode navegar pelo cardápio!</span>
+                    <span class="flex items-center gap-1.5"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>No momento estamos fechados para novos pedidos. Você pode navegar pelo cardápio!</span></span>
                     <button type="button" @click="modalInfoLoja = true" class="underline font-bold text-white shrink-0">Ver horários</button>
                 </div>
             </template>
@@ -354,14 +367,14 @@
                 <button x-show="termoBusca" @click="termoBusca = ''" class="absolute right-3 top-2.5 text-slate-500 hover:text-white text-xs font-bold"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
 
-            <!-- Chips de Categorias com Ícones Temáticos e Contadores -->
-            <nav class="flex overflow-x-auto no-scrollbar gap-2 py-0.5 flex-1">
+            <!-- Chips de Categorias com Ícones SVG Temáticos e Contadores -->
+            <nav x-ref="navCategorias" class="flex overflow-x-auto no-scrollbar gap-2 py-0.5 flex-1 scroll-smooth">
                 <template x-for="cat in categoriasFiltradas" :key="cat.id">
-                    <button @click="scrollParaCategoria(cat.id)"
-                        class="px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition flex items-center gap-2 shrink-0 shadow-sm"
+                    <button :id="'chip-cat-' + cat.id" @click="scrollParaCategoria(cat.id)"
+                        class="px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 shadow-sm"
                         :style="(categoriaAtiva || categoriasFiltradas[0]?.id) === cat.id ? 'background-color: var(--cor-loja); color: white;' : ''"
-                        :class="(categoriaAtiva || categoriasFiltradas[0]?.id) === cat.id ? 'shadow-lg scale-102' : 'bg-[#13141a] border border-[#232631] text-slate-300 hover:text-white hover:border-slate-600'">
-                        <span x-text="obterIconeCategoria(cat.nome)"></span>
+                        :class="(categoriaAtiva || categoriasFiltradas[0]?.id) === cat.id ? 'shadow-lg ring-1 ring-white/20' : 'bg-[#13141a] border border-[#232631] text-slate-300 hover:text-white hover:border-slate-600'">
+                        <span class="inline-flex items-center" x-html="obterIconeCategoriaSvg(cat.nome)"></span>
                         <span x-text="nomeCurtoCategoria(cat.nome)"></span>
                         <span class="text-[10px] font-bold px-1.5 py-0.2 rounded-full"
                               :class="(categoriaAtiva || categoriasFiltradas[0]?.id) === cat.id ? 'bg-black/30 text-white' : 'bg-[#1e2029] text-slate-400'"
@@ -455,9 +468,11 @@
 
                 <!-- Estado Vazio de Busca ou Cardápio em Cadastro -->
                 <template x-if="categoriasFiltradas.length === 0">
-                    <div class="bg-[#13141a] border border-[#232631] rounded-3xl p-12 text-center space-y-3">
-                        <div class="text-4xl" x-text="termoBusca ? '' : ''"></div>
-                        <h3 class="text-base font-bold text-white" x-text="termoBusca ? 'Nenhum produto encontrado' : 'Cardápio em atualização'"></h3>
+                    <div class="bg-[#13141a] border border-[#232631] rounded-3xl p-10 sm:p-12 text-center space-y-3">
+                        <div class="w-12 h-12 rounded-2xl bg-[#1c1e27] border border-[#2a2e3d] mx-auto flex items-center justify-center text-slate-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <h3 class="text-base font-bold text-white" x-text="termoBusca ? 'Nenhum item encontrado para "' + termoBusca + '"' : 'Cardápio em atualização'"></h3>
                         <p class="text-xs text-slate-400 max-w-sm mx-auto" x-text="termoBusca ? 'Tente buscar por outro termo ou limpar o filtro.' : 'Os produtos desta loja estão sendo atualizados e estarão disponíveis em instantes.'"></p>
                         <button x-show="termoBusca" @click="termoBusca = ''" 
                                 class="mt-2 inline-flex text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md"
@@ -472,40 +487,50 @@
                 <!-- ============================================================== -->
                 <template x-for="categoria in categoriasFiltradas" :key="categoria.id">
                     <section :id="'categoria-' + categoria.id" class="space-y-4 scroll-mt-24">
-                        <div class="border-b border-[#232631] pb-2.5 flex items-baseline justify-between gap-2">
-                            <div>
-                                <h2 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                                    <span x-text="obterIconeCategoria(categoria.nome)"></span>
-                                    <span x-text="categoria.nome"></span>
-                                </h2>
-                                <p class="text-xs text-slate-400 mt-1" 
-                                   x-text="categoria.descricao || obterSubtituloCategoria(categoria.nome)"></p>
+                        <div class="border-b border-[#232631] pb-3 flex items-center justify-between gap-2">
+                            <div class="flex items-start gap-2.5">
+                                <div class="w-8 h-8 rounded-xl bg-[#181a24] border border-[#262a38] flex items-center justify-center shrink-0 mt-0.5"
+                                     :style="'color: var(--cor-loja)'"
+                                     x-html="obterIconeCategoriaSvg(categoria.nome)"></div>
+                                <div>
+                                    <h2 class="text-base sm:text-xl font-bold text-white leading-tight" x-text="categoria.nome"></h2>
+                                    <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5" 
+                                       x-text="categoria.descricao || obterSubtituloCategoria(categoria.nome)"></p>
+                                </div>
                             </div>
-                            <span class="text-xs font-bold text-slate-500 shrink-0" x-text="categoria.produtos.length + (categoria.produtos.length === 1 ? ' item' : ' itens')"></span>
+                            <span class="text-[11px] font-bold text-slate-400 bg-[#13141a] border border-[#232631] px-2.5 py-1 rounded-full shrink-0"
+                                  x-text="categoria.produtos.length + (categoria.produtos.length === 1 ? ' item' : ' itens')"></span>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
                             <template x-for="produto in categoria.produtos" :key="produto.id">
                                 <article @click="abrirModalProduto(produto)"
-                                    class="bg-[#13141a] border border-[#232631] hover:border-slate-500/80 rounded-2xl p-4 transition-all duration-200 cursor-pointer flex justify-between gap-3.5 relative group shadow-md hover:shadow-xl">
+                                    class="bg-[#12141c] hover:bg-[#161924] border border-[#222634] hover:border-slate-600 rounded-2xl p-3.5 sm:p-4 transition-all duration-200 cursor-pointer flex justify-between gap-3.5 relative group shadow-md hover:shadow-xl">
                                     
                                     <!-- Informações do Item (Esquerda) -->
-                                    <div class="flex-1 min-w-0 flex flex-col justify-between pr-2">
+                                    <div class="flex-1 min-w-0 flex flex-col justify-between pr-1">
                                         <div>
-                                            <template x-if="produto.preco_promocional_centavos && produto.preco_promocional_centavos < produto.preco_centavos">
-                                                <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[10px] font-bold px-2 py-0.5 rounded-md inline-block mb-1.5"
-                                                      x-text="'-' + Math.round((1 - produto.preco_promocional_centavos / produto.preco_centavos) * 100) + '% OFF'"></span>
-                                            </template>
+                                            <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                                                <template x-if="produto.preco_promocional_centavos && produto.preco_promocional_centavos < produto.preco_centavos">
+                                                    <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-md inline-flex items-center gap-1"
+                                                          x-text="'-' + Math.round((1 - produto.preco_promocional_centavos / produto.preco_centavos) * 100) + '% OFF'"></span>
+                                                </template>
+                                                <template x-if="(produto.variacoes && produto.variacoes.length > 0) || (produto.grupos_adicionais && produto.grupos_adicionais.length > 0)">
+                                                    <span class="bg-[#1c1f2b] text-slate-400 border border-[#2a2e3f] text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                                                        Personalizável
+                                                    </span>
+                                                </template>
+                                            </div>
 
-                                            <h3 class="font-bold text-white text-sm sm:text-base leading-snug group-hover:text-amber-400 transition" x-text="produto.nome"></h3>
-                                            <p class="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed" x-text="produto.descricao"></p>
+                                            <h3 class="font-bold text-white text-sm sm:text-base leading-snug group-hover:text-amber-400 transition line-clamp-2" x-text="produto.nome"></h3>
+                                            <p class="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed" x-text="produto.descricao || 'Preparado na hora com ingredientes selecionados.'"></p>
                                         </div>
 
-                                        <div class="mt-3 flex items-baseline gap-2">
+                                        <div class="mt-3 flex items-baseline gap-2 flex-wrap">
                                             <template x-if="produto.variacoes && produto.variacoes.length > 0">
                                                 <span class="text-[11px] text-slate-400 font-medium">A partir de</span>
                                             </template>
-                                            <span class="text-sm sm:text-base font-bold text-white"
+                                            <span class="text-sm sm:text-base font-bold text-emerald-400"
                                                   x-text="formatarCentavos(produto.variacoes?.length > 0 ? Math.min(...produto.variacoes.map(v => v.preco_centavos)) : produto.preco_efetivo_centavos)"></span>
                                             
                                             <span x-show="produto.preco_promocional_centavos && produto.preco_promocional_centavos < produto.preco_centavos"
@@ -516,7 +541,7 @@
 
                                     <!-- Imagem com Proporção Estrita 104x104 e Botão de Ação -->
                                     <div class="relative shrink-0 flex flex-col justify-between items-end">
-                                        <div class="rounded-2xl overflow-hidden bg-[#1e2029] flex items-center justify-center border border-[#232631]"
+                                        <div class="rounded-2xl overflow-hidden bg-[#1a1d28] flex items-center justify-center border border-[#262a3a] shadow-inner"
                                              style="width: 104px; height: 104px; min-width: 104px;">
                                             <template x-if="imagemProduto(produto)">
                                                 <img :src="imagemProduto(produto)" :alt="produto.nome" loading="lazy" 
@@ -530,15 +555,16 @@
                                         </div>
 
                                         <template x-if="qtdProdutoNaSacola(produto.id) > 0">
-                                            <div class="absolute right-1.5 bottom-1.5 px-2 py-0.5 rounded-full text-white font-bold text-xs flex items-center gap-1 shadow-lg"
+                                            <div class="absolute right-1.5 bottom-1.5 px-2.5 py-0.5 rounded-full text-white font-bold text-xs flex items-center gap-1 shadow-lg ring-2 ring-[#12141c]"
                                                  :style="'background-color: var(--cor-loja)'">
                                                 <span x-text="qtdProdutoNaSacola(produto.id) + 'x'"></span>
                                             </div>
                                         </template>
                                         <template x-if="qtdProdutoNaSacola(produto.id) === 0">
-                                            <button type="button" 
-                                                class="w-7 h-7 rounded-full text-white font-bold text-sm flex items-center justify-center shadow-lg transition active:scale-90 absolute right-1.5 bottom-1.5"
-                                                :style="'background-color: var(--cor-loja)'">
+                                            <button type="button" @click.stop="acaoRapidaCardProduto(produto)"
+                                                class="w-8 h-8 rounded-full text-white font-bold text-base flex items-center justify-center shadow-lg ring-2 ring-[#12141c] transition active:scale-90 absolute right-1.5 bottom-1.5"
+                                                :style="'background-color: var(--cor-loja)'"
+                                                title="Adicionar à sacola">
                                                 +
                                             </button>
                                         </template>
@@ -655,11 +681,17 @@
                                     <span class="text-2xl font-bold text-white" x-text="formatarCentavos(totalFinalCentavos)"></span>
                                 </div>
 
+                                <template x-if="checkout.canal === 'delivery' && !mesaAtiva && faltaPedidoMinimoCentavos > 0">
+                                    <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-[11px] text-amber-300 font-semibold text-center">
+                                        Faltam <strong class="text-white" x-text="formatarCentavos(faltaPedidoMinimoCentavos)"></strong> para atingir o pedido mínimo de entrega (<span x-text="formatarCentavos(pedidoMinimoCentavos)"></span>).
+                                    </div>
+                                </template>
+
                                 <button @click="abrirCheckout()"
                                     class="w-full text-white font-bold py-3.5 rounded-2xl text-sm shadow-xl hover:brightness-110 active:scale-98 transition flex items-center justify-center gap-2 mt-2"
                                     :style="'background-color: var(--cor-loja)'">
                                     <span>Finalizar pedido</span>
-                                    <span>→</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                                 </button>
 
                                 <p class="text-[11px] text-slate-500 text-center pt-1 font-medium flex items-center justify-center gap-1.5">
@@ -815,11 +847,11 @@
             <div class="space-y-4 text-xs">
                 <div>
                     <span class="text-slate-400 block font-bold uppercase mb-1">Endereço</span>
-                    <p class="text-white font-medium">{{ $loja->endereco ?: 'Consulte no WhatsApp' }}{{ $loja->cidade ? ', ' . $loja->cidade : '' }}{{ $loja->uf ? '/' . $loja->uf : '' }}</p>
+                    <p class="text-white font-medium">{{ $loja->endereco ?: 'Consulte no WhatsApp' }}{{ !empty($loja->cidade) ? ', ' . $loja->cidade : '' }}{{ !empty($loja->uf) ? '/' . $loja->uf : '' }}</p>
                 </div>
 
                 <div>
-                    <span class="text-slate-400 block font-bold uppercase mb-1">⏱Tempo Médio de Preparo</span>
+                    <span class="text-slate-400 flex items-center gap-1.5 font-bold uppercase mb-1"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Tempo Médio de Preparo</span></span>
                     <p class="text-white font-medium">{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }} a {{ ($loja->config_json['tempo_medio_preparo_min'] ?? 35) + 15 }} minutos</p>
                 </div>
 
@@ -846,9 +878,10 @@
                     </div>
                 </div>
 
-                @if($loja->telefone_whatsapp)
+                @php $telZap = !empty($loja->telefone_whatsapp) ? $loja->telefone_whatsapp : (!empty($loja->telefone) ? $loja->telefone : null); @endphp
+                @if($telZap)
                 <div class="pt-2">
-                    <a href="https://wa.me/55{{ preg_replace('/\D/', '', $loja->telefone_whatsapp) }}" target="_blank"
+                    <a href="https://wa.me/55{{ preg_replace('/\D/', '', $telZap) }}" target="_blank"
                        class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition">
                         <span>Conversar no WhatsApp</span>
                     </a>
@@ -906,8 +939,8 @@
                                     Acompanhar Pedido em Tempo Real →
                                 </a>
                             </template>
-                            @if($loja->telefone_whatsapp)
-                            <a :href="'https://wa.me/55{{ preg_replace('/\D/', '', $loja->telefone_whatsapp) }}?text=' + encodeURIComponent('Olá! Acabei de fazer o pedido #' + pedidoCriado.codigo_publico + ' pelo cardápio digital.')"
+                            @if($telZap)
+                            <a :href="'https://wa.me/55{{ preg_replace('/\D/', '', $telZap) }}?text=' + encodeURIComponent('Olá! Acabei de fazer o pedido #' + pedidoCriado.codigo_publico + ' pelo cardápio digital.')"
                                target="_blank"
                                class="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-extrabold py-3 rounded-xl text-xs text-center">
                                 WhatsApp da Loja ↗
@@ -1124,6 +1157,7 @@
                 pedidoCriado: null,
                 ultimoPedido: null,
                 copiado: false,
+                toastCardapio: '',
                 observacaoItem: '',
                 qtdModal: 1,
                 cupomInput: '',
@@ -1195,6 +1229,70 @@
                     if (this.checkout.canal === 'delivery' && !this.mesaAtiva && (this.checkout.cep || this.checkout.bairro)) {
                         this.calcularFrete();
                     }
+
+                    // Scroll Spy automático para destacar a categoria visível na barra fixa
+                    window.addEventListener('scroll', () => {
+                        this.atualizarCategoriaVisivel();
+                    }, { passive: true });
+                },
+
+                mostrarToast(msg) {
+                    this.toastCardapio = msg;
+                    setTimeout(() => {
+                        if (this.toastCardapio === msg) this.toastCardapio = '';
+                    }, 2600);
+                },
+
+                atualizarCategoriaVisivel() {
+                    const cats = this.categoriasFiltradas || [];
+                    if (cats.length === 0) return;
+                    let encontrada = cats[0].id;
+                    for (const cat of cats) {
+                        const el = document.getElementById('categoria-' + cat.id);
+                        if (el) {
+                            const rect = el.getBoundingClientRect();
+                            if (rect.top <= 160) {
+                                encontrada = cat.id;
+                            }
+                        }
+                    }
+                    if (this.categoriaAtiva !== encontrada) {
+                        this.categoriaAtiva = encontrada;
+                        const chip = document.getElementById('chip-cat-' + encontrada);
+                        if (chip && this.$refs.navCategorias) {
+                            const nav = this.$refs.navCategorias;
+                            const left = chip.offsetLeft - (nav.clientWidth / 2) + (chip.clientWidth / 2);
+                            nav.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+                        }
+                    }
+                },
+
+                acaoRapidaCardProduto(produto) {
+                    const temVariacoes = Array.isArray(produto.variacoes) && produto.variacoes.length > 0;
+                    const temAdicionais = Array.isArray(produto.grupos_adicionais) && produto.grupos_adicionais.length > 0;
+                    if (temVariacoes || temAdicionais) {
+                        this.abrirModalProduto(produto);
+                        return;
+                    }
+                    const unitario = produto.preco_efetivo_centavos || produto.preco_centavos || 0;
+                    const idxExistente = this.carrinho.findIndex(i => i.produto_id === produto.id && !i.variacao_id && (!i.adicionais || i.adicionais.length === 0) && !i.observacao);
+                    if (idxExistente >= 0) {
+                        this.alterarQtdCarrinho(idxExistente, 1);
+                    } else {
+                        this.carrinho.push({
+                            produto_id: produto.id,
+                            nome: produto.nome,
+                            variacao_id: null,
+                            variacao_nome: null,
+                            qtd: 1,
+                            unitario_centavos: unitario,
+                            observacao: '',
+                            adicionais: [],
+                            total_centavos: unitario
+                        });
+                        this.salvarEstadoLocal();
+                    }
+                    this.mostrarToast(produto.nome + ' adicionado à sacola!');
                 },
 
                 get cupomDestaque() {
@@ -1213,14 +1311,20 @@
                 },
 
                 get pedidoMinimoCentavos() {
+                    if (this.checkout.canal !== 'delivery' || this.mesaAtiva) return 0;
                     if (!this.areasEntrega || this.areasEntrega.length === 0) return 0;
-                    const minimos = this.areasEntrega.map(a => Number(a.pedido_minimo || 0)).filter(v => v > 0);
+                    const minimos = this.areasEntrega.map(a => Number(a.pedido_minimo_centavos || a.pedido_minimo || 0)).filter(v => v > 0);
                     return minimos.length > 0 ? Math.min(...minimos) : 0;
+                },
+
+                get faltaPedidoMinimoCentavos() {
+                    if (this.checkout.canal !== 'delivery' || this.mesaAtiva || !this.pedidoMinimoCentavos) return 0;
+                    return Math.max(0, this.pedidoMinimoCentavos - this.subtotalCarrinhoCentavos);
                 },
 
                 get metaFreteGratisCentavos() {
                     if (!this.areasEntrega || this.areasEntrega.length === 0) return 0;
-                    const metas = this.areasEntrega.map(a => Number(a.frete_gratis_acima || 0)).filter(v => v > 0);
+                    const metas = this.areasEntrega.map(a => Number(a.frete_gratis_acima_centavos || a.frete_gratis_acima || 0)).filter(v => v > 0);
                     return metas.length > 0 ? Math.min(...metas) : 0;
                 },
 
@@ -1268,15 +1372,24 @@
                     this.salvarEstadoLocal();
                 },
 
-                obterIconeCategoria(nome) {
+                obterIconeCategoriaSvg(nome) {
                     const n = (nome || '').toLowerCase();
-                    if (n.includes('hambúrguer') || n.includes('burger') || n.includes('lanche')) return '';
-                    if (n.includes('pizza')) return '';
-                    if (n.includes('acompanha') || n.includes('porç') || n.includes('petisco')) return '';
-                    if (n.includes('bebida') || n.includes('refri') || n.includes('cerveja')) return '';
-                    if (n.includes('sobremesa') || n.includes('doce') || n.includes('açaí')) return '';
-                    if (n.includes('combo') || n.includes('oferta')) return '';
-                    return '';
+                    if (n.includes('hambúrguer') || n.includes('burger') || n.includes('lanche') || n.includes('artesanal')) {
+                        return '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 11h16a1 1 0 011 1v.5a2.5 2.5 0 01-2.5 2.5H5.5A2.5 2.5 0 013 12.5V12a1 1 0 011-1zm1-3a7 7 0 0114 0H5zm0 10h14a2 2 0 01-2 2H7a2 2 0 01-2-2z"/></svg>';
+                    }
+                    if (n.includes('pizza') || n.includes('calzone')) {
+                        return '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2C6.48 2 2 6.48 2 12l10 10 10-10c0-5.52-4.48-10-10-10zm0 6a2 2 0 110 4 2 2 0 010-4z"/></svg>';
+                    }
+                    if (n.includes('bebida') || n.includes('refri') || n.includes('suco') || n.includes('cerveja') || n.includes('drink')) {
+                        return '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 2h8l-1 7h-6L8 2zM7 9h10l-1.5 11a2 2 0 01-2 1.8h-3a2 2 0 01-2-1.8L7 9zm5-7v3"/></svg>';
+                    }
+                    if (n.includes('sobremesa') || n.includes('doce') || n.includes('açaí') || n.includes('sorvete')) {
+                        return '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3a4 4 0 014 4c0 1.5-.8 2.8-2 3.4L12 21l-2-10.6A4 4 0 018 7a4 4 0 014-4z"/></svg>';
+                    }
+                    if (n.includes('combo') || n.includes('oferta') || n.includes('promo')) {
+                        return '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg>';
+                    }
+                    return '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>';
                 },
 
                 nomeCurtoCategoria(nome) {
@@ -1346,7 +1459,7 @@
                         navigator.share({ title: @json($loja->nome), url: url }).catch(() => {});
                     } else {
                         navigator.clipboard.writeText(url);
-                        alert('Link do cardápio copiado!');
+                        this.mostrarToast('Link do cardápio copiado!');
                     }
                 },
 
@@ -1511,6 +1624,7 @@
                     });
                     this.salvarEstadoLocal();
                     this.modalAberto = false;
+                    this.mostrarToast(this.produtoSelecionado.nome + ' adicionado à sacola!');
                 },
 
                 alterarQtdCarrinho(idx, delta) {
@@ -1550,6 +1664,7 @@
                             : cupomObj.valor
                     };
                     this.mensagemCupom = 'Cupom ' + cupomObj.codigo + ' ativado!';
+                    this.mostrarToast('Cupom ' + cupomObj.codigo + ' ativado na sua sacola!');
                 },
 
                 validarCupomApi() {
@@ -1649,6 +1764,10 @@
                     }
                     const canalFinal = this.mesaAtiva ? 'mesa' : this.checkout.canal;
                     if (canalFinal === 'delivery') {
+                        if (this.faltaPedidoMinimoCentavos > 0) {
+                            this.erroCheckout = 'O pedido mínimo para entrega é de ' + this.formatarCentavos(this.pedidoMinimoCentavos) + '. Adicione mais ' + this.formatarCentavos(this.faltaPedidoMinimoCentavos) + ' em itens.';
+                            return;
+                        }
                         if (!this.checkout.rua.trim() || !this.checkout.numero.trim() || !this.checkout.bairro.trim()) {
                             this.erroCheckout = 'Por favor, preencha Rua, Número e Bairro para entrega.';
                             return;

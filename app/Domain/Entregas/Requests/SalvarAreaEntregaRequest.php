@@ -13,6 +13,15 @@ final class SalvarAreaEntregaRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (!$this->has('frete_gratis_acima_centavos') && $this->has('frete_gratis_acima')) {
+            $this->merge([
+                'frete_gratis_acima_centavos' => $this->input('frete_gratis_acima'),
+            ]);
+        }
+    }
+
     /**
      * @return array<string, array<int, string>>
      */

@@ -21,9 +21,11 @@ final class GrupoAdicionalResource extends JsonResource
         return [
             'id' => $this->id,
             'nome' => $this->nome,
-            'minimo' => $this->minimo,
-            'maximo' => $this->maximo,
-            'obrigatorio' => $this->obrigatorio,
+            'minimo' => (int) $this->minimo,
+            'maximo' => (int) $this->maximo,
+            'min_escolhas' => (int) $this->minimo,
+            'max_escolhas' => (int) $this->maximo,
+            'obrigatorio' => (bool) $this->obrigatorio,
             'tipo' => $this->tipo,
             'opcoes' => OpcaoAdicionalResource::collection($this->whenLoaded('opcoes')),
         ];

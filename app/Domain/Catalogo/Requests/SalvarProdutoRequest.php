@@ -15,6 +15,36 @@ final class SalvarProdutoRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('grupos_adicionais') && is_array($this->input('grupos_adicionais'))) {
+            $normalizados = [];
+            foreach (array_values($this->input('grupos_adicionais')) as $idx => $item) {
+                if (is_numeric($item)) {
+                    $normalizados[] = [
+                        'grupo_id' => (int) $item,
+                        'ordem' => $idx,
+                    ];
+                } elseif (is_array($item) && isset($item['grupo_id'])) {
+                    $normalizados[] = [
+                        'grupo_id' => (int) $item['grupo_id'],
+                        'ordem' => isset($item['ordem']) ? (int) $item['ordem'] : $idx,
+                    ];
+                } elseif (is_array($item) && isset($item['id'])) {
+                    $normalizados[] = [
+                        'grupo_id' => (int) $item['id'],
+                        'ordem' => isset($item['ordem']) ? (int) $item['ordem'] : $idx,
+                    ];
+                }
+            }
+            $this->merge(['grupos_adicionais' => $normalizados]);
+        }
+
+        if (!$this->has('canais') || empty($this->input('canais'))) {
+            $this->merge(['canais' => ['delivery', 'retirada', 'mesa', 'balcao']]);
+        }
+    }
+
     /**
      * @return array<string, array<int, mixed>>
      */
@@ -41,7 +71,7 @@ final class SalvarProdutoRequest extends FormRequest
             'canais.*' => ['string', 'in:delivery,mesa,balcao,retirada'],
             'ordem' => ['nullable', 'integer', 'min:0'],
             'tempo_preparo_min' => ['nullable', 'integer', 'min:0'],
-            'estacao_kds' => ['nullable', 'string', 'in:chapa,forno,fritadeira,sushi,bar,geral'],
+            'estacao_kds' => ['nullable', 'string', 'in:chapa,forno,fritadeira,sushi,bar,sobremesa,geral'],
             'alergenos' => ['nullable', 'array'],
             'codigo_pdv' => ['nullable', 'string', 'max:50'],
             'grupos_adicionais' => ['nullable', 'array'],
