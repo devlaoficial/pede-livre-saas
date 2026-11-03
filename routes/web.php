@@ -41,12 +41,28 @@ Route::get('/p/{slug}', function (
         ->where('ativo', true)
         ->where(fn ($q) => $q->whereNull('validade')->orWhere('validade', '>', now()))
         ->orderByDesc('id')
-        ->get(['codigo', 'tipo', 'valor', 'pedido_minimo', 'uso_unico_por_cliente']);
+        ->get()
+        ->map(fn ($c) => [
+            'codigo' => $c->codigo,
+            'tipo' => $c->tipo,
+            'valor' => $c->valor,
+            'pedido_minimo' => $c->minimo_centavos,
+            'uso_unico_por_cliente' => ($c->limite_por_cliente === 1),
+        ]);
 
     $areasEntrega = AreaEntrega::where('loja_id', $loja->id)
         ->where('ativa', true)
         ->orderBy('taxa_centavos')
-        ->get(['id', 'nome', 'tipo', 'bairro_nome', 'taxa_centavos', 'pedido_minimo', 'frete_gratis_acima']);
+        ->get()
+        ->map(fn ($a) => [
+            'id' => $a->id,
+            'nome' => $a->nome_bairro ?: 'Região Padrão',
+            'tipo' => $a->tipo,
+            'bairro_nome' => $a->nome_bairro,
+            'taxa_centavos' => $a->taxa_centavos,
+            'pedido_minimo' => $a->pedido_minimo_centavos,
+            'frete_gratis_acima' => $a->frete_gratis_acima_centavos,
+        ]);
 
     $mediaAvaliacao = round((float) (Avaliacao::where('loja_id', $loja->id)->avg('nota') ?: 5.0), 1);
 
@@ -83,12 +99,28 @@ Route::get('/p/{slug}/{prefix}/{token}', function (
         ->where('ativo', true)
         ->where(fn ($q) => $q->whereNull('validade')->orWhere('validade', '>', now()))
         ->orderByDesc('id')
-        ->get(['codigo', 'tipo', 'valor', 'pedido_minimo', 'uso_unico_por_cliente']);
+        ->get()
+        ->map(fn ($c) => [
+            'codigo' => $c->codigo,
+            'tipo' => $c->tipo,
+            'valor' => $c->valor,
+            'pedido_minimo' => $c->minimo_centavos,
+            'uso_unico_por_cliente' => ($c->limite_por_cliente === 1),
+        ]);
 
     $areasEntrega = AreaEntrega::where('loja_id', $loja->id)
         ->where('ativa', true)
         ->orderBy('taxa_centavos')
-        ->get(['id', 'nome', 'tipo', 'bairro_nome', 'taxa_centavos', 'pedido_minimo', 'frete_gratis_acima']);
+        ->get()
+        ->map(fn ($a) => [
+            'id' => $a->id,
+            'nome' => $a->nome_bairro ?: 'Região Padrão',
+            'tipo' => $a->tipo,
+            'bairro_nome' => $a->nome_bairro,
+            'taxa_centavos' => $a->taxa_centavos,
+            'pedido_minimo' => $a->pedido_minimo_centavos,
+            'frete_gratis_acima' => $a->frete_gratis_acima_centavos,
+        ]);
 
     $mediaAvaliacao = round((float) (Avaliacao::where('loja_id', $loja->id)->avg('nota') ?: 5.0), 1);
 
