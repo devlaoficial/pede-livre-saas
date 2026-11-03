@@ -1,22 +1,60 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="scroll-smooth">
+<html lang="pt-BR" class="scroll-smooth bg-[#06080f] text-slate-100">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#0b0f19">
+    <meta name="theme-color" content="#06080f">
     <link rel="manifest" href="/manifest.json">
-    <title>PedeLivre — Venda pelo seu canal. Fique com 100% do lucro.</title>
-    <meta name="description" content="Cardápio digital com PIX na hora, PDV de balcão, KDS para a cozinha e CRM com WhatsApp. Sem comissão e sem taxas intermediárias.">
+    <title>PedeLivre — Plataforma Completa de Delivery, PDV, KDS e Cardápio Digital (0% Comissão)</title>
+    <meta name="description" content="Venda pelo seu próprio canal com 0% de comissão. Cardápio digital de alta conversão, PIX na hora, PDV de balcão, KDS de cozinha, QR Code de mesa e WhatsApp IA.">
+
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         [x-cloak] { display: none !important; }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #06080f;
+        }
+        .font-mono-code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .bg-grid-pattern {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            border-radius: 999px;
+            background: #1a2236;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #f43f5e;
+            border: 3px solid #ffffff;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(244, 63, 94, 0.55);
+        }
     </style>
 </head>
-<body class="bg-[#0b0f19] text-slate-100 antialiased font-sans selection:bg-[#f43f5e] selection:text-white"
+<body class="bg-[#06080f] text-slate-100 antialiased selection:bg-rose-500 selection:text-white overflow-x-hidden"
       x-data="{
-          faturamentoMensal: 30000,
+          abaPreviewHero: 'cardapio',
+          faturamentoMensal: 35000,
           taxaApp: 23,
+          planoSimulador: 'presencial',
           faqAberta: 1,
           menuMobile: false,
 
@@ -25,142 +63,258 @@
           },
 
           get custoPedelivreMensal() {
+              if (this.planoSimulador === 'delivery') return 99.90;
+              if (this.planoSimulador === 'premium') return 249.90;
               return 149.90;
           },
 
+          get economiaMensalLiquida() {
+              return Math.max(0, this.perdaMensalHoje - this.custoPedelivreMensal);
+          },
+
           get economiaAnualEstimada() {
-              const economiaMensal = this.perdaMensalHoje - this.custoPedelivreMensal;
-              return Math.max(0, Math.round(economiaMensal * 12));
+              return Math.max(0, Math.round(this.economiaMensalLiquida * 12));
           },
 
           formatarMoeda(val) {
-              return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+              return Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
           }
       }">
 
-    <!-- ==================== NAVBAR ==================== -->
-    <header class="sticky top-0 z-50 bg-[#0b0f19]/90 backdrop-blur-md border-b border-[#171e30]">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 py-3.5 flex items-center justify-between">
-            <!-- Logo -->
-            <a href="/" class="flex items-center gap-2.5 group">
-                <div class="w-9 h-9 rounded-xl bg-[#e11d48] flex items-center justify-center text-white font-black text-lg shadow-md shadow-rose-600/30 group-hover:scale-105 transition">
+    <!-- EFEITOS DE LUZ AMBIENTE NO TOPO -->
+    <div class="fixed inset-x-0 top-0 pointer-events-none z-0 overflow-hidden h-[650px]">
+        <div class="absolute -top-40 left-1/4 w-[520px] h-[520px] bg-rose-600/15 rounded-full blur-[130px]"></div>
+        <div class="absolute top-10 right-1/4 w-[440px] h-[440px] bg-amber-500/10 rounded-full blur-[130px]"></div>
+    </div>
+
+    <!-- ==================== 1. NAVBAR GLASSMORPHISM ==================== -->
+    <header class="sticky top-0 z-50 bg-[#06080f]/85 backdrop-blur-xl border-b border-white/[0.07]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- Marca -->
+            <a href="/" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-amber-500 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-rose-600/30 group-hover:scale-105 transition duration-300">
                     P
                 </div>
-                <span class="text-xl font-black text-white tracking-tight">Pede<span class="text-[#f43f5e]">Livre</span></span>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xl font-black text-white tracking-tight">Pede<span class="text-rose-500">Livre</span></span>
+                        <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/25">OS</span>
+                    </div>
+                    <span class="block text-[10px] text-slate-400 font-medium -mt-0.5">0% Comissão · Gestão Completa</span>
+                </div>
             </a>
 
-            <!-- Links de Navegação -->
-            <nav class="hidden md:flex items-center gap-7 text-xs font-bold text-slate-300">
-                <a href="#recursos" class="hover:text-white transition">Recursos</a>
-                <a href="#calculadora" class="hover:text-white transition">Economia</a>
-                <a href="#planos" class="hover:text-white transition">Planos</a>
+            <!-- Navegação Desktop -->
+            <nav class="hidden lg:flex items-center gap-8 text-xs font-bold text-slate-300">
+                <a href="#ecossistema" class="hover:text-white transition">Ecossistema</a>
+                <a href="#simulador" class="hover:text-white transition">Calculadora de Lucro</a>
+                <a href="#comparativo" class="hover:text-white transition">Comparativo</a>
+                <a href="#planos" class="hover:text-white transition">Planos e Preços</a>
                 <a href="#faq" class="hover:text-white transition">Dúvidas</a>
             </nav>
 
-            <!-- Ações Direita -->
+            <!-- Botões de Ação -->
             <div class="hidden sm:flex items-center gap-3">
-                <a href="/login" class="text-xs font-bold text-slate-300 hover:text-white px-3 py-2 rounded-xl transition">
-                    Entrar
+                <a href="/login" class="text-xs font-bold text-slate-200 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] px-4 py-2.5 rounded-xl transition">
+                    Entrar no Painel
                 </a>
-                <a href="/cadastro?plano=premium" class="bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-lg shadow-rose-600/25 transition active:scale-95">
-                    Criar loja grátis
+                <a href="/cadastro?plano=premium" class="bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-lg shadow-rose-600/30 transition active:scale-95 flex items-center gap-1.5">
+                    <span>Criar Loja Grátis</span>
+                    <span>→</span>
                 </a>
             </div>
 
             <!-- Botão Menu Mobile -->
-            <button @click="menuMobile = !menuMobile" class="sm:hidden p-2 rounded-xl bg-[#141928] border border-[#1e2638] text-slate-300">
-                <span x-text="menuMobile ? '✕' : '☰'" class="font-bold"></span>
+            <button @click="menuMobile = !menuMobile" class="sm:hidden p-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200">
+                <span x-text="menuMobile ? '✕' : '☰'" class="font-bold text-sm"></span>
             </button>
         </div>
 
-        <!-- Drawer Mobile -->
-        <div x-cloak x-show="menuMobile" class="sm:hidden bg-[#0d1220] border-b border-[#1b2336] p-4 space-y-3">
+        <!-- Menu Mobile -->
+        <div x-cloak x-show="menuMobile" class="sm:hidden bg-[#0b0f1c] border-b border-white/[0.08] px-4 py-5 space-y-4">
             <div class="flex flex-col gap-2 text-xs font-bold text-slate-300">
-                <a href="#recursos" @click="menuMobile = false" class="p-2 hover:bg-[#151c2e] rounded-lg">Recursos</a>
-                <a href="#calculadora" @click="menuMobile = false" class="p-2 hover:bg-[#151c2e] rounded-lg">Economia</a>
-                <a href="#planos" @click="menuMobile = false" class="p-2 hover:bg-[#151c2e] rounded-lg">Planos</a>
-                <a href="#faq" @click="menuMobile = false" class="p-2 hover:bg-[#151c2e] rounded-lg">Dúvidas</a>
+                <a href="#ecossistema" @click="menuMobile = false" class="p-2.5 hover:bg-white/[0.05] rounded-xl">Ecossistema Completo</a>
+                <a href="#simulador" @click="menuMobile = false" class="p-2.5 hover:bg-white/[0.05] rounded-xl">Calculadora de Economia</a>
+                <a href="#comparativo" @click="menuMobile = false" class="p-2.5 hover:bg-white/[0.05] rounded-xl">Comparativo de Mercado</a>
+                <a href="#planos" @click="menuMobile = false" class="p-2.5 hover:bg-white/[0.05] rounded-xl">Planos e Preços</a>
+                <a href="#faq" @click="menuMobile = false" class="p-2.5 hover:bg-white/[0.05] rounded-xl">Perguntas Frequentes</a>
             </div>
-            <div class="pt-2 border-t border-[#1b2336] flex gap-2">
-                <a href="/login" class="flex-1 text-center py-2.5 bg-[#151c2e] rounded-xl text-xs font-bold text-white">Entrar</a>
-                <a href="/cadastro?plano=premium" class="flex-1 text-center py-2.5 bg-[#e11d48] rounded-xl text-xs font-black text-white">Criar loja</a>
+            <div class="pt-3 border-t border-white/[0.08] grid grid-cols-2 gap-2.5">
+                <a href="/login" class="text-center py-3 bg-white/[0.06] border border-white/[0.08] rounded-xl text-xs font-bold text-white">Entrar</a>
+                <a href="/cadastro?plano=premium" class="text-center py-3 bg-rose-600 rounded-xl text-xs font-black text-white shadow-lg shadow-rose-600/30">Testar 14 Dias</a>
             </div>
         </div>
     </header>
 
-    <!-- ==================== HERO SECTION ==================== -->
-    <section class="relative pt-12 pb-16 lg:pt-20 lg:pb-24 overflow-hidden">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-12 gap-12 items-center">
+    <!-- ==================== 2. HERO SECTION COM VITRINE INTERATIVA ==================== -->
+    <section class="relative z-10 pt-12 pb-20 lg:pt-20 lg:pb-28 bg-grid-pattern border-b border-white/[0.06]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-12 gap-12 lg:gap-10 items-center">
             
-            <!-- Texto do Hero -->
+            <!-- Coluna Esquerda: Copywriting de Alta Conversão -->
             <div class="lg:col-span-7 space-y-6">
-                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#151c2e] border border-[#212b44] text-slate-300 text-xs font-semibold">
-                    <span class="w-2 h-2 rounded-full bg-[#f43f5e]"></span>
-                    <span>0% comissão · Sem taxas por venda</span>
+                <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs font-bold shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                    <span class="w-2 h-2 rounded-full bg-rose-500 -ml-4"></span>
+                    <span>0% de comissão sobre vendas · Dinheiro na hora via PIX</span>
                 </div>
 
-                <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.08]">
-                    Venda pelo seu canal. <br>
-                    <span class="text-[#f43f5e]">Fique com 100% do lucro.</span>
+                <h1 class="text-3xl sm:text-5xl lg:text-[56px] font-black text-white tracking-tight leading-[1.08]">
+                    Transforme seu restaurante em uma <span class="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 via-rose-500 to-amber-400">máquina de vendas diretas.</span>
                 </h1>
 
-                <p class="text-sm sm:text-base text-slate-400 max-w-xl leading-relaxed">
-                    Cardápio digital com PIX na hora, PDV de balcão, KDS para a cozinha e CRM com WhatsApp. Tudo integrado, sem mensalidades escondidas e sem intermediários.
+                <p class="text-sm sm:text-base lg:text-lg text-slate-300/90 max-w-2xl leading-relaxed font-normal">
+                    Pare de entregar até 27% do seu faturamento para aplicativos intermediários. Tenha seu próprio <strong class="text-white font-bold">Cardápio Digital com Order Bump</strong>, <strong class="text-white font-bold">PIX Instantâneo</strong>, <strong class="text-white font-bold">PDV de Balcão</strong>, <strong class="text-white font-bold">KDS para Cozinha</strong>, <strong class="text-white font-bold">QR Code de Mesa</strong> e <strong class="text-white font-bold">Atendimento IA no WhatsApp</strong>.
                 </p>
 
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                <!-- CTAs Principais -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-2">
                     <a href="/cadastro?plano=premium" 
-                       class="bg-[#e11d48] hover:bg-[#be123c] text-white font-black px-6 py-3.5 rounded-2xl text-xs sm:text-sm text-center shadow-xl shadow-rose-600/30 transition active:scale-95">
-                        Criar minha loja grátis
+                       class="bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-110 text-white font-black px-7 py-4 rounded-2xl text-sm text-center shadow-2xl shadow-rose-600/30 transition active:scale-95 flex items-center justify-center gap-2">
+                        <span>🚀 Criar Minha Loja Grátis (14 Dias)</span>
                     </a>
-                    <a href="#recursos" 
-                       class="bg-[#121624] hover:bg-[#181d30] text-slate-200 border border-[#1e273c] font-bold px-6 py-3.5 rounded-2xl text-xs sm:text-sm text-center transition">
-                        Conhecer todos os recursos
+                    <a href="#simulador" 
+                       class="bg-[#101626] hover:bg-[#161e33] text-slate-200 border border-white/[0.1] font-bold px-6 py-4 rounded-2xl text-sm text-center transition flex items-center justify-center gap-2">
+                        <span>🧮 Simular Minha Economia</span>
                     </a>
                 </div>
 
-                <div class="flex items-center gap-2 text-xs text-slate-500 pt-2">
-                    <span>14 dias grátis</span>
-                    <span>·</span>
-                    <span>Sem cartão de crédito</span>
-                    <span>·</span>
-                    <span>Cancele quando quiser</span>
+                <!-- Selos de Garantia Operacional -->
+                <div class="pt-3 grid grid-cols-3 gap-3 max-w-lg border-t border-white/[0.08]">
+                    <div class="flex items-center gap-2 text-xs text-slate-300">
+                        <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-[11px]">✓</span>
+                        <span>Sem cartão no teste</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-slate-300">
+                        <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-[11px]">✓</span>
+                        <span>Pronto em 5 minutos</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-slate-300">
+                        <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-[11px]">✓</span>
+                        <span>Sem fidelidade</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Card Demonstrativo -->
+            <!-- Coluna Direita: Showcase Interativo em 3 Abas (Cardápio PIX / Kanban KDS / WhatsApp IA) -->
             <div class="lg:col-span-5">
-                <div class="bg-[#121624] border border-[#1e2638] rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative">
-                    <div class="flex items-center justify-between border-b border-[#1e2638] pb-3">
-                        <span class="text-xs font-bold text-white">Pedido confirmado</span>
-                        <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-black px-2.5 py-0.5 rounded-md">
-                            PIX direto
-                        </span>
+                <div class="bg-[#0d1220]/90 backdrop-blur-xl border border-white/[0.1] rounded-3xl p-4 sm:p-5 shadow-2xl space-y-4 relative">
+                    <!-- Seletor de Telas do Sistema -->
+                    <div class="grid grid-cols-3 gap-1.5 bg-[#06080f] p-1.5 rounded-2xl border border-white/[0.07] text-[11px] font-extrabold">
+                        <button type="button" @click="abaPreviewHero = 'cardapio'"
+                            class="py-2 px-2 rounded-xl transition flex items-center justify-center gap-1"
+                            :class="abaPreviewHero === 'cardapio' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-white'">
+                            <span>📱</span> Cardápio PIX
+                        </button>
+                        <button type="button" @click="abaPreviewHero = 'kanban'"
+                            class="py-2 px-2 rounded-xl transition flex items-center justify-center gap-1"
+                            :class="abaPreviewHero === 'kanban' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-white'">
+                            <span>👨‍🍳</span> Kanban &amp; KDS
+                        </button>
+                        <button type="button" @click="abaPreviewHero = 'whatsapp'"
+                            class="py-2 px-2 rounded-xl transition flex items-center justify-center gap-1"
+                            :class="abaPreviewHero === 'whatsapp' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-white'">
+                            <span>💬</span> Robô IA
+                        </button>
                     </div>
 
-                    <div class="space-y-2.5 text-xs">
-                        <div class="flex justify-between items-center text-slate-300">
-                            <span>1x Smash Burger Especial</span>
-                            <span class="font-bold text-white">R$ 38,90</span>
+                    <!-- ABA 1: PREVIEW CARDÁPIO & PIX INSTANTÂNEO -->
+                    <div x-show="abaPreviewHero === 'cardapio'" class="space-y-3.5 text-xs">
+                        <div class="flex items-center justify-between bg-[#131a2e] border border-white/[0.07] rounded-2xl p-3">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-xl bg-rose-600 flex items-center justify-center font-black text-white text-sm">B</div>
+                                <div>
+                                    <div class="font-black text-white text-xs">Pedido #4829 Confirmado</div>
+                                    <div class="text-[11px] text-slate-400">Delivery · Tempo médio: 30–40 min</div>
+                                </div>
+                            </div>
+                            <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-black px-2.5 py-1 rounded-full">
+                                ⚡ PIX Aprovado
+                            </span>
                         </div>
-                        <div class="flex justify-between items-center text-slate-300">
-                            <span>1x Batata Rústica Trufada</span>
-                            <span class="font-bold text-white">R$ 18,90</span>
+
+                        <div class="bg-[#090d18] border border-white/[0.06] rounded-2xl p-3.5 space-y-2.5">
+                            <div class="flex justify-between items-center text-slate-200">
+                                <div>
+                                    <span class="font-bold text-white">2x Smash Burger Duplo Bacon</span>
+                                    <span class="block text-[10px] text-slate-400">+ Cheddar Inglês, + Maionese Defumada</span>
+                                </div>
+                                <span class="font-bold text-white">R$ 74,80</span>
+                            </div>
+                            <div class="flex justify-between items-center text-slate-200 pt-2 border-t border-white/[0.05]">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold">Order Bump</span>
+                                    <span class="font-semibold text-white">2x Coca-Cola Lata 350ml</span>
+                                </div>
+                                <span class="font-bold text-emerald-400">+ R$ 14,00</span>
+                            </div>
+                            <div class="pt-2.5 border-t border-white/[0.08] flex justify-between items-baseline">
+                                <span class="text-slate-400 font-bold">Valor creditado na sua conta:</span>
+                                <span class="text-lg font-black text-emerald-400">R$ 88,80 (100%)</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center text-slate-300">
-                            <span>1x Coca-Cola Zero</span>
-                            <span class="font-bold text-white">R$ 6,00</span>
+
+                        <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 flex items-center justify-between gap-2 text-emerald-300 font-bold">
+                            <div class="flex items-center gap-2">
+                                <span class="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-[11px]">✓</span>
+                                <span>Comissão cobrada pelo PedeLivre:</span>
+                            </div>
+                            <span class="font-black text-white bg-emerald-600 px-2.5 py-0.5 rounded-lg text-xs">R$ 0,00</span>
                         </div>
                     </div>
 
-                    <div class="pt-3 border-t border-[#1e2638] flex justify-between items-baseline">
-                        <span class="font-bold text-xs text-slate-400">Total:</span>
-                        <span class="text-xl font-black text-white">R$ 63,80</span>
+                    <!-- ABA 2: PREVIEW KANBAN & KDS POR ESTAÇÃO -->
+                    <div x-cloak x-show="abaPreviewHero === 'kanban'" class="space-y-3 text-xs">
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div class="bg-[#090d18] border border-rose-500/30 rounded-2xl p-3 space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-black text-white">#4830 · MESA 04</span>
+                                    <span class="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-bold">Novo · 1 min</span>
+                                </div>
+                                <div class="text-[11px] text-slate-300 space-y-1">
+                                    <div>1x Pizza G Meio a Meio <span class="text-amber-400">(Forno)</span></div>
+                                    <div>2x Suco Natural Laranja <span class="text-sky-400">(Bar)</span></div>
+                                </div>
+                                <div class="bg-rose-600 text-white text-center py-1.5 rounded-xl font-black text-[11px]">
+                                    ✓ Aceitar e Imprimir 80mm
+                                </div>
+                            </div>
+
+                            <div class="bg-[#090d18] border border-amber-500/30 rounded-2xl p-3 space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-black text-white">#4828 · DELIVERY</span>
+                                    <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-bold">Preparo · 8 min</span>
+                                </div>
+                                <div class="text-[11px] text-slate-300 space-y-1">
+                                    <div class="line-through text-slate-500">✓ 2x Burger Artesanal (Chapa)</div>
+                                    <div>⏳ 1x Batata Frita G (Fritadeira)</div>
+                                </div>
+                                <div class="bg-amber-500 text-slate-950 text-center py-1.5 rounded-xl font-black text-[11px]">
+                                    🛵 Despachar c/ Motoboy
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#131a2e] border border-white/[0.07] rounded-2xl p-3 flex items-center justify-between text-[11px]">
+                            <span class="text-slate-300 font-semibold">🖨️ Impressão Térmica 80mm Automática</span>
+                            <span class="text-emerald-400 font-bold">● KDS Sincronizado</span>
+                        </div>
                     </div>
 
-                    <div class="bg-[#102920] border border-emerald-500/30 rounded-2xl p-3 flex items-center gap-2.5 text-xs text-emerald-400 font-bold">
-                        <span class="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-[11px] shrink-0">✓</span>
-                        <span>PIX recebido na sua conta em 3s</span>
+                    <!-- ABA 3: PREVIEW ROBÔ WHATSAPP IA & CASHBACK -->
+                    <div x-cloak x-show="abaPreviewHero === 'whatsapp'" class="space-y-2.5 text-xs">
+                        <div class="bg-[#090d18] border border-white/[0.07] rounded-2xl p-3.5 space-y-2.5">
+                            <div class="bg-[#162038] text-slate-200 p-2.5 rounded-2xl rounded-tl-sm max-w-[85%] text-[11px]">
+                                Olá! Vocês estão abertos? Qual o tempo de entrega para o Centro?
+                            </div>
+                            <div class="bg-emerald-950/80 border border-emerald-500/30 text-emerald-100 p-2.5 rounded-2xl rounded-tr-sm ml-auto max-w-[90%] text-[11px] space-y-1">
+                                <div class="font-bold text-emerald-400">🤖 Assistente IA da Loja</div>
+                                <p>Olá! Estamos abertos sim! Para o bairro <strong>Centro</strong> nossa entrega leva cerca de <strong>30 min</strong> (Taxa R$ 5,00 ou Grátis acima de R$ 80). Faça seu pedido com 5% de Cashback no link abaixo:</p>
+                            </div>
+                        </div>
+                        <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-2.5 px-3.5 flex items-center justify-between text-[11px] text-emerald-300 font-bold">
+                            <span>💬 Notificações automáticas a cada mudança de status</span>
+                            <span>24h/7d</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -168,413 +322,467 @@
         </div>
     </section>
 
-    <!-- ==================== BARRA DE CONFIANÇA / 4 STATS ==================== -->
-    <section class="border-y border-[#171e30] bg-[#090d16]">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div>
-                <div class="text-2xl sm:text-3xl font-black text-white">0%</div>
-                <div class="text-xs text-slate-400 mt-1 font-medium">Taxa sobre pedidos</div>
+    <!-- ==================== 3. BARRA EXECUTIVA DE MÉTRICAS ==================== -->
+    <section class="bg-[#090d18] border-b border-white/[0.06]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+            <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                <div class="text-2xl sm:text-3xl font-black text-emerald-400">0% Taxa</div>
+                <div class="text-xs text-slate-400 mt-1 font-medium">Nenhuma comissão sobre seus pedidos</div>
             </div>
-            <div>
-                <div class="text-2xl sm:text-3xl font-black text-white">PIX na hora</div>
-                <div class="text-xs text-slate-400 mt-1 font-medium">Sem esperar 30 dias</div>
+            <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                <div class="text-2xl sm:text-3xl font-black text-white">PIX em 3s</div>
+                <div class="text-xs text-slate-400 mt-1 font-medium">Mercado Pago ou Chave PIX Direta BCB</div>
             </div>
-            <div>
-                <div class="text-2xl sm:text-3xl font-black text-white">Celular e PC</div>
-                <div class="text-xs text-slate-400 mt-1 font-medium">Sem maquininha cara</div>
+            <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                <div class="text-2xl sm:text-3xl font-black text-amber-400">4 Canais</div>
+                <div class="text-xs text-slate-400 mt-1 font-medium">Delivery, Retirada, Balcão F2 e Mesa QR</div>
             </div>
-            <div>
-                <div class="text-2xl sm:text-3xl font-black text-white">14 dias</div>
-                <div class="text-xs text-slate-400 mt-1 font-medium">Grátis para testar</div>
+            <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                <div class="text-2xl sm:text-3xl font-black text-rose-400">+28% Ticket</div>
+                <div class="text-xs text-slate-400 mt-1 font-medium">Com Order Bump, Cupons e Cashback</div>
             </div>
         </div>
     </section>
 
-    <!-- ==================== CALCULADORA INTERATIVA DE ECONOMIA ==================== -->
-    <section id="calculadora" class="py-16 lg:py-24">
+    <!-- ==================== 4. ECOSSISTEMA COMPLETO (6 PILARES) ==================== -->
+    <section id="ecossistema" class="py-20 lg:py-28 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
+            <div class="text-center max-w-3xl mx-auto space-y-3">
+                <span class="text-[11px] font-black uppercase tracking-widest text-rose-500 bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-full">Ecossistema Completo</span>
+                <h2 class="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                    Tudo que os líderes do mercado oferecem, integrado em uma única plataforma
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    Substitua múltiplos sistemas fragmentados por uma operação unificada que atende do pedido no celular até o fechamento de caixa e acerto dos motoboys.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Pilar 1 -->
+                <div class="bg-[#0d1220] border border-white/[0.08] hover:border-rose-500/40 rounded-3xl p-6 space-y-4 transition group shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center text-xl">
+                            📱
+                        </div>
+                        <span class="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400">Alta Conversão</span>
+                    </div>
+                    <h3 class="font-black text-base text-white group-hover:text-rose-400 transition">Cardápio Digital com Order Bump &amp; PIX</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Vitrine automática de ofertas ("De/Por"), sugestão inteligente de bebidas no checkout (Order Bump), barra de progresso para frete grátis, fotos WebP ultrarrápidas e pagamento PIX instantâneo.
+                    </p>
+                </div>
+
+                <!-- Pilar 2 -->
+                <div class="bg-[#0d1220] border border-white/[0.08] hover:border-amber-500/40 rounded-3xl p-6 space-y-4 transition group shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center text-xl">
+                            ⚡
+                        </div>
+                        <span class="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300">Atalho F2</span>
+                    </div>
+                    <h3 class="font-black text-base text-white group-hover:text-amber-400 transition">PDV de Balcão &amp; Frente de Caixa</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Lance pedidos presenciais ou por telefone em segundos usando o atalho F2, calcule troco automaticamente e controle abertura de caixa, sangrias, suprimentos e conferência de gaveta.
+                    </p>
+                </div>
+
+                <!-- Pilar 3 -->
+                <div class="bg-[#0d1220] border border-white/[0.08] hover:border-sky-500/40 rounded-3xl p-6 space-y-4 transition group shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-2xl bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center text-xl">
+                            👨‍🍳
+                        </div>
+                        <span class="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-300">Modo Smart TV</span>
+                    </div>
+                    <h3 class="font-black text-base text-white group-hover:text-sky-400 transition">Kanban Sonoro &amp; KDS por Estação</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Campainha sonora contínua para novos pedidos, impressão térmica 80mm automática e tela KDS separada por estação (Chapa, Forno, Fritadeira, Bar e Sobremesa) com alerta de atraso.
+                    </p>
+                </div>
+
+                <!-- Pilar 4 -->
+                <div class="bg-[#0d1220] border border-white/[0.08] hover:border-purple-500/40 rounded-3xl p-6 space-y-4 transition group shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center text-xl">
+                            🪑
+                        </div>
+                        <span class="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-300">Autoatendimento</span>
+                    </div>
+                    <h3 class="font-black text-base text-white group-hover:text-purple-400 transition">QR Code de Mesa &amp; Divisão de Conta</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        QR Code individual anti-fraude para cada mesa do salão. O cliente pede direto pelo celular, chama o garçom em 1 clique com alerta sonoro no caixa e você divide a conta por pessoa facilmente.
+                    </p>
+                </div>
+
+                <!-- Pilar 5 -->
+                <div class="bg-[#0d1220] border border-white/[0.08] hover:border-emerald-500/40 rounded-3xl p-6 space-y-4 transition group shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl">
+                            🛵
+                        </div>
+                        <span class="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300">Logística Completa</span>
+                    </div>
+                    <h3 class="font-black text-base text-white group-hover:text-emerald-400 transition">Frete Inteligente &amp; Acerto de Motoboys</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Configure taxas de entrega por Bairro ou Raio de Distância (KM), despache pedidos com link Google Maps para o motoboy e feche o acerto financeiro da noite com extrato em 1 clique.
+                    </p>
+                </div>
+
+                <!-- Pilar 6 -->
+                <div class="bg-[#0d1220] border border-white/[0.08] hover:border-rose-500/40 rounded-3xl p-6 space-y-4 transition group shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center text-xl">
+                            💬
+                        </div>
+                        <span class="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-300">Retenção &amp; IA</span>
+                    </div>
+                    <h3 class="font-black text-base text-white group-hover:text-rose-400 transition">WhatsApp IA, Cashback &amp; Win-Back</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Conecte seu WhatsApp via QR Code para avisar o cliente em cada etapa do pedido, responder dúvidas com Inteligência Artificial e reativar clientes sumidos com cupom automático.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== 5. SIMULADOR INTERATIVO DE ECONOMIA ==================== -->
+    <section id="simulador" class="py-20 bg-[#090d18] border-y border-white/[0.06]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid lg:grid-cols-12 gap-10 items-center">
+            <div class="grid lg:grid-cols-12 gap-12 items-center">
                 
-                <div class="lg:col-span-6 space-y-5">
-                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-[#f43f5e]">CALCULADORA</span>
+                <!-- Controles da Calculadora -->
+                <div class="lg:col-span-6 space-y-6">
+                    <span class="text-[11px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-3 py-1 rounded-full">Simulador Financeiro</span>
                     <h2 class="text-2xl sm:text-4xl font-black text-white leading-tight">
-                        Quanto dinheiro volta para o seu bolso?
+                        Descubra quanto lucro volta para o caixa do seu restaurante
                     </h2>
                     <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                        Veja quanto você economiza ao substituir as taxas abusivas dos marketplaces (12% a 27%) pelo PedeLivre com taxa ZERO.
+                        Ajuste os controles abaixo com o volume mensal do seu delivery e compare o custo de comissões dos aplicativos com a mensalidade fixa do PedeLivre.
                     </p>
 
-                    <div class="space-y-2 pt-2">
-                        <div class="flex justify-between text-xs">
-                            <span class="font-bold text-slate-300">Faturamento mensal no delivery:</span>
-                            <span class="font-black text-white text-sm" x-text="formatarMoeda(faturamentoMensal)"></span>
+                    <!-- Slider 1: Faturamento -->
+                    <div class="bg-[#0d1323] border border-white/[0.07] rounded-2xl p-4 space-y-3">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-slate-300">Seu faturamento mensal em pedidos:</span>
+                            <span class="font-black text-white text-base bg-rose-500/15 border border-rose-500/30 px-3 py-1 rounded-xl" x-text="formatarMoeda(faturamentoMensal)"></span>
                         </div>
-                        <input type="range" min="5000" max="150000" step="5000" x-model.number="faturamentoMensal"
-                            class="w-full accent-[#f43f5e] cursor-pointer">
+                        <input type="range" min="5000" max="200000" step="5000" x-model.number="faturamentoMensal" class="w-full">
+                        <div class="flex justify-between text-[10px] text-slate-500 font-bold">
+                            <span>R$ 5.000/mês</span>
+                            <span>R$ 100.000/mês</span>
+                            <span>R$ 200.000/mês</span>
+                        </div>
                     </div>
 
-                    <div class="space-y-2 pt-1">
-                        <div class="flex justify-between text-xs">
-                            <span class="font-bold text-slate-300">Taxa média cobrada pelos apps:</span>
-                            <span class="font-black text-[#f43f5e] text-sm" x-text="taxaApp + '%'"></span>
+                    <!-- Slider 2: Taxa Marketplace -->
+                    <div class="bg-[#0d1323] border border-white/[0.07] rounded-2xl p-4 space-y-3">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-slate-300">Comissão média cobrada pelos apps:</span>
+                            <span class="font-black text-rose-400 text-base bg-rose-500/15 border border-rose-500/30 px-3 py-1 rounded-xl" x-text="taxaApp + '%'"></span>
                         </div>
-                        <input type="range" min="10" max="30" step="1" x-model.number="taxaApp"
-                            class="w-full accent-[#f43f5e] cursor-pointer">
+                        <input type="range" min="12" max="28" step="1" x-model.number="taxaApp" class="w-full">
+                        <div class="flex justify-between text-[10px] text-slate-500 font-bold">
+                            <span>12% (Plano Básico)</span>
+                            <span>20% (Média)</span>
+                            <span>27%+ (Entrega Parceira)</span>
+                        </div>
                     </div>
 
-                    <div class="pt-3">
-                        <a href="/cadastro?plano=premium" class="inline-block bg-[#e11d48] hover:bg-[#be123c] text-white font-black px-6 py-3.5 rounded-2xl text-xs sm:text-sm shadow-xl shadow-rose-600/30 transition">
-                            Começar a economizar agora
+                    <!-- Seletor de Plano para Comparação -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-400 block">Plano PedeLivre para comparar:</label>
+                        <div class="grid grid-cols-3 gap-2 text-xs">
+                            <button type="button" @click="planoSimulador = 'delivery'"
+                                class="py-2.5 px-3 rounded-xl font-bold border transition"
+                                :class="planoSimulador === 'delivery' ? 'bg-rose-600 border-rose-500 text-white' : 'bg-[#0d1323] border-white/[0.08] text-slate-400 hover:text-white'">
+                                Delivery (R$ 99,90)
+                            </button>
+                            <button type="button" @click="planoSimulador = 'presencial'"
+                                class="py-2.5 px-3 rounded-xl font-bold border transition"
+                                :class="planoSimulador === 'presencial' ? 'bg-rose-600 border-rose-500 text-white' : 'bg-[#0d1323] border-white/[0.08] text-slate-400 hover:text-white'">
+                                Presencial (R$ 149,90)
+                            </button>
+                            <button type="button" @click="planoSimulador = 'premium'"
+                                class="py-2.5 px-3 rounded-xl font-bold border transition"
+                                :class="planoSimulador === 'premium' ? 'bg-rose-600 border-rose-500 text-white' : 'bg-[#0d1323] border-white/[0.08] text-slate-400 hover:text-white'">
+                                Premium (R$ 249,90)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultado Financeiro -->
+                <div class="lg:col-span-6">
+                    <div class="bg-gradient-to-br from-[#11182b] to-[#0b101d] border border-white/[0.1] rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden">
+                        <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                        <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
+                            <div>
+                                <span class="text-xs font-bold text-slate-400 block">Resultado da Simulação</span>
+                                <h3 class="text-lg font-black text-white">Seu Comparativo de Rentabilidade</h3>
+                            </div>
+                            <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-black px-3 py-1 rounded-full">0% Comissão</span>
+                        </div>
+
+                        <div class="space-y-3 text-xs sm:text-sm">
+                            <div class="flex justify-between items-center p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                                <span class="text-rose-200 font-medium">Comissão paga aos apps por mês:</span>
+                                <span class="font-black text-rose-400 text-base" x-text="'- ' + formatarMoeda(perdaMensalHoje)"></span>
+                            </div>
+
+                            <div class="flex justify-between items-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                                <span class="text-slate-300 font-medium">Mensalidade fixa no PedeLivre:</span>
+                                <span class="font-black text-white text-base" x-text="formatarMoeda(custoPedelivreMensal)"></span>
+                            </div>
+
+                            <div class="flex justify-between items-center p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
+                                <span class="text-emerald-200 font-bold">Lucro extra todo mês no seu caixa:</span>
+                                <span class="font-black text-emerald-400 text-base" x-text="'+ ' + formatarMoeda(economiaMensalLiquida)"></span>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#06080f] border border-emerald-500/30 rounded-2xl p-5 text-center space-y-1">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block">Economia Acumulada em 12 Meses</span>
+                            <div class="text-3xl sm:text-5xl font-black text-emerald-400 tracking-tight" x-text="formatarMoeda(economiaAnualEstimada)"></div>
+                            <p class="text-[11px] text-slate-400 pt-1">Valor que permanece 100% no caixa do seu restaurante.</p>
+                        </div>
+
+                        <a :href="'/cadastro?plano=' + planoSimulador" class="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:brightness-110 text-slate-950 font-black py-4 rounded-2xl text-sm shadow-xl transition flex items-center justify-center gap-2">
+                            <span>Começar Meu Teste Grátis de 14 Dias</span>
+                            <span>→</span>
                         </a>
                     </div>
                 </div>
 
-                <div class="lg:col-span-6">
-                    <div class="bg-[#121624] border border-[#1e2638] rounded-3xl p-6 sm:p-8 space-y-4 shadow-2xl">
-                        <span class="text-xs font-bold text-slate-400 block">Com o PedeLivre você fica com 100%</span>
-                        
-                        <div class="space-y-2.5 text-xs sm:text-sm">
-                            <div class="flex justify-between text-slate-300">
-                                <span>Faturamento bruto:</span>
-                                <span class="font-bold text-white" x-text="formatarMoeda(faturamentoMensal)"></span>
-                            </div>
-                            <div class="flex justify-between text-[#f43f5e]">
-                                <span>O que você perde hoje em taxas:</span>
-                                <span class="font-extrabold" x-text="'- ' + formatarMoeda(perdaMensalHoje) + ' / mês'"></span>
-                            </div>
-                            <div class="flex justify-between text-slate-400">
-                                <span>Custo do PedeLivre:</span>
-                                <span class="font-bold text-white">R$ 149,90 / mês</span>
-                            </div>
-                        </div>
-
-                        <div class="border-t border-[#1e2638] pt-4 space-y-1">
-                            <span class="text-xs font-bold text-slate-400 block">Economia estimada em 1 ano:</span>
-                            <div class="text-3xl sm:text-4xl font-black text-[#10b981]" x-text="formatarMoeda(economiaAnualEstimada)"></div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </div>
     </section>
 
-    <!-- ==================== GRID DE RECURSOS / TUDO INCLUSO ==================== -->
-    <section id="recursos" class="py-16 bg-[#090d16] border-t border-[#171e30]">
+    <!-- ==================== 6. TABELA COMPARATIVA ==================== -->
+    <section id="comparativo" class="py-20">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+            <div class="text-center space-y-2">
+                <span class="text-[11px] font-black uppercase tracking-widest text-rose-500">Comparativo Direto</span>
+                <h2 class="text-2xl sm:text-4xl font-black text-white">Por que migrar sua operação para o PedeLivre?</h2>
+            </div>
+
+            <div class="bg-[#0d1220] border border-white/[0.08] rounded-3xl overflow-hidden shadow-2xl text-xs sm:text-sm">
+                <div class="grid grid-cols-3 bg-[#131a2e] p-4 sm:p-5 font-black text-slate-300 border-b border-white/[0.08]">
+                    <span>Critério Operacional</span>
+                    <span class="text-rose-400">PedeLivre OS</span>
+                    <span class="text-slate-400">Apps de Marketplace</span>
+                </div>
+
+                <div class="divide-y divide-white/[0.06]">
+                    <div class="grid grid-cols-3 p-4 items-center">
+                        <span class="text-slate-300 font-semibold">Comissão por pedido</span>
+                        <span class="font-black text-emerald-400">0% (Isento para sempre)</span>
+                        <span class="text-rose-400 font-semibold">12% a 27% por pedido</span>
+                    </div>
+                    <div class="grid grid-cols-3 p-4 items-center">
+                        <span class="text-slate-300 font-semibold">Repasse do pagamento PIX</span>
+                        <span class="font-black text-emerald-400">Na hora (100% na sua conta)</span>
+                        <span class="text-slate-400">Retido por 7 a 30 dias</span>
+                    </div>
+                    <div class="grid grid-cols-3 p-4 items-center">
+                        <span class="text-slate-300 font-semibold">Order Bump + Cashback</span>
+                        <span class="font-black text-emerald-400">Incluso nativamente</span>
+                        <span class="text-slate-400">Limitado ou cobrado à parte</span>
+                    </div>
+                    <div class="grid grid-cols-3 p-4 items-center">
+                        <span class="text-slate-300 font-semibold">PDV Balcão + KDS + Mesas QR</span>
+                        <span class="font-black text-emerald-400">Tudo no mesmo painel</span>
+                        <span class="text-slate-400">Exige contratar outro sistema</span>
+                    </div>
+                    <div class="grid grid-cols-3 p-4 items-center">
+                        <span class="text-slate-300 font-semibold">Propriedade da base de clientes</span>
+                        <span class="font-black text-emerald-400">100% sua (com WhatsApp e CRM)</span>
+                        <span class="text-slate-400">Bloqueada pelo aplicativo</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== 7. PLANOS E PREÇOS ==================== -->
+    <section id="planos" class="py-20 bg-[#090d18] border-t border-white/[0.06]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-            
-            <div class="text-center max-w-2xl mx-auto space-y-2">
-                <span class="text-[10px] font-extrabold uppercase tracking-widest text-[#f43f5e]">TUDO INCLUSO</span>
-                <h2 class="text-2xl sm:text-4xl font-black text-white">
-                    Tudo para vender e operar, sem depender de ninguém
-                </h2>
-                <p class="text-xs sm:text-sm text-slate-400">
-                    Do cardápio ao motoboy, tudo que seu delivery ou restaurante precisa em uma única plataforma.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base">🍔</div>
-                    <h3 class="font-black text-sm text-white">Cardápio digital com PIX</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Cardápio próprio com link curto, fotos WebP, adicionais, Order Bump no checkout, QR code de mesa e PIX direto na sua conta.
-                    </p>
-                </div>
-
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-rose-500/20 text-[#f43f5e] flex items-center justify-center font-bold text-base">📋</div>
-                    <h3 class="font-black text-sm text-white">Pedidos no painel</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Kanban em tempo real com alertas sonoros, filtros por canal e controle total de novos a entregues.
-                    </p>
-                </div>
-
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-base">⚡</div>
-                    <h3 class="font-black text-sm text-white">PDV de balcão</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Lance pedidos presenciais no balcão, comanda de mesa ou telefone com atalhos de teclado rápidos.
-                    </p>
-                </div>
-
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-base">👨‍🍳</div>
-                    <h3 class="font-black text-sm text-white">KDS da cozinha</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Separação por estações (chapa, forno, fritadeira, bar), cronômetro SLA e controle de atrasos.
-                    </p>
-                </div>
-
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center font-bold text-base">🛵</div>
-                    <h3 class="font-black text-sm text-white">Rota de entrega</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Gestão de motoboys próprios, taxa dinâmica por bairro ou raio KM e link de rastreio em tempo real para o cliente.
-                    </p>
-                </div>
-
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-3 shadow-md hover:border-slate-500 transition">
-                    <div class="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-base">💬</div>
-                    <h3 class="font-black text-sm text-white">CRM e WhatsApp IA</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Base de clientes com histórico de compras, cashback automático, campanhas Win-Back e robô de atendimento no WhatsApp.
-                    </p>
-                </div>
-            </div>
-
-        </div>
-    </section>
-
-    <!-- ==================== SUA LOJA NO AR EM TRÊS PASSOS ==================== -->
-    <section class="py-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-            <div class="text-center max-w-xl mx-auto space-y-2">
-                <span class="text-[10px] font-extrabold uppercase tracking-widest text-[#f43f5e]">PASSO A PASSO</span>
-                <h2 class="text-2xl sm:text-3xl font-black text-white">
-                    Sua loja no ar em três passos
-                </h2>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-2.5">
-                    <div class="w-7 h-7 rounded-lg bg-rose-500/20 text-[#f43f5e] font-black text-xs flex items-center justify-center">1</div>
-                    <h3 class="font-black text-sm text-white">Crie sua loja</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">Cadastre seus produtos, fotos e sua Chave PIX ou Mercado Pago em menos de 10 minutos.</p>
-                </div>
-
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-2.5">
-                    <div class="w-7 h-7 rounded-lg bg-rose-500/20 text-[#f43f5e] font-black text-xs flex items-center justify-center">2</div>
-                    <h3 class="font-black text-sm text-white">Compartilhe o link</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">Cole no Instagram, WhatsApp, TikTok e espalhe QR Codes nas mesas.</p>
-                </div>
-
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-5 space-y-2.5">
-                    <div class="w-7 h-7 rounded-lg bg-rose-500/20 text-[#f43f5e] font-black text-xs flex items-center justify-center">3</div>
-                    <h3 class="font-black text-sm text-white">Receba e gerencie</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">Os pedidos caem direto no painel e o dinheiro vai na hora para sua conta.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ==================== TABELA COMPARATIVA ==================== -->
-    <section class="py-16 bg-[#090d16] border-t border-[#171e30]">
-        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-            <div class="text-center space-y-2">
-                <span class="text-[10px] font-extrabold uppercase tracking-widest text-[#f43f5e]">COMPARATIVO</span>
-                <h2 class="text-2xl sm:text-3xl font-black text-white">Por que o PedeLivre?</h2>
-            </div>
-
-            <div class="bg-[#121624] border border-[#1e2638] rounded-2xl overflow-hidden shadow-xl text-xs">
-                <div class="grid grid-cols-3 bg-[#151c2d] p-3.5 font-bold text-slate-400 border-b border-[#1e2638]">
-                    <span>Recurso</span>
-                    <span class="text-[#f43f5e] font-black">PedeLivre</span>
-                    <span>Outros Marketplaces</span>
-                </div>
-
-                <div class="divide-y divide-[#1e2638]">
-                    <div class="grid grid-cols-3 p-3.5 items-center">
-                        <span class="text-slate-300">Taxa sobre pedidos</span>
-                        <span class="font-black text-emerald-400">0%</span>
-                        <span class="text-slate-400">12% a 27%</span>
-                    </div>
-                    <div class="grid grid-cols-3 p-3.5 items-center">
-                        <span class="text-slate-300">Recebimento do PIX</span>
-                        <span class="font-black text-emerald-400">Na hora na sua conta</span>
-                        <span class="text-slate-400">Até 30 dias</span>
-                    </div>
-                    <div class="grid grid-cols-3 p-3.5 items-center">
-                        <span class="text-slate-300">PIX Dinâmico ou Chave Direta</span>
-                        <span class="font-black text-emerald-400">Incluso</span>
-                        <span class="text-slate-400">Não disponível</span>
-                    </div>
-                    <div class="grid grid-cols-3 p-3.5 items-center">
-                        <span class="text-slate-300">Base de clientes</span>
-                        <span class="font-black text-emerald-400">100% sua</span>
-                        <span class="text-slate-400">Do marketplace</span>
-                    </div>
-                    <div class="grid grid-cols-3 p-3.5 items-center">
-                        <span class="text-slate-300">Canal próprio</span>
-                        <span class="font-black text-emerald-400">Seu link, sua marca</span>
-                        <span class="text-slate-400">Concorre na mesma tela</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ==================== PLANOS E PREÇOS ==================== -->
-    <section id="planos" class="py-16 lg:py-24">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-            <div class="text-center space-y-2">
-                <span class="text-[10px] font-extrabold uppercase tracking-widest text-[#f43f5e]">PLANOS</span>
-                <h2 class="text-2xl sm:text-4xl font-black text-white">Preço simples. Sem taxas escondidas.</h2>
-                <p class="text-xs sm:text-sm text-slate-400">Escolha o plano ideal para a sua operação. Cancele quando quiser.</p>
+            <div class="text-center max-w-2xl mx-auto space-y-3">
+                <span class="text-[11px] font-black uppercase tracking-widest text-rose-500 bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-full">Planos Transparentes</span>
+                <h2 class="text-2xl sm:text-4xl font-black text-white">Mensalidade fixa. Lucro 100% seu.</h2>
+                <p class="text-xs sm:text-sm text-slate-400">Teste qualquer plano por 14 dias grátis sem informar cartão de crédito.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
                 <!-- Plano 1: Delivery -->
-                <div class="bg-[#121624] border border-[#1e2638] rounded-3xl p-6 flex flex-col justify-between space-y-5 shadow-lg">
+                <div class="bg-[#0d1220] border border-white/[0.08] rounded-3xl p-7 flex flex-col justify-between space-y-6 shadow-xl">
                     <div class="space-y-4">
                         <div>
-                            <h3 class="font-black text-base text-white">Delivery</h3>
-                            <p class="text-xs text-slate-400 mt-1">Ideal para quem trabalha focado em entregas e retirada.</p>
+                            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Essencial</span>
+                            <h3 class="font-black text-xl text-white mt-0.5">Plano Delivery</h3>
+                            <p class="text-xs text-slate-400 mt-1">Ideal para dark kitchens, hamburguerias e operações focadas em entrega e retirada.</p>
                         </div>
-                        <div class="flex items-baseline gap-1">
-                            <span class="text-3xl font-black text-white">R$ 99,90</span>
-                            <span class="text-xs text-slate-500">/ mês</span>
+                        <div class="flex items-baseline gap-1 pt-2 border-t border-white/[0.07]">
+                            <span class="text-3xl sm:text-4xl font-black text-white">R$ 99,90</span>
+                            <span class="text-xs text-slate-400">/ mês</span>
                         </div>
-                        <div class="space-y-2 pt-2 text-xs text-slate-300">
-                            <div class="flex items-center gap-2"><span>✓</span><span>Cardápio digital ilimitado</span></div>
-                            <div class="flex items-center gap-2"><span>✓</span><span>PIX direto sem intermediários</span></div>
-                            <div class="flex items-center gap-2"><span>✓</span><span>Painel Kanban em tempo real</span></div>
-                            <div class="flex items-center gap-2"><span>✓</span><span>Botão de WhatsApp</span></div>
+                        <div class="space-y-2.5 pt-2 text-xs text-slate-300">
+                            <div class="flex items-center gap-2"><span class="text-emerald-400 font-black">✓</span><span>Cardápio digital ilimitado com Order Bump</span></div>
+                            <div class="flex items-center gap-2"><span class="text-emerald-400 font-black">✓</span><span>PIX Mercado Pago ou Chave PIX Direta (0% taxa)</span></div>
+                            <div class="flex items-center gap-2"><span class="text-emerald-400 font-black">✓</span><span>Painel Kanban em tempo real com alerta sonoro</span></div>
+                            <div class="flex items-center gap-2"><span class="text-emerald-400 font-black">✓</span><span>Taxas de entrega por Bairro ou Raio KM</span></div>
+                            <div class="flex items-center gap-2"><span class="text-emerald-400 font-black">✓</span><span>Cupons de desconto e link de rastreio ao vivo</span></div>
                         </div>
                     </div>
-                    <a href="/cadastro?plano=delivery" class="w-full bg-[#182033] hover:bg-[#202a44] text-white font-bold py-3 rounded-xl text-xs text-center transition">
-                        Testar 14 dias grátis
+                    <a href="/cadastro?plano=delivery" class="w-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-white font-black py-3.5 rounded-2xl text-xs text-center transition">
+                        Começar 14 Dias Grátis →
                     </a>
                 </div>
 
                 <!-- Plano 2: Presencial -->
-                <div class="bg-[#121624] border border-[#1e2638] rounded-3xl p-6 flex flex-col justify-between space-y-5 shadow-lg">
+                <div class="bg-[#0d1220] border border-white/[0.08] rounded-3xl p-7 flex flex-col justify-between space-y-6 shadow-xl">
                     <div class="space-y-4">
                         <div>
-                            <h3 class="font-black text-base text-white">Presencial</h3>
-                            <p class="text-xs text-slate-400 mt-1">Para bares e restaurantes com atendimento no salão e balcão.</p>
+                            <span class="text-[10px] font-black uppercase tracking-wider text-amber-400">Salão + Delivery</span>
+                            <h3 class="font-black text-xl text-white mt-0.5">Plano Presencial</h3>
+                            <p class="text-xs text-slate-400 mt-1">Para restaurantes, pizzarias e bares com atendimento em mesas, balcão e delivery.</p>
                         </div>
-                        <div class="flex items-baseline gap-1">
-                            <span class="text-3xl font-black text-white">R$ 149,90</span>
-                            <span class="text-xs text-slate-500">/ mês</span>
+                        <div class="flex items-baseline gap-1 pt-2 border-t border-white/[0.07]">
+                            <span class="text-3xl sm:text-4xl font-black text-white">R$ 149,90</span>
+                            <span class="text-xs text-slate-400">/ mês</span>
                         </div>
-                        <div class="space-y-2 pt-2 text-xs text-slate-300">
-                            <div class="flex items-center gap-2"><span>✓</span><span>Tudo do plano Delivery</span></div>
-                            <div class="flex items-center gap-2"><span>✓</span><span>PDV balcão com atalhos F2</span></div>
-                            <div class="flex items-center gap-2"><span>✓</span><span>QR Code e comandas por mesa</span></div>
-                            <div class="flex items-center gap-2"><span>✓</span><span>KDS de cozinha por estação</span></div>
-                            <div class="flex items-center gap-2"><span>✓</span><span>Fechamento de caixa</span></div>
+                        <div class="space-y-2.5 pt-2 text-xs text-slate-300">
+                            <div class="flex items-center gap-2"><span class="text-emerald-400 font-black">✓</span><span><strong>Tudo do plano Delivery</strong> +</span></div>
+                            <div class="flex items-center gap-2"><span class="text-emerald-400 font-black">✓</span><span>PDV de Balcão rápido com atalho F2</span></div>
+                            <div class="flex items-center gap-2"><span class="text-emerald-400 font-black">✓</span><span>QR Code por Mesa, Comandas e Chamar Garçom</span></div>
+                            <div class="flex items-center gap-2"><span class="text-emerald-400 font-black">✓</span><span>KDS de Cozinha por Estação (Modo TV)</span></div>
+                            <div class="flex items-center gap-2"><span class="text-emerald-400 font-black">✓</span><span>Controle de Frente de Caixa, Sangria e Turnos</span></div>
                         </div>
                     </div>
-                    <a href="/cadastro?plano=presencial" class="w-full bg-[#182033] hover:bg-[#202a44] text-white font-bold py-3 rounded-xl text-xs text-center transition">
-                        Testar 14 dias grátis
+                    <a href="/cadastro?plano=presencial" class="w-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-white font-black py-3.5 rounded-2xl text-xs text-center transition">
+                        Começar 14 Dias Grátis →
                     </a>
                 </div>
 
                 <!-- Plano 3: Premium Total -->
-                <div class="bg-[#121624] border-2 border-[#f43f5e] rounded-3xl p-6 flex flex-col justify-between space-y-5 shadow-2xl relative">
-                    <span class="absolute -top-3 right-6 bg-[#f43f5e] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                        MAIS POPULAR
+                <div class="bg-gradient-to-b from-[#171326] to-[#0d1220] border-2 border-rose-500 rounded-3xl p-7 flex flex-col justify-between space-y-6 shadow-2xl shadow-rose-600/20 relative">
+                    <span class="absolute -top-3.5 right-6 bg-gradient-to-r from-rose-600 to-amber-500 text-white text-[10px] font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-lg">
+                        🔥 Mais Escolhido
                     </span>
                     <div class="space-y-4">
                         <div>
-                            <h3 class="font-black text-base text-white">Premium Total</h3>
-                            <p class="text-xs text-slate-400 mt-1">Operação completa delivery, salão, motoboys e marketing.</p>
+                            <span class="text-[10px] font-black uppercase tracking-wider text-rose-400">Automação Total</span>
+                            <h3 class="font-black text-xl text-white mt-0.5">Plano Premium Total</h3>
+                            <p class="text-xs text-slate-300 mt-1">Operação completa com WhatsApp Inteligência Artificial, CRM Cashback e Motoboys.</p>
                         </div>
-                        <div class="flex items-baseline gap-1">
-                            <span class="text-3xl font-black text-white">R$ 249,90</span>
-                            <span class="text-xs text-slate-500">/ mês</span>
+                        <div class="flex items-baseline gap-1 pt-2 border-t border-white/[0.1]">
+                            <span class="text-3xl sm:text-4xl font-black text-white">R$ 249,90</span>
+                            <span class="text-xs text-slate-400">/ mês</span>
                         </div>
-                        <div class="space-y-2 pt-2 text-xs text-slate-300">
-                            <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Tudo do Presencial</span></div>
-                            <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Gestão e acerto de motoboys</span></div>
-                            <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>CRM e fidelidade de clientes</span></div>
-                            <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Automações WhatsApp IA</span></div>
-                            <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Múltiplos operadores e caixas</span></div>
-                            <div class="flex items-center gap-2"><span class="text-[#f43f5e] font-bold">✓</span><span>Suporte prioritário VIP</span></div>
+                        <div class="space-y-2.5 pt-2 text-xs text-slate-200">
+                            <div class="flex items-center gap-2"><span class="text-rose-400 font-black">✓</span><span><strong>Tudo dos planos Delivery e Presencial</strong> +</span></div>
+                            <div class="flex items-center gap-2"><span class="text-rose-400 font-black">✓</span><span>Robô de Atendimento IA no WhatsApp (Evolution)</span></div>
+                            <div class="flex items-center gap-2"><span class="text-rose-400 font-black">✓</span><span>Campanhas Automáticas Win-Back (Clientes Inativos)</span></div>
+                            <div class="flex items-center gap-2"><span class="text-rose-400 font-black">✓</span><span>Fidelidade com Cashback Automático por Cliente</span></div>
+                            <div class="flex items-center gap-2"><span class="text-rose-400 font-black">✓</span><span>Gestão e Fechamento Diário de Motoboys</span></div>
+                            <div class="flex items-center gap-2"><span class="text-rose-400 font-black">✓</span><span>Múltiplos Operadores e Suporte Prioritário VIP</span></div>
                         </div>
                     </div>
-                    <a href="/cadastro?plano=premium" class="w-full bg-[#e11d48] hover:bg-[#be123c] text-white font-black py-3 rounded-xl text-xs text-center transition shadow-lg shadow-rose-600/30">
-                        Testar 14 dias grátis
+                    <a href="/cadastro?plano=premium" class="w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-black py-4 rounded-2xl text-xs text-center transition shadow-xl shadow-rose-600/30">
+                        Testar Premium Total por 14 Dias Grátis →
                     </a>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ==================== FAQ ACCORDION ==================== -->
-    <section id="faq" class="py-16 bg-[#090d16] border-t border-[#171e30]">
+    <!-- ==================== 8. FAQ ACCORDION ==================== -->
+    <section id="faq" class="py-20">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             <div class="text-center space-y-2">
-                <span class="text-[10px] font-extrabold uppercase tracking-widest text-[#f43f5e]">DÚVIDAS</span>
-                <h2 class="text-2xl sm:text-3xl font-black text-white">Perguntas frequentes</h2>
+                <span class="text-[11px] font-black uppercase tracking-widest text-rose-500">Tire Suas Dúvidas</span>
+                <h2 class="text-2xl sm:text-3xl font-black text-white">Perguntas Frequentes</h2>
             </div>
 
             <div class="space-y-3">
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-4 cursor-pointer" @click="faqAberta = (faqAberta === 1 ? null : 1)">
+                <div class="bg-[#0d1220] border border-white/[0.08] rounded-2xl p-5 cursor-pointer transition hover:border-white/[0.15]" @click="faqAberta = (faqAberta === 1 ? null : 1)">
                     <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-white">
-                        <span>Cobram taxa sobre minhas vendas?</span>
-                        <span x-text="faqAberta === 1 ? '▲' : '▼'" class="text-xs text-slate-500"></span>
+                        <span>O PedeLivre cobra alguma porcentagem sobre os meus pedidos?</span>
+                        <span x-text="faqAberta === 1 ? '−' : '+'" class="text-lg font-black text-rose-400"></span>
                     </div>
-                    <div x-show="faqAberta === 1" class="text-xs text-slate-400 pt-2 leading-relaxed">
-                        Não! Taxa ZERO sobre suas vendas. Você só paga a mensalidade fixa do plano escolhido e fica com 100% do valor dos seus pedidos.
+                    <div x-show="faqAberta === 1" class="text-xs sm:text-sm text-slate-400 pt-3 leading-relaxed">
+                        Não! Nossa comissão sobre vendas é <strong>0%</strong>. Se o seu restaurante vender R$ 10.000 ou R$ 150.000 no mês, você paga apenas o valor fixo da sua assinatura mensal e fica com 100% do lucro dos seus pedidos.
                     </div>
                 </div>
 
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-4 cursor-pointer" @click="faqAberta = (faqAberta === 2 ? null : 2)">
+                <div class="bg-[#0d1220] border border-white/[0.08] rounded-2xl p-5 cursor-pointer transition hover:border-white/[0.15]" @click="faqAberta = (faqAberta === 2 ? null : 2)">
                     <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-white">
-                        <span>O dinheiro do PIX cai onde?</span>
-                        <span x-text="faqAberta === 2 ? '▲' : '▼'" class="text-xs text-slate-500"></span>
+                        <span>Como recebo os pagamentos PIX dos meus clientes?</span>
+                        <span x-text="faqAberta === 2 ? '−' : '+'" class="text-lg font-black text-rose-400"></span>
                     </div>
-                    <div x-show="faqAberta === 2" class="text-xs text-slate-400 pt-2 leading-relaxed">
-                        Direto na sua conta bancária via Chave PIX própria ou Mercado Pago em segundos. Não retemos seu dinheiro em nenhum momento.
+                    <div x-show="faqAberta === 2" class="text-xs sm:text-sm text-slate-400 pt-3 leading-relaxed">
+                        Você tem duas opções integradas no painel: pode informar sua <strong>Chave PIX Principal</strong> (CNPJ, CPF, E-mail, Celular ou Aleatória de qualquer banco) para gerar QR Code oficial do Banco Central direto para sua conta, ou conectar seu <strong>Mercado Pago</strong> para baixa automática via Webhook em segundos.
                     </div>
                 </div>
 
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-4 cursor-pointer" @click="faqAberta = (faqAberta === 3 ? null : 3)">
+                <div class="bg-[#0d1220] border border-white/[0.08] rounded-2xl p-5 cursor-pointer transition hover:border-white/[0.15]" @click="faqAberta = (faqAberta === 3 ? null : 3)">
                     <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-white">
-                        <span>Preciso de computador ou posso usar no celular?</span>
-                        <span x-text="faqAberta === 3 ? '▲' : '▼'" class="text-xs text-slate-500"></span>
+                        <span>Funciona em impressora térmica 80mm e celular?</span>
+                        <span x-text="faqAberta === 3 ? '−' : '+'" class="text-lg font-black text-rose-400"></span>
                     </div>
-                    <div x-show="faqAberta === 3" class="text-xs text-slate-400 pt-2 leading-relaxed">
-                        Você pode gerenciar tudo 100% pelo celular, tablet ou computador. A interface é totalmente adaptada e responsiva.
+                    <div x-show="faqAberta === 3" class="text-xs sm:text-sm text-slate-400 pt-3 leading-relaxed">
+                        Sim! O painel do lojista roda perfeitamente no celular, tablet ou computador, e possui formatação nativa para impressoras térmicas de 80mm (comanda de cozinha, recibo de entrega, fechamento de caixa e acerto de motoboys).
                     </div>
                 </div>
 
-                <div class="bg-[#121624] border border-[#1e2638] rounded-2xl p-4 cursor-pointer" @click="faqAberta = (faqAberta === 4 ? null : 4)">
+                <div class="bg-[#0d1220] border border-white/[0.08] rounded-2xl p-5 cursor-pointer transition hover:border-white/[0.15]" @click="faqAberta = (faqAberta === 4 ? null : 4)">
                     <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-white">
-                        <span>Posso cancelar quando quiser?</span>
-                        <span x-text="faqAberta === 4 ? '▲' : '▼'" class="text-xs text-slate-500"></span>
+                        <span>Preciso cadastrar cartão de crédito para testar os 14 dias grátis?</span>
+                        <span x-text="faqAberta === 4 ? '−' : '+'" class="text-lg font-black text-rose-400"></span>
                     </div>
-                    <div x-show="faqAberta === 4" class="text-xs text-slate-400 pt-2 leading-relaxed">
-                        Sim, não há fidelidade nem multas. Você pode testar por 14 dias grátis sem colocar cartão de crédito e cancelar a qualquer hora.
+                    <div x-show="faqAberta === 4" class="text-xs sm:text-sm text-slate-400 pt-3 leading-relaxed">
+                        Não! Você cria sua loja agora mesmo sem cartão de crédito, configura seu cardápio e já pode receber pedidos reais durante os 14 dias de avaliação gratuita.
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ==================== BANNER FINAL CTA VERMELHO ==================== -->
+    <!-- ==================== 9. CTA FINAL ==================== -->
     <section class="py-16">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="bg-gradient-to-r from-[#e11d48] to-[#9f1239] rounded-3xl p-8 sm:p-12 text-center space-y-4 shadow-2xl">
+            <div class="bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 rounded-3xl p-8 sm:p-12 text-center space-y-5 shadow-2xl relative overflow-hidden">
                 <h2 class="text-2xl sm:text-4xl font-black text-white leading-tight">
-                    Pare de dar de 12% a 27% das suas vendas
+                    Coloque o cardápio da sua loja no ar agora mesmo
                 </h2>
-                <p class="text-xs sm:text-sm text-rose-100 max-w-lg mx-auto">
-                    Crie sua loja em 2 minutos e comece a lucrar mais hoje.
+                <p class="text-xs sm:text-base text-white/90 max-w-xl mx-auto font-medium">
+                    Leva menos de 2 minutos. Sem taxa de adesão, sem comissão sobre vendas e com 14 dias gratuitos.
                 </p>
-                <div class="pt-2">
-                    <a href="/cadastro?plano=premium" class="inline-block bg-white hover:bg-slate-100 text-[#be123c] font-black px-8 py-3.5 rounded-2xl text-xs sm:text-sm shadow-xl transition active:scale-95">
-                        Criar minha loja grátis
+                <div class="pt-2 flex flex-col sm:flex-row justify-center gap-3">
+                    <a href="/cadastro?plano=premium" class="inline-block bg-slate-950 hover:bg-slate-900 text-white font-black px-8 py-4 rounded-2xl text-xs sm:text-sm shadow-2xl transition active:scale-95">
+                        🚀 Criar Minha Loja Grátis Agora
+                    </a>
+                    <a href="/login" class="inline-block bg-white/15 hover:bg-white/25 text-white border border-white/30 font-bold px-7 py-4 rounded-2xl text-xs sm:text-sm transition">
+                        Já sou cliente · Entrar
                     </a>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- ==================== FOOTER ==================== -->
-    <footer class="border-t border-[#171e30] bg-[#090d16] py-8 text-xs text-slate-500">
+    <!-- ==================== 10. FOOTER ==================== -->
+    <footer class="border-t border-white/[0.07] bg-[#05070c] py-10 text-xs text-slate-500">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-2">
-                <span class="w-6 h-6 rounded-lg bg-[#e11d48] text-white font-black text-xs flex items-center justify-center">P</span>
-                <span class="font-bold text-slate-300">PedeLivre</span>
-                <span>© 2026 — Todos os direitos reservados</span>
+            <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-xl bg-gradient-to-br from-rose-600 to-amber-500 text-white font-black text-xs flex items-center justify-center">P</span>
+                <span class="font-bold text-slate-200">PedeLivre OS</span>
+                <span>© 2026 — Plataforma Multi-Tenant de Delivery &amp; Operação Gastronômica</span>
             </div>
-            <div class="flex items-center gap-4">
-                <a href="/login" class="hover:text-slate-300">Área do Lojista</a>
-                <a href="/cadastro" class="hover:text-slate-300">Planos</a>
-                <a href="#faq" class="hover:text-slate-300">Perguntas Frequentes</a>
+            <div class="flex items-center gap-6 font-semibold">
+                <a href="/login" class="hover:text-white transition">Login do Lojista</a>
+                <a href="/cadastro?plano=premium" class="hover:text-white transition">Criar Conta</a>
+                <a href="#planos" class="hover:text-white transition">Planos</a>
+                <a href="#faq" class="hover:text-white transition">FAQ</a>
             </div>
         </div>
     </footer>
