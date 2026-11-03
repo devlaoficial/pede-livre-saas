@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Monitoring\SystemMonitorService;
 use App\Support\Tenancy\IdentificarTenantMiddleware;
 use App\Support\Tenancy\ModoLeituraInadimplenciaMiddleware;
 use App\Support\Tenancy\VerificarRecursoPlanoMiddleware;
@@ -28,5 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Exception handling
+        $exceptions->reportable(function (Throwable $e): void {
+            try {
+                app(SystemMonitorService::class)->reportarExcecaoCritica($e, request());
+            } catch (Throwable) {
+                // Evita falha em cascata caso o container ainda não esteja pronto
+            }
+        });
     })->create();

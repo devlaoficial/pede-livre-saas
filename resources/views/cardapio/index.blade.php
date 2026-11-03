@@ -8,20 +8,22 @@
     <link rel="manifest" href="/manifest.json">
     <title>{{ $loja->nome }} — Cardápio Digital & Delivery</title>
     
-    <!-- Google Fonts: Plus Jakarta Sans -->
+    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     <style>
+        html, body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; font-synthesis: none; }
+        .font-extrabold { font-weight: 700; }
         :root {
             --cor-loja: {{ $loja->cor_primaria ?: '#ff5a1f' }};
         }
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: #0a0b0e;
         }
         [x-cloak] { display: none !important; }
@@ -70,20 +72,17 @@
     @php
         $rawCapa = $loja->capa_url ?: ($loja->capa ?? null);
         $capaUrl = null;
-        if ($rawCapa && str_starts_with($rawCapa, 'http')) {
-            $capaUrl = $rawCapa;
-        } elseif ($rawCapa && file_exists(public_path('storage/' . ltrim($rawCapa, '/')))) {
-            $capaUrl = '/storage/' . ltrim($rawCapa, '/');
-        } else {
-            $capaUrl = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1600&q=80';
+        if ($rawCapa) {
+            $capaUrl = (str_starts_with($rawCapa, 'http') || str_starts_with($rawCapa, '/'))
+                ? $rawCapa
+                : '/storage/' . ltrim($rawCapa, '/');
         }
-
         $rawLogo = $loja->logo_url ?: ($loja->logo ?? null);
         $logoUrl = null;
-        if ($rawLogo && str_starts_with($rawLogo, 'http')) {
-            $logoUrl = $rawLogo;
-        } elseif ($rawLogo && file_exists(public_path('storage/' . ltrim($rawLogo, '/')))) {
-            $logoUrl = '/storage/' . ltrim($rawLogo, '/');
+        if ($rawLogo) {
+            $logoUrl = (str_starts_with($rawLogo, 'http') || str_starts_with($rawLogo, '/'))
+                ? $rawLogo
+                : '/storage/' . ltrim($rawLogo, '/');
         }
     @endphp
 
@@ -114,8 +113,8 @@
                 </span>
                 
                 @if($mesa)
-                    <span class="inline-flex items-center gap-1 text-xs font-black px-3 py-1.5 rounded-full bg-amber-500/90 text-slate-950 shadow-lg">
-                        🪑 Mesa #{{ $mesa['numero'] }}
+                    <span class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full bg-amber-500/90 text-slate-950 shadow-lg">
+                        Mesa #{{ $mesa['numero'] }}
                     </span>
                 @endif
             </div>
@@ -128,7 +127,7 @@
                 </button>
                 <button type="button" @click="modalInfoLoja = true" title="Ver horários e informações da loja"
                     class="px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-xs font-bold text-white flex items-center gap-1.5 transition shadow-lg active:scale-95">
-                    <span>ℹ️</span>
+                    <span>ℹ</span>
                     <span class="hidden sm:inline">Sobre a loja</span>
                 </button>
             </div>
@@ -155,45 +154,45 @@
                                  class="sm:w-20 sm:h-20 rounded-2xl object-cover shadow-2xl border-4 border-[#13141a] bg-[#1a1c24]">
                         @else
                             <div style="width: 72px; height: 72px; min-width: 72px; background-color: var(--cor-loja);"
-                                 class="sm:w-20 sm:h-20 rounded-2xl shadow-2xl border-4 border-[#13141a] flex items-center justify-center text-white font-black text-2xl sm:text-3xl">
+                                 class="sm:w-20 sm:h-20 rounded-2xl shadow-2xl border-4 border-[#13141a] flex items-center justify-center text-white font-bold text-2xl sm:text-3xl">
                                 {{ substr($loja->nome, 0, 1) }}
                             </div>
                         @endif
-                        <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-[#13141a] flex items-center justify-center text-[10px] text-white font-black" title="Loja Verificada">✓</span>
+                        <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-[#13141a] flex items-center justify-center text-[10px] text-white font-bold" title="Loja Verificada"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
                     </div>
 
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                            <h1 class="text-base sm:text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight">{{ $loja->nome }}</h1>
+                            <h1 class="text-base sm:text-2xl lg:text-3xl font-bold text-white tracking-tight leading-tight">{{ $loja->nome }}</h1>
                             <span class="text-[11px] sm:text-xs font-bold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
-                                <span>⭐</span> {{ number_format($mediaAvaliacao ?? 5.0, 1, ',', '') }}
+                                <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg></span> {{ number_format($mediaAvaliacao ?? 5.0, 1, ',', '') }}
                             </span>
                         </div>
 
                         <!-- Metadados: Tempo, Entrega, Pedido Mínimo e Endereço -->
                         <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-slate-300 mt-1 font-medium">
                             <span class="flex items-center gap-1 text-slate-300">
-                                <span>⏱️</span>
+                                <span>⏱</span>
                                 <span>{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }}–{{ ($loja->config_json['tempo_medio_preparo_min'] ?? 35) + 15 }} min</span>
                             </span>
                             <template x-if="checkout.canal === 'delivery' && !mesaAtiva">
                                 <span class="flex items-center gap-1 text-emerald-400 font-bold">
                                     <span class="text-slate-600 mr-1">•</span>
-                                    <span>🛵</span>
+                                    <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path></svg></span>
                                     <span x-text="freteCentavos === 0 ? 'Frete Grátis' : 'Taxa ' + formatarCentavos(freteCentavos)"></span>
                                 </span>
                             </template>
                             <template x-if="pedidoMinimoCentavos > 0">
                                 <span class="flex items-center gap-1 text-slate-400">
                                     <span class="text-slate-600 mr-1">•</span>
-                                    <span>💰</span>
+                                    <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></span>
                                     <span x-text="'Mín. ' + formatarCentavos(pedidoMinimoCentavos)"></span>
                                 </span>
                             </template>
                             @if($loja->endereco)
                                 <span class="text-slate-600 hidden md:inline">•</span>
                                 <span class="hidden md:inline truncate max-w-sm text-slate-400 hover:text-white cursor-pointer transition" @click="modalInfoLoja = true">
-                                    📍 {{ $loja->endereco }}, {{ $loja->cidade }}
+                                    {{ $loja->endereco }}, {{ $loja->cidade }}
                                 </span>
                             @endif
                         </div>
@@ -204,26 +203,26 @@
                 <div class="flex items-center justify-start md:justify-end shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[#232631]">
                     <template x-if="mesaAtiva">
                         <div class="flex items-center justify-between w-full md:w-auto gap-3 bg-[#1c1e27] border border-amber-500/40 px-4 py-2.5 rounded-2xl">
-                            <span class="text-xs font-black text-amber-300" x-text="'🪑 Mesa #' + mesaAtiva.numero"></span>
-                            <button type="button" @click="chamarGarcom()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black px-3.5 py-1.5 rounded-xl transition shadow">
-                                <span x-text="garcomChamado ? '✓ Garçom Chamado!' : '🔔 Chamar Garçom'"></span>
+                            <span class="text-xs font-bold text-amber-300" x-text="'Mesa #' + mesaAtiva.numero"></span>
+                            <button type="button" @click="chamarGarcom()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-3.5 py-1.5 rounded-xl transition shadow">
+                                <span x-text="garcomChamado ? 'Garçom Chamado!' : 'Chamar Garçom'"></span>
                             </button>
                         </div>
                     </template>
                     <template x-if="!mesaAtiva">
                         <div class="grid grid-cols-2 w-full md:w-auto bg-[#0a0b0e] p-1.5 rounded-2xl border border-[#232631] gap-1 shadow-inner">
                             <button type="button" @click="alterarCanal('delivery')"
-                                class="px-6 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2"
+                                class="px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
                                 :style="checkout.canal === 'delivery' ? 'background-color: var(--cor-loja); color: white;' : 'color: #94a3b8;'"
                                 :class="checkout.canal === 'delivery' ? 'shadow-lg' : 'hover:text-white'">
-                                <span>🛵</span>
+                                <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path></svg></span>
                                 <span>Delivery</span>
                             </button>
                             <button type="button" @click="alterarCanal('retirada')"
-                                class="px-6 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2"
+                                class="px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
                                 :style="checkout.canal === 'retirada' ? 'background-color: var(--cor-loja); color: white;' : 'color: #94a3b8;'"
                                 :class="checkout.canal === 'retirada' ? 'shadow-lg' : 'hover:text-white'">
-                                <span>🛍️</span>
+                                <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></span>
                                 <span>Retirada</span>
                             </button>
                         </div>
@@ -246,7 +245,7 @@
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                         <span x-text="'Pedido recente #' + ultimoPedido.codigo_publico"></span>
                     </div>
-                    <a :href="ultimoPedido.tracking_url" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-3 py-1 rounded-xl text-[11px] shrink-0 transition">
+                    <a :href="ultimoPedido.tracking_url" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1 rounded-xl text-[11px] shrink-0 transition">
                         Acompanhar Pedido →
                     </a>
                 </div>
@@ -256,9 +255,9 @@
             <template x-if="cupomDestaque">
                 <div class="bg-gradient-to-r from-[#1c1815] to-[#171419] border border-[#3e271a] rounded-2xl p-2 sm:p-2.5 px-3 sm:px-4 flex items-center justify-between gap-2 shadow-md">
                     <div class="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-orange-200/90 font-medium min-w-0">
-                        <span class="text-orange-400 text-sm sm:text-base shrink-0">🎟️</span>
+                        <span class="text-orange-400 text-sm sm:text-base shrink-0"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg></span>
                         <span class="truncate">
-                            Cupom <strong class="font-black text-white bg-black/40 px-1.5 py-0.5 rounded border border-orange-500/30" x-text="cupomDestaque.codigo"></strong>:
+                            Cupom <strong class="font-bold text-white bg-black/40 px-1.5 py-0.5 rounded border border-orange-500/30" x-text="cupomDestaque.codigo"></strong>:
                             <span x-text="cupomDestaque.tipo === 'percentual' ? (cupomDestaque.valor + '% OFF') : (cupomDestaque.tipo === 'frete_gratis' ? 'Frete Grátis' : (formatarCentavos(cupomDestaque.valor) + ' OFF'))"></span>
                             <template x-if="cupomDestaque.pedido_minimo > 0">
                                 <span class="text-slate-400" x-text="'(mín. ' + formatarCentavos(cupomDestaque.pedido_minimo) + ')'"></span>
@@ -266,9 +265,9 @@
                         </span>
                     </div>
                     <button type="button" @click="aplicarCupomRapido(cupomDestaque)"
-                        class="px-2.5 sm:px-3.5 py-1 rounded-xl text-[11px] sm:text-xs font-black text-white transition shrink-0 hover:brightness-110 shadow-sm active:scale-95 flex items-center gap-1 whitespace-nowrap"
+                        class="px-2.5 sm:px-3.5 py-1 rounded-xl text-[11px] sm:text-xs font-bold text-white transition shrink-0 hover:brightness-110 shadow-sm active:scale-95 flex items-center gap-1 whitespace-nowrap"
                         :style="'background-color: var(--cor-loja)'">
-                        <span x-text="cupomAplicado?.codigo === cupomDestaque.codigo ? '✓ Ativo' : 'Ativar'"></span>
+                        <span x-text="cupomAplicado?.codigo === cupomDestaque.codigo ? 'Ativo' : 'Ativar'"></span>
                     </button>
                 </div>
             </template>
@@ -281,9 +280,9 @@
             <section class="space-y-3">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <span class="text-lg">🔥</span>
-                        <h2 class="text-lg sm:text-xl font-black text-white tracking-tight">Oferta em Destaque</h2>
-                        <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">Promoção Ativa</span>
+                        <span class="text-lg"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path></svg></span>
+                        <h2 class="text-lg sm:text-xl font-bold text-white tracking-tight">Oferta em Destaque</h2>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">Promoção Ativa</span>
                     </div>
                 </div>
 
@@ -294,16 +293,16 @@
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 items-center relative z-10">
                         <div class="md:col-span-7 space-y-2.5 sm:space-y-3">
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="text-[10px] sm:text-[11px] font-black uppercase px-2.5 py-1 rounded-full text-white shadow-sm"
+                                <span class="text-[10px] sm:text-[11px] font-bold uppercase px-2.5 py-1 rounded-full text-white shadow-sm"
                                       :style="'background-color: var(--cor-loja)'">
-                                    💥 OFERTA ESPECIAL
+                                    OFERTA ESPECIAL
                                 </span>
                                 <span class="text-[10px] sm:text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded-full"
                                       x-text="'Economize ' + formatarCentavos(produtoPromocaoDestaque.preco_centavos - produtoPromocaoDestaque.preco_promocional_centavos)">
                                 </span>
                             </div>
 
-                            <h3 class="text-lg sm:text-2xl lg:text-3xl font-black text-white leading-tight"
+                            <h3 class="text-lg sm:text-2xl lg:text-3xl font-bold text-white leading-tight"
                                 x-text="produtoPromocaoDestaque.nome"></h3>
 
                             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl"
@@ -313,13 +312,13 @@
                                 <div>
                                     <span class="text-xs text-slate-400 line-through block"
                                           x-text="'De ' + formatarCentavos(produtoPromocaoDestaque.preco_centavos)"></span>
-                                    <div class="text-2xl sm:text-3xl font-black text-white tracking-tight"
+                                    <div class="text-2xl sm:text-3xl font-bold text-white tracking-tight"
                                          x-text="formatarCentavos(produtoPromocaoDestaque.preco_promocional_centavos)">
                                     </div>
                                 </div>
 
                                 <button type="button" @click="abrirModalProduto(produtoPromocaoDestaque)"
-                                    class="px-5 py-3 rounded-2xl text-xs sm:text-sm font-black text-white shadow-xl hover:brightness-110 active:scale-95 transition flex items-center gap-2"
+                                    class="px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold text-white shadow-xl hover:brightness-110 active:scale-95 transition flex items-center gap-2"
                                     :style="'background-color: var(--cor-loja)'">
                                     <span>Aproveitar Oferta</span>
                                     <span>→</span>
@@ -352,7 +351,7 @@
                 <input type="text" x-model="termoBusca" placeholder="Buscar no cardápio..."
                     class="w-full bg-[#13141a] border border-[#232631] text-xs text-white rounded-2xl pl-9 pr-8 py-2.5 placeholder-slate-500 focus:outline-none focus:border-slate-400 transition shadow-inner">
                 <svg class="w-4 h-4 text-slate-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <button x-show="termoBusca" @click="termoBusca = ''" class="absolute right-3 top-2.5 text-slate-500 hover:text-white text-xs font-bold">✕</button>
+                <button x-show="termoBusca" @click="termoBusca = ''" class="absolute right-3 top-2.5 text-slate-500 hover:text-white text-xs font-bold"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
 
             <!-- Chips de Categorias com Ícones Temáticos e Contadores -->
@@ -364,7 +363,7 @@
                         :class="(categoriaAtiva || categoriasFiltradas[0]?.id) === cat.id ? 'shadow-lg scale-102' : 'bg-[#13141a] border border-[#232631] text-slate-300 hover:text-white hover:border-slate-600'">
                         <span x-text="obterIconeCategoria(cat.nome)"></span>
                         <span x-text="nomeCurtoCategoria(cat.nome)"></span>
-                        <span class="text-[10px] font-black px-1.5 py-0.2 rounded-full"
+                        <span class="text-[10px] font-bold px-1.5 py-0.2 rounded-full"
                               :class="(categoriaAtiva || categoriasFiltradas[0]?.id) === cat.id ? 'bg-black/30 text-white' : 'bg-[#1e2029] text-slate-400'"
                               x-text="cat.produtos.length"></span>
                     </button>
@@ -384,8 +383,8 @@
                 <template x-if="!termoBusca.trim() && produtosDestaque.length >= 2">
                     <section class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <h2 class="text-xl font-black text-white flex items-center gap-2">
-                                <span>🏆</span>
+                            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                                <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg></span>
                                 <span>Sugestões da Casa</span>
                             </h2>
                             <span class="text-xs text-slate-400">Os favoritos do cardápio</span>
@@ -396,7 +395,7 @@
                             <template x-for="(dest, idx) in produtosDestaque.slice(0, 4)" :key="'dest-desk-' + dest.id">
                                 <div @click="abrirModalProduto(dest)"
                                      class="bg-[#13141a] border border-[#232631] hover:border-slate-500 rounded-2xl p-3.5 flex items-center gap-3.5 cursor-pointer transition group shadow-md hover:shadow-xl relative">
-                                    <span class="text-2xl font-black shrink-0 w-6 text-center select-none"
+                                    <span class="text-2xl font-bold shrink-0 w-6 text-center select-none"
                                           :style="'color: var(--cor-loja)'"
                                           x-text="idx + 1"></span>
 
@@ -407,7 +406,7 @@
                                             <img :src="imagemProduto(dest)" :alt="dest.nome" class="thumb-mais-pedidos group-hover:scale-110 transition duration-300">
                                         </template>
                                         <template x-if="!imagemProduto(dest)">
-                                            <span class="text-xl font-black select-none" :style="'color: var(--cor-loja)'" x-text="dest.nome.trim().charAt(0).toUpperCase()"></span>
+                                            <span class="text-xl font-bold select-none" :style="'color: var(--cor-loja)'" x-text="dest.nome.trim().charAt(0).toUpperCase()"></span>
                                         </template>
                                     </div>
 
@@ -415,11 +414,11 @@
                                     <div class="min-w-0 flex-1">
                                         <div class="font-bold text-white text-xs sm:text-sm line-clamp-1 group-hover:text-amber-400 transition" x-text="dest.nome"></div>
                                         <p class="text-[11px] text-slate-400 line-clamp-1 mt-0.5" x-text="dest.descricao"></p>
-                                        <div class="text-xs font-black text-white mt-1.5" x-text="formatarCentavos(dest.preco_efetivo_centavos)"></div>
+                                        <div class="text-xs font-bold text-white mt-1.5" x-text="formatarCentavos(dest.preco_efetivo_centavos)"></div>
                                     </div>
 
                                     <button type="button" 
-                                        class="w-7 h-7 rounded-full text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition"
+                                        class="w-7 h-7 rounded-full text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition"
                                         :style="'background-color: var(--cor-loja)'">
                                         +
                                     </button>
@@ -437,14 +436,14 @@
                                             <img :src="imagemProduto(dest)" :alt="dest.nome" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                                         </template>
                                         <template x-if="!imagemProduto(dest)">
-                                            <span class="text-3xl font-black select-none" :style="'color: var(--cor-loja)'" x-text="dest.nome.trim().charAt(0).toUpperCase()"></span>
+                                            <span class="text-3xl font-bold select-none" :style="'color: var(--cor-loja)'" x-text="dest.nome.trim().charAt(0).toUpperCase()"></span>
                                         </template>
                                     </div>
                                     <div>
                                         <div class="font-bold text-white text-xs line-clamp-2 leading-snug" x-text="dest.nome"></div>
-                                        <div class="text-xs font-black text-white mt-2 flex items-center justify-between">
+                                        <div class="text-xs font-bold text-white mt-2 flex items-center justify-between">
                                             <span x-text="formatarCentavos(dest.preco_efetivo_centavos)"></span>
-                                            <span class="w-6 h-6 rounded-full text-white font-black text-xs flex items-center justify-center shadow"
+                                            <span class="w-6 h-6 rounded-full text-white font-bold text-xs flex items-center justify-center shadow"
                                                   :style="'background-color: var(--cor-loja)'">+</span>
                                         </div>
                                     </div>
@@ -457,7 +456,7 @@
                 <!-- Estado Vazio de Busca ou Cardápio em Cadastro -->
                 <template x-if="categoriasFiltradas.length === 0">
                     <div class="bg-[#13141a] border border-[#232631] rounded-3xl p-12 text-center space-y-3">
-                        <div class="text-4xl" x-text="termoBusca ? '🔍' : '🍽️'"></div>
+                        <div class="text-4xl" x-text="termoBusca ? '' : ''"></div>
                         <h3 class="text-base font-bold text-white" x-text="termoBusca ? 'Nenhum produto encontrado' : 'Cardápio em atualização'"></h3>
                         <p class="text-xs text-slate-400 max-w-sm mx-auto" x-text="termoBusca ? 'Tente buscar por outro termo ou limpar o filtro.' : 'Os produtos desta loja estão sendo atualizados e estarão disponíveis em instantes.'"></p>
                         <button x-show="termoBusca" @click="termoBusca = ''" 
@@ -475,7 +474,7 @@
                     <section :id="'categoria-' + categoria.id" class="space-y-4 scroll-mt-24">
                         <div class="border-b border-[#232631] pb-2.5 flex items-baseline justify-between gap-2">
                             <div>
-                                <h2 class="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+                                <h2 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                                     <span x-text="obterIconeCategoria(categoria.nome)"></span>
                                     <span x-text="categoria.nome"></span>
                                 </h2>
@@ -494,7 +493,7 @@
                                     <div class="flex-1 min-w-0 flex flex-col justify-between pr-2">
                                         <div>
                                             <template x-if="produto.preco_promocional_centavos && produto.preco_promocional_centavos < produto.preco_centavos">
-                                                <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[10px] font-black px-2 py-0.5 rounded-md inline-block mb-1.5"
+                                                <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[10px] font-bold px-2 py-0.5 rounded-md inline-block mb-1.5"
                                                       x-text="'-' + Math.round((1 - produto.preco_promocional_centavos / produto.preco_centavos) * 100) + '% OFF'"></span>
                                             </template>
 
@@ -506,7 +505,7 @@
                                             <template x-if="produto.variacoes && produto.variacoes.length > 0">
                                                 <span class="text-[11px] text-slate-400 font-medium">A partir de</span>
                                             </template>
-                                            <span class="text-sm sm:text-base font-black text-white"
+                                            <span class="text-sm sm:text-base font-bold text-white"
                                                   x-text="formatarCentavos(produto.variacoes?.length > 0 ? Math.min(...produto.variacoes.map(v => v.preco_centavos)) : produto.preco_efetivo_centavos)"></span>
                                             
                                             <span x-show="produto.preco_promocional_centavos && produto.preco_promocional_centavos < produto.preco_centavos"
@@ -524,21 +523,21 @@
                                                      class="thumb-produto group-hover:scale-105 transition duration-300">
                                             </template>
                                             <template x-if="!imagemProduto(produto)">
-                                                <span class="text-3xl font-black select-none"
+                                                <span class="text-3xl font-bold select-none"
                                                       :style="'color: var(--cor-loja)'"
                                                       x-text="produto.nome.trim().charAt(0).toUpperCase()"></span>
                                             </template>
                                         </div>
 
                                         <template x-if="qtdProdutoNaSacola(produto.id) > 0">
-                                            <div class="absolute right-1.5 bottom-1.5 px-2 py-0.5 rounded-full text-white font-black text-xs flex items-center gap-1 shadow-lg"
+                                            <div class="absolute right-1.5 bottom-1.5 px-2 py-0.5 rounded-full text-white font-bold text-xs flex items-center gap-1 shadow-lg"
                                                  :style="'background-color: var(--cor-loja)'">
                                                 <span x-text="qtdProdutoNaSacola(produto.id) + 'x'"></span>
                                             </div>
                                         </template>
                                         <template x-if="qtdProdutoNaSacola(produto.id) === 0">
                                             <button type="button" 
-                                                class="w-7 h-7 rounded-full text-white font-black text-sm flex items-center justify-center shadow-lg transition active:scale-90 absolute right-1.5 bottom-1.5"
+                                                class="w-7 h-7 rounded-full text-white font-bold text-sm flex items-center justify-center shadow-lg transition active:scale-90 absolute right-1.5 bottom-1.5"
                                                 :style="'background-color: var(--cor-loja)'">
                                                 +
                                             </button>
@@ -561,9 +560,9 @@
                     
                     <div class="flex items-center justify-between border-b border-[#232631] pb-3">
                         <div>
-                            <h3 class="font-black text-white text-base">Sua sacola</h3>
+                            <h3 class="font-bold text-white text-base">Sua sacola</h3>
                             <p class="text-xs text-slate-400 mt-0.5" 
-                               x-text="(checkout.canal === 'delivery' ? '🛵 Delivery' : (mesaAtiva ? '🪑 Mesa #' + mesaAtiva.numero : '🛍️ Retirada')) + ' · ' + totalItensSacola + (totalItensSacola === 1 ? ' item' : ' itens')"></p>
+                               x-text="(checkout.canal === 'delivery' ? 'Delivery' : (mesaAtiva ? 'Mesa #' + mesaAtiva.numero : 'Retirada')) + ' · ' + totalItensSacola + (totalItensSacola === 1 ? ' item' : ' itens')"></p>
                         </div>
                         <template x-if="carrinho.length > 0">
                             <button type="button" @click="limparSacola()" class="text-[11px] text-slate-500 hover:text-rose-400 transition font-bold">
@@ -577,7 +576,7 @@
                         <div class="bg-[#0a0b0e] border border-[#232631] rounded-2xl p-3.5 text-xs space-y-2">
                             <div class="flex items-center justify-between font-bold">
                                 <span class="text-emerald-400 flex items-center gap-1.5">
-                                    <span>🚚</span>
+                                    <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
                                     <span x-text="faltaParaFreteGratisCentavos === 0 ? 'Parabéns! Frete grátis liberado!' : 'Faltam ' + formatarCentavos(faltaParaFreteGratisCentavos) + ' para frete grátis'"></span>
                                 </span>
                                 <span class="text-slate-400 font-bold" x-text="progressoFreteGratisPct + '%'"></span>
@@ -592,7 +591,7 @@
                     <!-- Estado Vazio da Sacola -->
                     <template x-if="carrinho.length === 0">
                         <div class="text-center py-10 space-y-2">
-                            <div class="text-4xl">🛍️</div>
+                            <div class="text-4xl"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
                             <p class="text-sm font-bold text-white">Sua sacola está vazia</p>
                             <p class="text-xs text-slate-400">Escolha seus itens favoritos no cardápio para montar seu pedido.</p>
                         </div>
@@ -620,10 +619,10 @@
 
                                         <div class="flex items-center gap-1.5 bg-[#1c1e27] border border-[#2a2d39] rounded-xl px-2 py-0.5 shrink-0">
                                             <button type="button" @click="alterarQtdCarrinho(idx, -1)"
-                                                class="text-slate-400 hover:text-white font-black text-xs px-1">−</button>
-                                            <span class="text-xs font-black text-white w-4 text-center" x-text="item.qtd"></span>
+                                                class="text-slate-400 hover:text-white font-bold text-xs px-1">−</button>
+                                            <span class="text-xs font-bold text-white w-4 text-center" x-text="item.qtd"></span>
                                             <button type="button" @click="alterarQtdCarrinho(idx, 1)"
-                                                class="text-slate-400 hover:text-white font-black text-xs px-1">+</button>
+                                                class="text-slate-400 hover:text-white font-bold text-xs px-1">+</button>
                                         </div>
                                     </div>
                                 </template>
@@ -652,19 +651,19 @@
                                 </template>
 
                                 <div class="flex justify-between items-baseline pt-2.5 border-t border-[#232631]">
-                                    <span class="text-xs font-black text-slate-300 uppercase tracking-wider">Total</span>
-                                    <span class="text-2xl font-black text-white" x-text="formatarCentavos(totalFinalCentavos)"></span>
+                                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Total</span>
+                                    <span class="text-2xl font-bold text-white" x-text="formatarCentavos(totalFinalCentavos)"></span>
                                 </div>
 
                                 <button @click="abrirCheckout()"
-                                    class="w-full text-white font-black py-3.5 rounded-2xl text-sm shadow-xl hover:brightness-110 active:scale-98 transition flex items-center justify-center gap-2 mt-2"
+                                    class="w-full text-white font-bold py-3.5 rounded-2xl text-sm shadow-xl hover:brightness-110 active:scale-98 transition flex items-center justify-center gap-2 mt-2"
                                     :style="'background-color: var(--cor-loja)'">
                                     <span>Finalizar pedido</span>
                                     <span>→</span>
                                 </button>
 
                                 <p class="text-[11px] text-slate-500 text-center pt-1 font-medium flex items-center justify-center gap-1.5">
-                                    <span>🔒 Pagamento seguro via PIX, cartão ou dinheiro</span>
+                                    <span>Pagamento seguro via PIX, cartão ou dinheiro</span>
                                 </p>
                             </div>
                         </div>
@@ -684,12 +683,12 @@
              class="rounded-2xl py-3 px-4 shadow-2xl flex items-center justify-between gap-3 pointer-events-auto cursor-pointer active:scale-98 transition backdrop-blur-md"
              :style="'background-color: var(--cor-loja)'">
             <div class="flex items-center gap-2.5 min-w-0">
-                <span class="w-6 h-6 rounded-full bg-black/40 text-white font-black text-xs flex items-center justify-center shrink-0 select-none" 
+                <span class="w-6 h-6 rounded-full bg-black/40 text-white font-bold text-xs flex items-center justify-center shrink-0 select-none" 
                       x-text="totalItensSacola"></span>
                 <span class="text-white font-extrabold text-sm whitespace-nowrap">Ver sacola</span>
             </div>
             <div class="flex items-center gap-2">
-                <span class="text-white font-black text-sm sm:text-base shrink-0 whitespace-nowrap tracking-tight" 
+                <span class="text-white font-bold text-sm sm:text-base shrink-0 whitespace-nowrap tracking-tight" 
                       x-text="formatarCentavos(totalFinalCentavos)"></span>
                 <span class="text-white text-xs">→</span>
             </div>
@@ -707,12 +706,12 @@
                     <img :src="imagemProduto(produtoSelecionado)" :alt="produtoSelecionado?.nome" class="w-full h-full object-cover">
                 </template>
                 <template x-if="!produtoSelecionado || !imagemProduto(produtoSelecionado)">
-                    <span class="text-6xl font-black select-none opacity-40" :style="'color: var(--cor-loja)'" x-text="produtoSelecionado?.nome ? produtoSelecionado.nome.charAt(0).toUpperCase() : ''"></span>
+                    <span class="text-6xl font-bold select-none opacity-40" :style="'color: var(--cor-loja)'" x-text="produtoSelecionado?.nome ? produtoSelecionado.nome.charAt(0).toUpperCase() : ''"></span>
                 </template>
                 <div class="absolute inset-0 bg-gradient-to-t from-[#13141a] via-[#13141a]/40 to-transparent"></div>
-                <button @click="modalAberto = false" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/70 border border-white/10 text-white hover:bg-black font-black flex items-center justify-center shadow-md">✕</button>
+                <button @click="modalAberto = false" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/70 border border-white/10 text-white hover:bg-black font-bold flex items-center justify-center shadow-md"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                 <div class="absolute bottom-3 left-4 right-4 text-white">
-                    <h3 class="font-black text-lg sm:text-xl leading-tight" x-text="produtoSelecionado?.nome"></h3>
+                    <h3 class="font-bold text-lg sm:text-xl leading-tight" x-text="produtoSelecionado?.nome"></h3>
                 </div>
             </div>
 
@@ -734,7 +733,7 @@
                                         <input type="radio" :value="varItem.id" x-model="variacaoSelecionadaId" class="text-amber-500 focus:ring-amber-500">
                                         <span class="text-xs sm:text-sm font-bold text-white" x-text="varItem.nome"></span>
                                     </div>
-                                    <span class="text-xs sm:text-sm font-black text-emerald-400" x-text="formatarCentavos(varItem.preco_centavos)"></span>
+                                    <span class="text-xs sm:text-sm font-bold text-emerald-400" x-text="formatarCentavos(varItem.preco_centavos)"></span>
                                 </label>
                             </template>
                         </div>
@@ -752,7 +751,7 @@
                             </div>
                             <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
                                 :class="grupoSatisfeito(grupo) ? 'bg-emerald-500/15 text-emerald-400' : (grupo.obrigatorio ? 'bg-rose-500/15 text-rose-400' : 'bg-[#1e2029] text-slate-400')"
-                                x-text="grupoSatisfeito(grupo) ? '✓ OK' : (grupo.obrigatorio ? 'Obrigatório' : 'Opcional')"></span>
+                                x-text="grupoSatisfeito(grupo) ? 'OK' : (grupo.obrigatorio ? 'Obrigatório' : 'Opcional')"></span>
                         </div>
 
                         <div class="space-y-1.5 pt-1">
@@ -762,8 +761,8 @@
                                     :class="adicionalSelecionado(opcao.id) ? 'border-amber-500 bg-amber-500/10' : 'border-[#232631] hover:border-slate-500'">
                                     <div class="flex items-center gap-2.5">
                                         <span class="w-4 h-4 rounded-full border flex items-center justify-center text-[10px] font-bold"
-                                            :class="adicionalSelecionado(opcao.id) ? 'bg-amber-500 border-amber-500 text-slate-950 font-black' : 'border-slate-600'">
-                                            <span x-show="adicionalSelecionado(opcao.id)">✓</span>
+                                            :class="adicionalSelecionado(opcao.id) ? 'bg-amber-500 border-amber-500 text-slate-950 font-bold' : 'border-slate-600'">
+                                            <span x-show="adicionalSelecionado(opcao.id)"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
                                         </span>
                                         <span class="text-xs font-semibold text-white" x-text="opcao.nome"></span>
                                     </div>
@@ -787,17 +786,17 @@
             <div class="p-4 border-t border-[#232631] bg-[#13141a] flex items-center justify-between gap-3">
                 <div class="flex items-center bg-[#0a0b0e] rounded-xl p-1 border border-[#232631]">
                     <button type="button" @click="qtdModal = Math.max(1, qtdModal - 1)"
-                        class="w-8 h-8 rounded-lg bg-[#13141a] text-white font-black text-sm hover:bg-[#1e2029]">−</button>
-                    <span class="w-8 text-center font-black text-sm text-white" x-text="qtdModal"></span>
+                        class="w-8 h-8 rounded-lg bg-[#13141a] text-white font-bold text-sm hover:bg-[#1e2029]">−</button>
+                    <span class="w-8 text-center font-bold text-sm text-white" x-text="qtdModal"></span>
                     <button type="button" @click="qtdModal++"
-                        class="w-8 h-8 rounded-lg bg-[#13141a] text-white font-black text-sm hover:bg-[#1e2029]">+</button>
+                        class="w-8 h-8 rounded-lg bg-[#13141a] text-white font-bold text-sm hover:bg-[#1e2029]">+</button>
                 </div>
 
                 <button @click="adicionarAoCarrinho()" :disabled="!modalValido"
                     class="flex-1 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-lg active:scale-95 disabled:opacity-40 transition-all text-xs sm:text-sm flex items-center justify-between"
                     :style="'background-color: var(--cor-loja)'">
                     <span x-text="mensagemBotaoModal"></span>
-                    <span class="font-black" x-text="formatarCentavos(subtotalModalCentavos)"></span>
+                    <span class="font-bold" x-text="formatarCentavos(subtotalModalCentavos)"></span>
                 </button>
             </div>
         </div>
@@ -809,24 +808,24 @@
     <div x-cloak x-show="modalInfoLoja" class="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
         <div @click.away="modalInfoLoja = false" class="bg-[#13141a] border border-[#232631] w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
             <div class="flex items-center justify-between border-b border-[#232631] pb-3">
-                <h3 class="font-black text-lg text-white">Sobre {{ $loja->nome }}</h3>
-                <button @click="modalInfoLoja = false" class="w-8 h-8 rounded-full bg-[#1e2029] text-slate-400 hover:text-white flex items-center justify-center font-bold">✕</button>
+                <h3 class="font-bold text-lg text-white">Sobre {{ $loja->nome }}</h3>
+                <button @click="modalInfoLoja = false" class="w-8 h-8 rounded-full bg-[#1e2029] text-slate-400 hover:text-white flex items-center justify-center font-bold"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
 
             <div class="space-y-4 text-xs">
                 <div>
-                    <span class="text-slate-400 block font-bold uppercase mb-1">📍 Endereço</span>
+                    <span class="text-slate-400 block font-bold uppercase mb-1">Endereço</span>
                     <p class="text-white font-medium">{{ $loja->endereco ?: 'Consulte no WhatsApp' }}{{ $loja->cidade ? ', ' . $loja->cidade : '' }}{{ $loja->uf ? '/' . $loja->uf : '' }}</p>
                 </div>
 
                 <div>
-                    <span class="text-slate-400 block font-bold uppercase mb-1">⏱️ Tempo Médio de Preparo</span>
+                    <span class="text-slate-400 block font-bold uppercase mb-1">⏱Tempo Médio de Preparo</span>
                     <p class="text-white font-medium">{{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }} a {{ ($loja->config_json['tempo_medio_preparo_min'] ?? 35) + 15 }} minutos</p>
                 </div>
 
                 <template x-if="areasEntrega.length > 0">
                     <div>
-                        <span class="text-slate-400 block font-bold uppercase mb-1.5">🛵 Taxas por Região / Bairro</span>
+                        <span class="text-slate-400 block font-bold uppercase mb-1.5">Taxas por Região / Bairro</span>
                         <div class="max-h-36 overflow-y-auto space-y-1 bg-[#0a0b0e] p-2.5 rounded-xl border border-[#232631]">
                             <template x-for="area in areasEntrega" :key="area.id">
                                 <div class="flex justify-between text-[11px]">
@@ -839,19 +838,19 @@
                 </template>
 
                 <div>
-                    <span class="text-slate-400 block font-bold uppercase mb-1">💳 Formas de Pagamento Aceitas</span>
+                    <span class="text-slate-400 block font-bold uppercase mb-1">Formas de Pagamento Aceitas</span>
                     <div class="flex flex-wrap gap-2 pt-1">
-                        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">⚡ PIX Instantâneo</span>
-                        <span class="px-2.5 py-1 rounded-lg bg-[#1e2029] text-white border border-[#232631] font-bold">💳 Cartão de Crédito/Débito</span>
-                        <span class="px-2.5 py-1 rounded-lg bg-[#1e2029] text-white border border-[#232631] font-bold">💵 Dinheiro</span>
+                        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">PIX Instantâneo</span>
+                        <span class="px-2.5 py-1 rounded-lg bg-[#1e2029] text-white border border-[#232631] font-bold">Cartão de Crédito/Débito</span>
+                        <span class="px-2.5 py-1 rounded-lg bg-[#1e2029] text-white border border-[#232631] font-bold">Dinheiro</span>
                     </div>
                 </div>
 
                 @if($loja->telefone_whatsapp)
                 <div class="pt-2">
                     <a href="https://wa.me/55{{ preg_replace('/\D/', '', $loja->telefone_whatsapp) }}" target="_blank"
-                       class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition">
-                        <span>💬 Conversar no WhatsApp</span>
+                       class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition">
+                        <span>Conversar no WhatsApp</span>
                     </a>
                 </div>
                 @endif
@@ -865,8 +864,8 @@
     <div x-cloak x-show="sacolaAberta" class="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div @click.away="sacolaAberta = false" class="bg-[#13141a] border border-[#232631] w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="p-4 border-b border-[#232631] flex items-center justify-between sticky top-0 bg-[#13141a] z-10">
-                <h3 class="font-black text-base text-white" x-text="pedidoCriado ? 'Pedido #' + pedidoCriado.codigo_publico + ' Confirmado!' : 'Finalizar Seu Pedido'"></h3>
-                <button @click="sacolaAberta = false" class="p-1.5 rounded-full bg-[#1e2029] text-slate-400 hover:text-white">✕</button>
+                <h3 class="font-bold text-base text-white" x-text="pedidoCriado ? 'Pedido #' + pedidoCriado.codigo_publico + ' Confirmado!' : 'Finalizar Seu Pedido'"></h3>
+                <button @click="sacolaAberta = false" class="p-1.5 rounded-full bg-[#1e2029] text-slate-400 hover:text-white"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
 
             <div class="p-4 sm:p-5 overflow-y-auto space-y-4">
@@ -874,7 +873,7 @@
                 <template x-if="pedidoCriado">
                     <div class="text-center space-y-4 py-2">
                         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold">
-                            ✓ Pedido registrado! Total: <span x-text="formatarCentavos(pedidoCriado.total_centavos)"></span>
+                            Pedido registrado! Total: <span x-text="formatarCentavos(pedidoCriado.total_centavos)"></span>
                         </div>
 
                         <!-- QR Code Base64 ou QR Code Gerado via BRCode -->
@@ -896,7 +895,7 @@
                                 <textarea readonly x-text="pedidoCriado.pix.copia_e_cola" class="w-full text-[11px] font-mono bg-[#0a0b0e] text-white p-2.5 rounded-xl border border-[#232631] h-20"></textarea>
                                 <button type="button" @click="navigator.clipboard.writeText(pedidoCriado.pix.copia_e_cola); copiado = true" 
                                     class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 rounded-xl text-sm shadow-md">
-                                    <span x-text="copiado ? '✓ Código PIX Copiado!' : '📋 Copiar PIX Copia e Cola'"></span>
+                                    <span x-text="copiado ? 'Código PIX Copiado!' : 'Copiar PIX Copia e Cola'"></span>
                                 </button>
                             </div>
                         </template>
@@ -904,14 +903,14 @@
                         <div class="flex flex-col sm:flex-row gap-2 pt-2">
                             <template x-if="pedidoCriado.tracking_url">
                                 <a :href="pedidoCriado.tracking_url" class="flex-1 bg-[#1e2029] hover:bg-[#252835] text-white font-extrabold py-3 rounded-xl text-xs text-center border border-[#232631]">
-                                    📍 Acompanhar Pedido em Tempo Real →
+                                    Acompanhar Pedido em Tempo Real →
                                 </a>
                             </template>
                             @if($loja->telefone_whatsapp)
                             <a :href="'https://wa.me/55{{ preg_replace('/\D/', '', $loja->telefone_whatsapp) }}?text=' + encodeURIComponent('Olá! Acabei de fazer o pedido #' + pedidoCriado.codigo_publico + ' pelo cardápio digital.')"
                                target="_blank"
                                class="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-extrabold py-3 rounded-xl text-xs text-center">
-                                💬 WhatsApp da Loja ↗
+                                WhatsApp da Loja ↗
                             </a>
                             @endif
                         </div>
@@ -939,9 +938,9 @@
                                             <span class="text-slate-400 ml-1" x-text="formatarCentavos(item.total_centavos)"></span>
                                         </div>
                                         <div class="flex items-center gap-1 bg-[#13141a] border border-[#232631] rounded-lg px-1.5 py-0.5">
-                                            <button type="button" @click="alterarQtdCarrinho(idx, -1)" class="text-slate-400 hover:text-white font-black px-1">−</button>
+                                            <button type="button" @click="alterarQtdCarrinho(idx, -1)" class="text-slate-400 hover:text-white font-bold px-1">−</button>
                                             <span class="font-bold text-white text-[11px]" x-text="item.qtd"></span>
-                                            <button type="button" @click="alterarQtdCarrinho(idx, 1)" class="text-slate-400 hover:text-white font-black px-1">+</button>
+                                            <button type="button" @click="alterarQtdCarrinho(idx, 1)" class="text-slate-400 hover:text-white font-bold px-1">+</button>
                                         </div>
                                     </div>
                                 </template>
@@ -952,17 +951,17 @@
                         <template x-if="sugestoesOrderBump.length > 0">
                             <div class="bg-gradient-to-r from-[#171822] to-[#13141a] border border-amber-500/25 rounded-2xl p-3 space-y-2">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">⚡ Que tal adicionar para acompanhar?</span>
+                                    <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">Que tal adicionar para acompanhar?</span>
                                 </div>
                                 <div class="flex overflow-x-auto no-scrollbar gap-2.5 pb-1">
                                     <template x-for="sug in sugestoesOrderBump" :key="'bump-' + sug.id">
                                         <div class="shrink-0 w-44 bg-[#0a0b0e] border border-[#232631] rounded-xl p-2.5 flex items-center justify-between gap-2">
                                             <div class="min-w-0 flex-1">
                                                 <div class="text-xs font-bold text-white truncate" x-text="sug.nome"></div>
-                                                <div class="text-[11px] font-black text-emerald-400" x-text="'+ ' + formatarCentavos(sug.preco_efetivo_centavos)"></div>
+                                                <div class="text-[11px] font-bold text-emerald-400" x-text="'+ ' + formatarCentavos(sug.preco_efetivo_centavos)"></div>
                                             </div>
                                             <button type="button" @click="adicionarOrderBumpRapido(sug)"
-                                                class="w-7 h-7 rounded-lg text-white font-black text-xs flex items-center justify-center shrink-0 shadow"
+                                                class="w-7 h-7 rounded-lg text-white font-bold text-xs flex items-center justify-center shrink-0 shadow"
                                                 :style="'background-color: var(--cor-loja)'">+</button>
                                         </div>
                                     </template>
@@ -988,7 +987,7 @@
                         <template x-if="checkout.canal === 'delivery' && !mesaAtiva">
                             <div class="space-y-2.5 bg-[#0a0b0e] p-3.5 rounded-2xl border border-[#232631]">
                                 <div class="flex items-center justify-between text-xs">
-                                    <span class="font-bold text-white">📍 Endereço de Entrega</span>
+                                    <span class="font-bold text-white">Endereço de Entrega</span>
                                     <span class="text-emerald-400 font-bold" x-text="freteCentavos === 0 ? 'Frete Grátis!' : 'Taxa: ' + formatarCentavos(freteCentavos)"></span>
                                 </div>
                                 <div class="grid grid-cols-3 gap-2">
@@ -1010,12 +1009,12 @@
 
                         <!-- Cupom de Desconto -->
                         <div class="bg-[#0a0b0e] p-3 rounded-2xl border border-[#232631] space-y-2">
-                            <label class="text-[11px] font-bold uppercase text-slate-400 block">🎟️ Cupom de Desconto</label>
+                            <label class="text-[11px] font-bold uppercase text-slate-400 block">Cupom de Desconto</label>
                             <div class="flex gap-2">
                                 <input type="text" x-model="cupomInput" placeholder="Digite seu cupom"
                                     class="flex-1 bg-[#13141a] border border-[#232631] text-xs text-white uppercase font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500">
                                 <button type="button" @click="validarCupomApi()" :disabled="validandoCupom"
-                                    class="px-4 py-2 rounded-xl bg-[#1e2029] hover:bg-[#2a2d3a] text-white text-xs font-black border border-[#2e3244] transition">
+                                    class="px-4 py-2 rounded-xl bg-[#1e2029] hover:bg-[#2a2d3a] text-white text-xs font-bold border border-[#2e3244] transition">
                                     <span x-text="validandoCupom ? '...' : 'Aplicar'"></span>
                                 </button>
                             </div>
@@ -1031,17 +1030,17 @@
                                 <button type="button" @click="checkout.forma_pagamento = 'pix'"
                                     class="py-2.5 px-2 rounded-xl font-bold border transition text-center"
                                     :class="checkout.forma_pagamento === 'pix' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-[#0a0b0e] border-[#232631] text-slate-400'">
-                                    ⚡ PIX
+                                    PIX
                                 </button>
                                 <button type="button" @click="checkout.forma_pagamento = 'cartao_maquina'"
                                     class="py-2.5 px-2 rounded-xl font-bold border transition text-center"
                                     :class="checkout.forma_pagamento === 'cartao_maquina' ? 'bg-amber-500/20 border-amber-500 text-amber-400' : 'bg-[#0a0b0e] border-[#232631] text-slate-400'">
-                                    💳 Cartão
+                                    Cartão
                                 </button>
                                 <button type="button" @click="checkout.forma_pagamento = 'dinheiro'"
                                     class="py-2.5 px-2 rounded-xl font-bold border transition text-center"
                                     :class="checkout.forma_pagamento === 'dinheiro' ? 'bg-amber-500/20 border-amber-500 text-amber-400' : 'bg-[#0a0b0e] border-[#232631] text-slate-400'">
-                                    💵 Dinheiro
+                                    Dinheiro
                                 </button>
                             </div>
 
@@ -1079,14 +1078,14 @@
                                 </div>
                             </template>
                             <div class="flex justify-between items-baseline pt-2 border-t border-[#232631]">
-                                <span class="font-black text-white text-sm">TOTAL A PAGAR</span>
-                                <span class="font-black text-emerald-400 text-xl" x-text="formatarCentavos(totalFinalCentavos)"></span>
+                                <span class="font-bold text-white text-sm">TOTAL A PAGAR</span>
+                                <span class="font-bold text-emerald-400 text-xl" x-text="formatarCentavos(totalFinalCentavos)"></span>
                             </div>
                         </div>
 
                         <!-- Botão Confirmar Pedido -->
                         <button @click="enviarPedido()" :disabled="enviandoPedido || !lojaStatus.aberto_agora"
-                            class="w-full text-white font-black py-3.5 rounded-2xl text-sm shadow-xl hover:brightness-110 active:scale-98 disabled:opacity-50 transition flex items-center justify-center"
+                            class="w-full text-white font-bold py-3.5 rounded-2xl text-sm shadow-xl hover:brightness-110 active:scale-98 disabled:opacity-50 transition flex items-center justify-center"
                             :style="'background-color: var(--cor-loja)'">
                             <span x-text="!lojaStatus.aberto_agora ? 'Loja Fechada no Momento' : (enviandoPedido ? 'Registrando seu pedido...' : 'Confirmar Pedido • ' + formatarCentavos(totalFinalCentavos))"></span>
                         </button>
@@ -1271,13 +1270,13 @@
 
                 obterIconeCategoria(nome) {
                     const n = (nome || '').toLowerCase();
-                    if (n.includes('hambúrguer') || n.includes('burger') || n.includes('lanche')) return '🍔';
-                    if (n.includes('pizza')) return '🍕';
-                    if (n.includes('acompanha') || n.includes('porç') || n.includes('petisco')) return '🍟';
-                    if (n.includes('bebida') || n.includes('refri') || n.includes('cerveja')) return '🥤';
-                    if (n.includes('sobremesa') || n.includes('doce') || n.includes('açaí')) return '🍨';
-                    if (n.includes('combo') || n.includes('oferta')) return '🏷️';
-                    return '🍽️';
+                    if (n.includes('hambúrguer') || n.includes('burger') || n.includes('lanche')) return '';
+                    if (n.includes('pizza')) return '';
+                    if (n.includes('acompanha') || n.includes('porç') || n.includes('petisco')) return '';
+                    if (n.includes('bebida') || n.includes('refri') || n.includes('cerveja')) return '';
+                    if (n.includes('sobremesa') || n.includes('doce') || n.includes('açaí')) return '';
+                    if (n.includes('combo') || n.includes('oferta')) return '';
+                    return '';
                 },
 
                 nomeCurtoCategoria(nome) {
@@ -1354,22 +1353,9 @@
                 imagemProduto(produto) {
                     if (!produto) return null;
                     const img = produto.imagem || produto.foto_principal_url || null;
-                    if (img && img.startsWith('http')) return img;
-                    const nome = (produto.nome || '').toLowerCase();
-                    if (nome.includes('bacon')) return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('smash')) return 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('costela') || nome.includes('bbq')) return 'https://images.unsplash.com/photo-1553979459-d2229ba7433b?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('chicken') || nome.includes('crispy') || nome.includes('frango')) return 'https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('napolitana')) return 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('pizza') || nome.includes('calabresa')) return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('batata') || nome.includes('frita') || nome.includes('rústica') || nome.includes('rustica')) return 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('onion') || nome.includes('cebola')) return 'https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('coca') || nome.includes('refrigerante') || nome.includes('refri')) return 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('suco') || nome.includes('laranja')) return 'https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('cerveja') || nome.includes('heineken')) return 'https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=600&q=80';
-                    if (nome.includes('açaí') || nome.includes('acai')) return 'https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80';
-                    if (img && (img.startsWith('http') || img.startsWith('/'))) return img;
-                    return null;
+                    if (!img) return null;
+                    if (img.startsWith('http') || img.startsWith('/')) return img;
+                    return '/storage/' + img.replace(/^\/+/, '');
                 },
 
                 get categoriasFiltradas() {
@@ -1563,7 +1549,7 @@
                             ? Math.round((this.subtotalCarrinhoCentavos * cupomObj.valor) / 100)
                             : cupomObj.valor
                     };
-                    this.mensagemCupom = '✓ Cupom ' + cupomObj.codigo + ' ativado!';
+                    this.mensagemCupom = 'Cupom ' + cupomObj.codigo + ' ativado!';
                 },
 
                 validarCupomApi() {
@@ -1592,7 +1578,7 @@
                             pedido_minimo: cupomCat ? cupomCat.pedido_minimo : 0,
                             desconto_centavos: data.desconto_centavos
                         };
-                        this.mensagemCupom = '✓ ' + (data.message || 'Cupom aplicado com sucesso!');
+                        this.mensagemCupom = '' + (data.message || 'Cupom aplicado com sucesso!');
                     })
                     .catch(e => {
                         this.cupomAplicado = null;

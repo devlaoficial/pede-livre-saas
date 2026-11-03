@@ -6,17 +6,19 @@
     <meta name="theme-color" content="#06080f">
     <title>Entrar no Painel — PedeLivre OS</title>
 
-    <!-- Google Fonts: Plus Jakarta Sans -->
+    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
+        html, body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; font-synthesis: none; }
+        .font-extrabold { font-weight: 700; }
         [x-cloak] { display: none !important; }
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: #06080f;
         }
     </style>
@@ -39,11 +41,11 @@
                 <div class="space-y-8 relative z-10">
                     <!-- Logo -->
                     <a href="/" class="inline-flex items-center gap-3 group">
-                        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-amber-500 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-rose-600/30">
+                        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-amber-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-rose-600/30">
                             P
                         </div>
                         <div>
-                            <span class="text-xl font-black tracking-tight text-white">Pede<span class="text-rose-500">Livre</span></span>
+                            <span class="text-xl font-bold tracking-tight text-white">Pede<span class="text-rose-500">Livre</span></span>
                             <span class="block text-[10px] font-bold uppercase tracking-widest text-amber-400">Central de Operações</span>
                         </div>
                     </a>
@@ -53,7 +55,7 @@
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                             Ambiente de Produção Seguro
                         </span>
-                        <h2 class="text-2xl font-black text-white leading-snug">
+                        <h2 class="text-2xl font-bold text-white leading-snug">
                             Gerencie pedidos, cozinha, caixa e WhatsApp em uma única tela.
                         </h2>
                         <p class="text-xs text-slate-400 leading-relaxed">
@@ -64,7 +66,7 @@
                     <!-- Mini Destaques Operacionais -->
                     <div class="space-y-3 pt-2">
                         <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3.5 flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center font-bold text-base shrink-0">📋</div>
+                            <div class="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center font-bold text-base shrink-0"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg></div>
                             <div>
                                 <div class="text-xs font-extrabold text-white">Kanban &amp; KDS em Tempo Real</div>
                                 <div class="text-[11px] text-slate-400">Sincronização instantânea entre salão, balcão e cozinha</div>
@@ -72,7 +74,7 @@
                         </div>
 
                         <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3.5 flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center font-bold text-base shrink-0">⚡</div>
+                            <div class="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center font-bold text-base shrink-0"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
                             <div>
                                 <div class="text-xs font-extrabold text-white">PIX 0% Taxa Direto na Conta</div>
                                 <div class="text-[11px] text-slate-400">Chave PIX Direta BCB ou Mercado Pago Dinâmico</div>
@@ -80,7 +82,7 @@
                         </div>
 
                         <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3.5 flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center font-bold text-base shrink-0">💬</div>
+                            <div class="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center font-bold text-base shrink-0"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg></div>
                             <div>
                                 <div class="text-xs font-extrabold text-white">Atendimento WhatsApp IA</div>
                                 <div class="text-[11px] text-slate-400">Avisos automáticos de status e campanhas Win-Back</div>
@@ -92,7 +94,7 @@
                 <!-- Rodapé de Segurança -->
                 <div class="pt-6 border-t border-white/[0.07] flex items-center justify-between text-[11px] text-slate-400 relative z-10">
                     <span class="flex items-center gap-1.5 font-semibold text-slate-300">
-                        <span>🔒</span> Criptografia AES-256-GCM
+                        <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg></span> Criptografia AES-256-GCM
                     </span>
                     <span>Isolamento Multi-Tenant</span>
                 </div>
@@ -104,24 +106,24 @@
                 <!-- Topo Mobile -->
                 <div class="lg:hidden flex items-center justify-between mb-6 pb-4 border-b border-white/[0.07]">
                     <a href="/" class="inline-flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center text-white font-black text-sm">P</div>
-                        <span class="text-lg font-black text-white">Pede<span class="text-rose-500">Livre</span></span>
+                        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center text-white font-bold text-sm">P</div>
+                        <span class="text-lg font-bold text-white">Pede<span class="text-rose-500">Livre</span></span>
                     </a>
-                    <span class="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">🔒 Acesso Seguro</span>
+                    <span class="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">Acesso Seguro</span>
                 </div>
 
                 <div class="max-w-md w-full mx-auto space-y-6">
                     <div>
-                        <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight" x-text="etapa2fa ? 'Verificação em 2 Etapas' : 'Bem-vindo de volta'"></h1>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight" x-text="etapa2fa ? 'Verificação em 2 Etapas' : 'Bem-vindo de volta'"></h1>
                         <p class="mt-1.5 text-xs sm:text-sm text-slate-400" x-text="etapa2fa ? 'Digite o código de 6 dígitos do seu aplicativo autenticador.' : 'Informe suas credenciais para acessar o painel da sua loja.'"></p>
                     </div>
 
                     <!-- Alerta de Erro -->
                     <template x-if="erro">
                         <div class="bg-rose-950/70 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-2xl p-4 flex items-start gap-2.5 shadow-lg">
-                            <span class="text-rose-400 text-sm shrink-0">⚠️</span>
+                            <span class="text-rose-400 text-sm shrink-0"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span>
                             <span class="flex-1" x-text="erro"></span>
-                            <button type="button" @click="erro = ''" class="text-rose-400 hover:text-white font-bold">✕</button>
+                            <button type="button" @click="erro = ''" class="text-rose-400 hover:text-white font-bold"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                         </div>
                     </template>
 
@@ -131,7 +133,7 @@
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">E-mail de Acesso</label>
                                 <div class="relative">
-                                    <span class="absolute left-3.5 top-3.5 text-slate-500 text-sm">✉️</span>
+                                    <span class="absolute left-3.5 top-3.5 text-slate-500 text-sm"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></span>
                                     <input type="email" x-model="email" required placeholder="voce@seurestaurante.com.br" autocomplete="username"
                                         class="w-full bg-[#06080f] border border-white/[0.1] focus:border-rose-500 rounded-2xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition">
                                 </div>
@@ -141,11 +143,11 @@
                                 <div class="flex items-center justify-between mb-1.5">
                                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-300">Sua Senha</label>
                                     <button type="button" @click="mostrarSenha = !mostrarSenha" class="text-[11px] font-bold text-slate-400 hover:text-rose-400 transition">
-                                        <span x-text="mostrarSenha ? '🙈 Ocultar senha' : '👁️ Mostrar senha'"></span>
+                                        <span x-text="mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'"></span>
                                     </button>
                                 </div>
                                 <div class="relative">
-                                    <span class="absolute left-3.5 top-3.5 text-slate-500 text-sm">🔑</span>
+                                    <span class="absolute left-3.5 top-3.5 text-slate-500 text-sm"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></span>
                                     <input :type="mostrarSenha ? 'text' : 'password'" x-model="senha" required placeholder="••••••••" autocomplete="current-password"
                                         class="w-full bg-[#06080f] border border-white/[0.1] focus:border-rose-500 rounded-2xl pl-10 pr-12 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition">
                                 </div>
@@ -159,7 +161,7 @@
                             </div>
 
                             <button type="submit" :disabled="carregando"
-                                class="w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 disabled:opacity-50 text-white font-black py-3.5 rounded-2xl text-sm shadow-xl shadow-rose-600/30 transition active:scale-98 flex items-center justify-center gap-2">
+                                class="w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl text-sm shadow-xl shadow-rose-600/30 transition active:scale-98 flex items-center justify-center gap-2">
                                 <template x-if="carregando">
                                     <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                                 </template>
@@ -174,7 +176,7 @@
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Código Autenticador (6 dígitos)</label>
                                 <input type="text" maxlength="6" x-model="codigo2fa" required placeholder="000000"
-                                    class="w-full bg-[#06080f] border border-white/[0.1] focus:border-rose-500 rounded-2xl px-4 py-3.5 text-center font-mono text-xl tracking-[0.4em] font-black text-emerald-400 focus:outline-none">
+                                    class="w-full bg-[#06080f] border border-white/[0.1] focus:border-rose-500 rounded-2xl px-4 py-3.5 text-center font-mono text-xl tracking-[0.4em] font-bold text-emerald-400 focus:outline-none">
                             </div>
                             <div class="flex gap-2">
                                 <button type="button" @click="etapa2fa = false; tempToken = ''"
@@ -182,7 +184,7 @@
                                     Voltar
                                 </button>
                                 <button type="submit" :disabled="carregando"
-                                    class="w-2/3 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-2xl text-sm shadow-xl transition">
+                                    class="w-2/3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-2xl text-sm shadow-xl transition">
                                     <span x-text="carregando ? 'Verificando...' : 'Confirmar Código →'"></span>
                                 </button>
                             </div>

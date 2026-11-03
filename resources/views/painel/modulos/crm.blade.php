@@ -3,22 +3,22 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-[#131927] border border-[#1e2638] rounded-2xl p-5 space-y-1">
                     <span class="text-xs font-bold uppercase text-slate-400">Base Total de Clientes</span>
-                    <div class="text-2xl font-black text-white" x-text="(relatorio.clientes_lista || []).length"></div>
+                    <div class="text-2xl font-bold text-white" x-text="(relatorio.clientes_lista || []).length"></div>
                     <p class="text-[11px] text-slate-500">Cadastrados automaticamente no checkout</p>
                 </div>
                 <div class="bg-[#131927] border border-[#1e2638] rounded-2xl p-5 space-y-1">
                     <span class="text-xs font-bold uppercase text-emerald-400">Clientes Fidelizados (2+ pedidos)</span>
-                    <div class="text-2xl font-black text-emerald-400" x-text="relatorio.clientes?.recorrentes || 0"></div>
+                    <div class="text-2xl font-bold text-emerald-400" x-text="relatorio.clientes?.recorrentes || 0"></div>
                     <p class="text-[11px] text-slate-500">Compram com recorrência e acumulam Cashback</p>
                 </div>
                 <div class="bg-[#131927] border border-[#1e2638] rounded-2xl p-5 space-y-1">
                     <span class="text-xs font-bold uppercase text-amber-400">Sumidos há 30+ Dias (Win-Back)</span>
-                    <div class="text-2xl font-black text-amber-400" x-text="relatorio.clientes?.elegiveis_winback_30d || 0"></div>
+                    <div class="text-2xl font-bold text-amber-400" x-text="relatorio.clientes?.elegiveis_winback_30d || 0"></div>
                     <p class="text-[11px] text-slate-500">Prontos para recuperação 1-clique no WhatsApp</p>
                 </div>
                 <div class="bg-[#131927] border border-[#1e2638] rounded-2xl p-5 space-y-1">
                     <span class="text-xs font-bold uppercase text-[#f43f5e]">Cupons Ativos na Loja</span>
-                    <div class="text-2xl font-black text-[#f43f5e]" x-text="cupons.filter(c => c.ativo).length"></div>
+                    <div class="text-2xl font-bold text-[#f43f5e]" x-text="cupons.filter(c => c.ativo).length"></div>
                     <p class="text-[11px] text-slate-500">Ex: VOLTE10 / BEMVINDO10</p>
                 </div>
             </div>
@@ -28,7 +28,7 @@
                 <div class="lg:col-span-8 bg-[#131927] border border-[#1e2638] rounded-3xl p-5 sm:p-6 space-y-4">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1e2638] pb-3">
                         <div>
-                            <h2 class="font-bold text-base text-white">👥 Ranking de Clientes, Cashback &amp; Recuperação WhatsApp</h2>
+                            <h2 class="font-bold text-base text-white">Ranking de Clientes, Cashback &amp; Recuperação WhatsApp</h2>
                             <p class="text-xs text-slate-400">Envie cupons personalizados em 1 clique para clientes fiéis ou sumidos há 30+ dias.</p>
                         </div>
                         <button @click="carregarFinanceiro()" class="bg-[#1e2638] hover:bg-slate-700 text-xs font-bold px-3 py-2 rounded-xl text-slate-200 self-start transition">
@@ -49,11 +49,11 @@
                                     <div class="flex flex-wrap items-center gap-2">
                                         <span class="font-bold text-sm text-white" x-text="cli.nome"></span>
                                         <span class="text-xs text-slate-400" x-text="cli.telefone"></span>
-                                        <span x-show="cli.inativo_30d" class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                            ⚠️ Sumido há <span x-text="cli.dias_sem_pedir"></span>d
+                                        <span x-show="cli.inativo_30d" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                            Sumido há <span x-text="cli.dias_sem_pedir"></span>d
                                         </span>
-                                        <span x-show="!cli.inativo_30d && cli.total_pedidos > 1" class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                            ⭐ Cliente Fiel
+                                        <span x-show="!cli.inativo_30d && cli.total_pedidos > 1" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                            Cliente Fiel
                                         </span>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-3 text-xs text-slate-400">
@@ -65,8 +65,8 @@
                                 </div>
                                 <template x-if="cli.whatsapp_winback_url">
                                     <a :href="cli.whatsapp_winback_url" target="_blank"
-                                        class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-3.5 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shrink-0 shadow-md transition active:scale-95">
-                                        <span>💬 Enviar Cupom WhatsApp ↗</span>
+                                        class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shrink-0 shadow-md transition active:scale-95">
+                                        <span>Enviar Cupom WhatsApp ↗</span>
                                     </a>
                                 </template>
                             </div>
@@ -79,7 +79,7 @@
                     <!-- 1. Horários de Pico -->
                     <div class="bg-[#131927] border border-[#1e2638] rounded-3xl p-5 space-y-4">
                         <div>
-                            <h3 class="font-bold text-base text-white">📊 Horários de Pico da Operação</h3>
+                            <h3 class="font-bold text-base text-white">Horários de Pico da Operação</h3>
                             <p class="text-xs text-slate-400">Volume de pedidos concluídos por horário para dimensionar cozinha e entregadores.</p>
                         </div>
 
@@ -93,7 +93,7 @@
                             <template x-for="[hora, qtd] in Object.entries(relatorio.horarios_pico || {})" :key="hora">
                                 <div class="space-y-1">
                                     <div class="flex justify-between text-xs font-bold">
-                                        <span class="text-slate-300" x-text="'🕒 ' + hora"></span>
+                                        <span class="text-slate-300" x-text="'' + hora"></span>
                                         <span class="text-[#f43f5e]" x-text="qtd + ' pedido(s)'"></span>
                                     </div>
                                     <div class="w-full h-2.5 bg-[#0f1422] rounded-full overflow-hidden border border-[#1e2638]">
@@ -108,7 +108,7 @@
                     <!-- 2. Produtos Campeões de Venda (Etapa 4) -->
                     <div class="bg-[#131927] border border-[#1e2638] rounded-3xl p-5 space-y-4">
                         <div>
-                            <h3 class="font-bold text-base text-white">🏆 Produtos Campeões de Venda</h3>
+                            <h3 class="font-bold text-base text-white">Produtos Campeões de Venda</h3>
                             <p class="text-xs text-slate-400">Os itens mais pedidos e lucrativos do seu cardápio.</p>
                         </div>
 
@@ -122,12 +122,12 @@
                             <template x-for="(prod, idx) in (relatorio.produtos_campeoes || [])" :key="prod.nome">
                                 <div class="bg-[#0f1422] border border-[#192136] rounded-xl p-3 flex items-center justify-between text-xs">
                                     <div class="flex items-center gap-2.5 min-w-0">
-                                        <span class="w-6 h-6 rounded-lg bg-[#1e2638] font-black text-white flex items-center justify-center text-[11px] shrink-0"
+                                        <span class="w-6 h-6 rounded-lg bg-[#1e2638] font-bold text-white flex items-center justify-center text-[11px] shrink-0"
                                               x-text="'#' + (idx + 1)"></span>
                                         <span class="font-bold text-white truncate" x-text="prod.nome"></span>
                                     </div>
                                     <div class="text-right shrink-0">
-                                        <div class="font-black text-emerald-400" x-text="formatarCentavos(prod.total_centavos)"></div>
+                                        <div class="font-bold text-emerald-400" x-text="formatarCentavos(prod.total_centavos)"></div>
                                         <div class="text-[10px] text-slate-400" x-text="prod.qtd + ' vendidos'"></div>
                                     </div>
                                 </div>

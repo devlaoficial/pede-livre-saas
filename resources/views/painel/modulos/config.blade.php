@@ -2,12 +2,12 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <!-- Dados Operacionais & Identidade Visual -->
                 <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
-                    <h2 class="font-bold text-base text-white">⚙️ Dados Operacionais &amp; Identidade Visual do Restaurante</h2>
+                    <h2 class="font-bold text-base text-white">Dados Operacionais &amp; Identidade Visual do Restaurante</h2>
                     
                     <!-- Upload de Logo e Banner de Capa -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-950 border border-slate-800 rounded-2xl p-3.5 text-xs">
                         <div class="space-y-1.5">
-                            <label class="font-bold text-slate-300 block">🖼️ Logo da Loja (Quadrada)</label>
+                            <label class="font-bold text-slate-300 block">Logo da Loja (Quadrada)</label>
                             <div class="flex items-center gap-2.5">
                                 <template x-if="loja?.logo_url">
                                     <img :src="loja.logo_url.startsWith('http') || loja.logo_url.startsWith('/') ? loja.logo_url : '/storage/' + loja.logo_url" class="w-11 h-11 rounded-xl object-cover border border-slate-700 shrink-0">
@@ -17,7 +17,7 @@
                             </div>
                         </div>
                         <div class="space-y-1.5">
-                            <label class="font-bold text-slate-300 block">🏞️ Banner de Capa do Cardápio</label>
+                            <label class="font-bold text-slate-300 block">Banner de Capa do Cardápio</label>
                             <div class="flex items-center gap-2.5">
                                 <template x-if="loja?.capa_url">
                                     <img :src="loja.capa_url.startsWith('http') || loja.capa_url.startsWith('/') ? loja.capa_url : '/storage/' + loja.capa_url" class="w-16 h-11 rounded-xl object-cover border border-slate-700 shrink-0">
@@ -69,7 +69,7 @@
 
                         <!-- Parâmetros Operacionais Avançados -->
                         <div class="border-t border-slate-800 pt-3 mt-2 space-y-3">
-                            <span class="font-extrabold text-slate-300 block">⚡ Parâmetros Operacionais (Preparo, Cashback, Salão &amp; Pizzaria)</span>
+                            <span class="font-semibold text-slate-300 block">Parâmetros Operacionais (Preparo, Cashback, Salão &amp; Pizzaria)</span>
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                                 <div>
                                     <label class="text-[11px] font-bold text-slate-400 block mb-1">Tempo Preparo (min)</label>
@@ -97,8 +97,8 @@
                             </label>
                         </div>
 
-                        <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3 rounded-xl text-sm shadow-lg transition">
-                            💾 Salvar Dados e Configurações Operacionais
+                        <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 rounded-xl text-sm shadow-lg transition">
+                            Salvar Dados e Configurações Operacionais
                         </button>
                     </form>
                 </div>
@@ -107,8 +107,8 @@
                 <div class="lg:col-span-5 space-y-6">
                     <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 flex flex-col justify-between">
                         <div class="space-y-3">
-                            <span class="text-xs font-black uppercase text-rose-400">Minha Assinatura PedeLivre</span>
-                            <h3 class="text-xl font-black text-white" x-text="'Plano ' + (loja?.plano || 'Premium')"></h3>
+                            <span class="text-xs font-bold uppercase text-rose-400">Minha Assinatura PedeLivre</span>
+                            <h3 class="text-xl font-bold text-white" x-text="'Plano ' + (loja?.plano || 'Premium')"></h3>
                             <p class="text-xs text-slate-400 leading-relaxed">
                                 Seu ambiente opera com 0% de comissão sobre vendas e isolamento total de dados da sua loja.
                             </p>
@@ -117,15 +117,15 @@
                                     <span class="text-slate-400">Status da Conta:</span>
                                     <span class="font-bold uppercase"
                                           :class="loja?.status === 'ativa' || loja?.status === 'trial' ? 'text-emerald-400' : 'text-amber-400'"
-                                          x-text="loja?.status === 'trial' ? '✓ Em Período Trial' : (loja?.status === 'ativa' ? '✓ Ativa e Regular' : (loja?.status || 'Ativa'))"></span>
+                                          x-text="loja?.status === 'trial' ? 'Em Período Trial' : (loja?.status === 'ativa' ? 'Ativa e Regular' : (loja?.status || 'Ativa'))"></span>
                                 </div>
                                 <div class="flex justify-between"><span class="text-slate-400">Comissão sobre Vendas:</span><span class="text-emerald-400 font-bold">0% (Isento)</span></div>
                                 <div class="flex justify-between"><span class="text-slate-400">Link Público:</span><a :href="'/p/' + (loja?.slug || '')" target="_blank" class="text-rose-400 font-bold hover:underline" x-text="'/p/' + (loja?.slug || '')"></a></div>
                             </div>
                         </div>
 
-                        <button @click="copiarLinkCardapio()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-center text-xs transition shadow-lg">
-                            📲 Copiar Link do Cardápio p/ WhatsApp &amp; Bio
+                        <button @click="copiarLinkCardapio()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-center text-xs transition shadow-lg">
+                            Copiar Link do Cardápio p/ WhatsApp &amp; Bio
                         </button>
                     </div>
 
@@ -133,7 +133,7 @@
                     <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-3 text-xs">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h3 class="font-bold text-sm text-white">🕒 Horários de Funcionamento</h3>
+                                <h3 class="font-bold text-sm text-white">Horários de Funcionamento</h3>
                                 <p class="text-[11px] text-slate-400">Configure os turnos em que a loja aceita pedidos</p>
                             </div>
                             <button type="button" @click="adicionarTurnoHorario()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-[11px]">
@@ -157,12 +157,12 @@
                                         <span class="text-slate-500">às</span>
                                         <input type="time" x-model="h.fecha_as" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white text-[11px]">
                                     </div>
-                                    <button type="button" @click="horariosLoja.splice(idx, 1)" class="text-rose-400 font-bold px-1.5">✕</button>
+                                    <button type="button" @click="horariosLoja.splice(idx, 1)" class="text-rose-400 font-bold px-1.5"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                 </div>
                             </template>
                         </div>
                         <button type="button" @click="salvarHorariosLoja()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl transition">
-                            💾 Salvar Horários de Atendimento
+                            Salvar Horários de Atendimento
                         </button>
                     </div>
                 </div>
@@ -174,18 +174,18 @@
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                     <div class="space-y-1">
                         <div class="flex items-center gap-2">
-                            <span class="text-xl">💬</span>
-                            <h3 class="font-extrabold text-sm text-white">WhatsApp &amp; Automações da Loja</h3>
-                            <span class="text-xs px-2.5 py-0.5 rounded-full font-extrabold"
+                            <span class="text-xl"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg></span>
+                            <h3 class="font-semibold text-sm text-white">WhatsApp &amp; Automações da Loja</h3>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold"
                                   :class="whatsappConectado ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'"
-                                  x-text="whatsappConectado ? ('🟢 Conectado: +' + (whatsappStatus.phone || 'Ativo')) : '⚪ Desconectado'"></span>
+                                  x-text="whatsappConectado ? ('Conectado: +' + (whatsappStatus.phone || 'Ativo')) : 'Desconectado'"></span>
                         </div>
                         <p class="text-xs text-slate-400">
                             Dispare avisos aos clientes a cada fase do pedido, acione motoboys com rota no Google Maps e tenha atendimento IA automático no WhatsApp.
                         </p>
                     </div>
-                    <button @click="mudarModulo('whatsapp')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-4 py-2 rounded-xl text-xs shadow-lg transition shrink-0">
-                        <span x-text="whatsappConectado ? '⚙️ Gerenciar Automações' : '📱 Conectar WhatsApp (QR Code)'"></span>
+                    <button @click="mudarModulo('whatsapp')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-xl text-xs shadow-lg transition shrink-0">
+                        <span x-text="whatsappConectado ? 'Gerenciar Automações' : 'Conectar WhatsApp (QR Code)'"></span>
                     </button>
                 </div>
             </div>
@@ -196,10 +196,10 @@
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                     <div>
                         <div class="flex flex-wrap items-center gap-2">
-                            <h3 class="text-base font-black text-white">⚡ Recebimento PIX no Checkout (Mercado Pago ou Chave PIX Direta)</h3>
-                            <span class="text-xs font-black px-3 py-0.5 rounded-full border"
+                            <h3 class="text-base font-bold text-white">Recebimento PIX no Checkout (Mercado Pago ou Chave PIX Direta)</h3>
+                            <span class="text-xs font-bold px-3 py-0.5 rounded-full border"
                                   :class="mpStatus?.conectado ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'"
-                                  x-text="mpStatus?.conectado ? '✓ Ativo (' + (mpStatus.mp_conta_nome || mpStatus.chave_pix || 'Configurado') + ')' : '⚠️ Configure sua Chave PIX ou Mercado Pago'">
+                                  x-text="mpStatus?.conectado ? 'Ativo (' + (mpStatus.mp_conta_nome || mpStatus.chave_pix || 'Configurado') + ')' : 'Configure sua Chave PIX ou Mercado Pago'">
                             </span>
                         </div>
                         <p class="text-xs text-slate-400 mt-1">
@@ -208,12 +208,12 @@
                     </div>
                     <div class="flex flex-wrap gap-2 shrink-0">
                         <template x-if="mpStatus?.conectado">
-                            <button @click="testarPixMercadoPago()" :disabled="testandoPix" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-3.5 py-2.5 rounded-xl">
-                                <span x-text="testandoPix ? 'Gerando...' : '🧪 Testar PIX Real'"></span>
+                            <button @click="testarPixMercadoPago()" :disabled="testandoPix" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2.5 rounded-xl">
+                                <span x-text="testandoPix ? 'Gerando...' : 'Testar PIX Real'"></span>
                             </button>
                         </template>
-                        <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs px-3.5 py-2.5 rounded-xl">
-                            🔗 OAuth Mercado Pago
+                        <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs px-3.5 py-2.5 rounded-xl">
+                            OAuth Mercado Pago
                         </button>
                         <template x-if="mpStatus?.conectado">
                             <button @click="desconectarMercadoPago()" class="bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700 font-bold text-xs px-3 py-2.5 rounded-xl">
@@ -233,11 +233,11 @@
                             <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(pixTesteResultado.pix_copia_cola)" class="w-28 h-28 rounded-xl bg-white p-1.5 shrink-0">
                         </template>
                         <div class="space-y-2 text-xs flex-1 min-w-0 w-full">
-                            <div class="font-black text-emerald-400 text-sm" x-text="'✓ ' + pixTesteResultado.message"></div>
+                            <div class="font-bold text-emerald-400 text-sm" x-text="'' + pixTesteResultado.message"></div>
                             <div class="text-slate-300">Identificador: <strong class="text-white" x-text="pixTesteResultado.mp_payment_id"></strong></div>
                             <input type="text" readonly :value="pixTesteResultado.pix_copia_cola" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[11px] text-emerald-300 font-mono">
                         </div>
-                        <button @click="pixTesteResultado = null" class="text-slate-400 font-bold text-sm self-start">✕</button>
+                        <button @click="pixTesteResultado = null" class="text-slate-400 font-bold text-sm self-start"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                     </div>
                 </template>
 
@@ -253,8 +253,8 @@
                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white">
                     </div>
                     <div class="md:col-span-3">
-                        <button type="submit" :disabled="salvandoMp" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl text-xs shadow-lg transition">
-                            <span x-text="salvandoMp ? 'Salvando...' : '✓ Salvar Recebimento PIX'"></span>
+                        <button type="submit" :disabled="salvandoMp" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg transition">
+                            <span x-text="salvandoMp ? 'Salvando...' : 'Salvar Recebimento PIX'"></span>
                         </button>
                     </div>
                 </form>

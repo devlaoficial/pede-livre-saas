@@ -234,7 +234,7 @@ final class RecuperadorVendasService
             $cliente->increment('total_pedidos');
             $cliente->update(['ultimo_pedido_em' => now()]);
 
-            event(new PedidoCriado($novoPedido->load(['cliente', 'itens'])));
+            try { if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) { event(new PedidoCriado($novoPedido->load(['cliente', 'itens']))); } } catch (\Throwable) {}
 
             return $novoPedido;
         });
@@ -263,7 +263,7 @@ final class RecuperadorVendasService
             'observacao' => "Forma de pagamento alterada para [{$novaForma}] via WhatsApp pelo cliente.",
         ]);
 
-        event(new PedidoAtualizado($pedido, 'novo'));
+        try { if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) { event(new PedidoAtualizado($pedido, 'novo')); } } catch (\Throwable) {}
 
         return true;
     }

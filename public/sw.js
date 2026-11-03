@@ -85,7 +85,7 @@ self.addEventListener('fetch', (event) => {
                         </head>
                         <body>
                             <div class="card">
-                                <div class="icon">📡</div>
+                                <div class="icon"></div>
                                 <h1>Conexão temporariamente indisponível</h1>
                                 <p>O PedeLivre OS está aguardando o retorno da sua internet para sincronizar os pedidos em tempo real.</p>
                                 <button onclick="window.location.reload()">Tentar reconectar agora</button>
@@ -149,7 +149,7 @@ self.addEventListener('message', (event) => {
                 pedidoId: data.pedidoId || null
             },
             actions: data.actions || [
-                { action: 'open', title: '⚡ Abrir Painel' }
+                { action: 'open', title: 'Abrir Painel' }
             ]
         };
 
@@ -166,7 +166,7 @@ self.addEventListener('push', (event) => {
         payload = { title: 'PedeLivre OS', body: event.data ? event.data.text() : 'Novo pedido recebido!' };
     }
 
-    const title = payload.title || '🔔 Novo Pedido no PedeLivre!';
+    const title = payload.title || 'Novo Pedido no PedeLivre!';
     const options = {
         body: payload.body || 'Toque para visualizar e aceitar o pedido imediatamente.',
         icon: '/icons/icon-192.png',

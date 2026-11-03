@@ -6,6 +6,12 @@
     <title>Acompanhar Pedido #{{ $pedido->codigo_publico }} — {{ $loja->nome }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        html, body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; font-synthesis: none; }
+    </style>
 </head>
 <body class="min-h-full font-sans antialiased py-6 px-4 sm:px-6 lg:px-8" x-data="trackingApp()" x-init="iniciar()">
     <div class="max-w-2xl mx-auto space-y-6">
@@ -15,7 +21,7 @@
                 @if($loja->logo_url)
                     <img src="{{ str_starts_with($loja->logo_url, 'http') || str_starts_with($loja->logo_url, '/') ? $loja->logo_url : '/storage/' . ltrim($loja->logo_url, '/') }}" alt="{{ $loja->nome }}" class="w-11 h-11 rounded-xl object-cover border border-slate-700">
                 @else
-                    <div class="w-11 h-11 rounded-xl bg-rose-600 flex items-center justify-center font-black text-lg text-white">
+                    <div class="w-11 h-11 rounded-xl bg-rose-600 flex items-center justify-center font-bold text-lg text-white">
                         {{ substr($loja->nome, 0, 1) }}
                     </div>
                 @endif
@@ -29,7 +35,7 @@
                 <a href="https://wa.me/55{{ preg_replace('/\D/', '', $loja->telefone_whatsapp) }}?text={{ urlencode('Olá! Gostaria de falar sobre o meu pedido #' . $pedido->codigo_publico) }}"
                    target="_blank"
                    class="text-xs font-bold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-3.5 py-2 rounded-xl transition">
-                    💬 WhatsApp
+                    WhatsApp
                 </a>
                 @endif
                 <a href="/p/{{ $loja->slug }}" class="text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl transition">
@@ -46,7 +52,7 @@
                 <span x-text="statusTitulo()"></span>
             </div>
 
-            <h2 class="text-2xl sm:text-3xl font-black text-white" x-text="statusDescricao()"></h2>
+            <h2 class="text-2xl sm:text-3xl font-bold text-white" x-text="statusDescricao()"></h2>
             <p class="text-xs text-slate-400">Atualizado automaticamente em tempo real • Previsão média: {{ $loja->config_json['tempo_medio_preparo_min'] ?? 35 }} min</p>
 
             <!-- Barra de Progresso em 4 Etapas -->
@@ -86,8 +92,8 @@
             @if($pedido->pagamento->pix_copia_cola)
                 <div class="space-y-2 max-w-md mx-auto">
                     <textarea readonly class="w-full text-xs font-mono bg-slate-950 text-slate-300 p-3 rounded-xl border border-slate-800 h-20">{{ $pedido->pagamento->pix_copia_cola }}</textarea>
-                    <button @click="navigator.clipboard.writeText(@js($pedido->pagamento->pix_copia_cola)); copiado = true" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 rounded-xl text-sm transition">
-                        <span x-text="copiado ? '✓ Código PIX Copiado!' : '📋 Copiar Código PIX'"></span>
+                    <button @click="navigator.clipboard.writeText(@js($pedido->pagamento->pix_copia_cola)); copiado = true" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
+                        <span x-text="copiado ? 'Código PIX Copiado!' : 'Copiar Código PIX'"></span>
                     </button>
                 </div>
             @endif
@@ -135,7 +141,7 @@
                 @endif
                 <div class="flex justify-between items-center pt-1">
                     <span class="text-sm font-bold text-slate-300">Total do Pedido</span>
-                    <span class="text-lg font-black text-emerald-400">R$ {{ number_format($pedido->total / 100, 2, ',', '.') }}</span>
+                    <span class="text-lg font-bold text-emerald-400">R$ {{ number_format($pedido->total / 100, 2, ',', '.') }}</span>
                 </div>
             </div>
         </div>
@@ -220,10 +226,10 @@
                         aceito: 'Pedido Aceito',
                         em_preparo: 'Na Cozinha (Em Preparo)',
                         pronto: 'Pedido Pronto!',
-                        saiu_entrega: 'Saiu para Entrega 🛵',
-                        entregue: 'Pedido Entregue ✓',
-                        retirado: 'Pedido Retirado ✓',
-                        servido: 'Servido na Mesa ✓',
+                        saiu_entrega: 'Saiu para Entrega ',
+                        entregue: 'Pedido Entregue ',
+                        retirado: 'Pedido Retirado ',
+                        servido: 'Servido na Mesa ',
                         cancelado: 'Pedido Cancelado'
                     };
                     return map[this.status] || this.status;

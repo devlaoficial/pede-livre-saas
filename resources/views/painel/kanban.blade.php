@@ -14,10 +14,10 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
     <title>Painel do Lojista — PedeLivre OS</title>
 
-    <!-- Tipografia Premium: Plus Jakarta Sans & JetBrains Mono -->
+    <!-- Tipografia Nítida de Interface: Inter UI -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -26,8 +26,8 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
-                        mono: ['"JetBrains Mono"', 'monospace'],
+                        sans: ['"Inter"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+                        mono: ['"Inter"', 'system-ui', 'sans-serif'],
                     }
                 }
             }
@@ -36,6 +36,24 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         [x-cloak] { display: none !important; }
+        html, body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            font-synthesis: none;
+            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+        }
+        .font-mono {
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.01em;
+        }
+        .font-bold {
+            font-weight: 700 !important;
+        }
+        .font-semibold {
+            font-weight: 700 !important;
+        }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -107,11 +125,11 @@
                 <div class="flex items-center gap-3">
                     <img src="/icons/icon-192.png" alt="PedeLivre OS" class="w-12 h-12 rounded-2xl shadow-lg shadow-rose-600/20">
                     <div>
-                        <span class="text-[10px] font-extrabold uppercase tracking-widest text-rose-400">Aplicativo do Lojista</span>
-                        <h3 class="text-base font-black text-white">Instalar PedeLivre OS</h3>
+                        <span class="text-[10px] font-semibold uppercase tracking-widest text-rose-400">Aplicativo do Lojista</span>
+                        <h3 class="text-base font-bold text-white">Instalar PedeLivre OS</h3>
                     </div>
                 </div>
-                <button @click="modalInstrucoesPwa = false" class="text-slate-400 hover:text-white text-sm font-bold p-1">✕</button>
+                <button @click="modalInstrucoesPwa = false" class="text-slate-400 hover:text-white text-sm font-bold p-1"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
 
             <p class="text-xs text-slate-300 leading-relaxed">
@@ -120,19 +138,19 @@
 
             <div class="space-y-2.5 text-xs">
                 <div class="bg-[#070b14] border border-slate-800/80 rounded-2xl p-3.5 space-y-1.5">
-                    <div class="font-extrabold text-white flex items-center gap-2">
-                        <span>🍎</span> No iPhone ou iPad (Safari):
+                    <div class="font-semibold text-white flex items-center gap-2">
+                        <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></span> No iPhone ou iPad (Safari):
                     </div>
                     <ol class="list-decimal list-inside text-slate-300 space-y-1 text-[11px]">
-                        <li>Toque no ícone <strong>Compartilhar</strong> (quadrado com seta para cima ⬆️) na barra do Safari.</li>
+                        <li>Toque no ícone <strong>Compartilhar</strong> (quadrado com seta para cima ) na barra do Safari.</li>
                         <li>Role para baixo e toque em <strong>"Adicionar à Tela de Início"</strong>.</li>
                         <li>Confirme em <strong>Adicionar</strong> no canto superior direito.</li>
                     </ol>
                 </div>
 
                 <div class="bg-[#070b14] border border-slate-800/80 rounded-2xl p-3.5 space-y-1.5">
-                    <div class="font-extrabold text-white flex items-center gap-2">
-                        <span>🤖</span> No Android ou Computador (Chrome / Edge):
+                    <div class="font-semibold text-white flex items-center gap-2">
+                        <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span> No Android ou Computador (Chrome / Edge):
                     </div>
                     <ol class="list-decimal list-inside text-slate-300 space-y-1 text-[11px]">
                         <li>Toque nos <strong>3 pontinhos (⋮)</strong> do navegador ou no ícone de instalação na barra de endereço.</li>
@@ -143,8 +161,8 @@
 
             <div class="flex gap-2">
                 <button @click="ativarNotificacoesNativas()"
-                        class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-600/20">
-                    🔔 Ativar Notificações
+                        class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-600/20">
+                    Ativar Notificações
                 </button>
                 <button @click="modalInstrucoesPwa = false"
                         class="px-5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition">

@@ -663,7 +663,7 @@ final class EvolutionBotService
                         'observacao' => '⚠️ Cliente informou via WhatsApp que o pedido ainda NÃO foi entregue.',
                     ]);
 
-                    event(new PedidoAtualizado($pedido, $pedido->status));
+                    try { if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) { event(new PedidoAtualizado($pedido, $pedido->status)); } } catch (\Throwable) {}
 
                     return "Obrigado por nos avisar, *{$primeiroNome}*! 🙏\n\n"
                         . "Acabei de acionar nossa equipe no balcão com prioridade máxima para verificar a localização exata do seu pedido *#{$pedido->codigo_publico}* com o entregador. Já vamos te responder aqui em instantes!";

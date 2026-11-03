@@ -29,6 +29,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 final class PedidoPainelController
 {
@@ -72,7 +73,7 @@ final class PedidoPainelController
 
     public function atualizarStatus(AtualizarStatusPedidoRequest $request, int $id): JsonResponse
     {
-        $pedido = Pedido::with('itens')->findOrFail($id);
+        $pedido = Pedido::with(['cliente', 'itens.produto', 'loja', 'pagamento', 'entregador'])->findOrFail($id);
 
         /** @var Usuario $usuario */
         $usuario = $request->user();
@@ -134,8 +135,12 @@ final class PedidoPainelController
             ]);
         });
 
-        event(new PagamentoConfirmado($pedido));
-        event(new PedidoAtualizado($pedido, $pedido->status));
+        try {
+            if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) {
+                event(new PagamentoConfirmado($pedido));
+                event(new PedidoAtualizado($pedido, $pedido->status));
+            }
+        } catch (Throwable) {}
 
         return response()->json([
             'message' => "Pagamento do pedido #{$pedido->codigo_publico} confirmado com sucesso!",
@@ -202,9 +207,9 @@ final class PedidoPainelController
                 'telefone' => $telNormalizado,
                 'aceita_marketing' => true,
             ]);
-        } elseif (!empty($dados['cliente']['nome']) && $cliente->nome !== $dados['cliente']['nome']) {
+        } else {
             $cliente->update([
-                'nome' => trim((string) $dados['cliente']['nome']),
+                'nome' => trim((string) ($dados['cliente']['nome'] ?: $cliente->nome)),
                 'telefone' => $telNormalizado !== '5500000000000' ? $telNormalizado : $cliente->telefone,
             ]);
         }
@@ -238,7 +243,10 @@ final class PedidoPainelController
             $calculo['total_centavos'] = max(0, $calculo['total_centavos'] - $descontoManual);
         }
 
-        $statusInicial = (string) $request->input('status_inicial', 'aceito');
+        $statusInicial = (string) $request->input('status_inicial', 'em_preparo');
+        if ($statusInicial === 'aceito') {
+            $statusInicial = 'em_preparo';
+        }
         $formaPagto = (string) $dados['forma_pagamento'];
         $pagamentoStatus = in_array($formaPagto, ['pix', 'cartao_maquina', 'cartao_online'], true) && $statusInicial !== 'novo'
             ? 'aprovado'
@@ -310,14 +318,18 @@ final class PedidoPainelController
         $cliente->increment('total_gasto', $pedido->total);
         $cliente->update(['ultimo_pedido_em' => now()]);
 
-        event(new PedidoCriado($pedido->load(['cliente', 'itens.produto', 'mesa'])));
-
         // Dispara acompanhamento em tempo real no WhatsApp do cliente (se telefone foi informado)
         if ($telNormalizado !== '5500000000000') {
             try {
-                $this->evolutionApi->notificarMudancaStatus($pedido->load(['cliente', 'itens', 'pagamento']), $statusInicial);
-            } catch (\Throwable) {}
+                $this->evolutionApi->notificarMudancaStatus($pedido->load(['cliente', 'itens', 'pagamento', 'loja']), $statusInicial);
+            } catch (Throwable) {}
         }
+
+        try {
+            if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) {
+                event(new PedidoCriado($pedido->load(['cliente', 'itens.produto', 'mesa'])));
+            }
+        } catch (Throwable) {}
 
         return response()->json([
             'message' => "Pedido #{$pedido->codigo_publico} lançado com sucesso!",
@@ -334,7 +346,7 @@ final class PedidoPainelController
             'motivo' => ['required', 'string', 'min:3', 'max:255'],
         ]);
 
-        $pedido = Pedido::with('itens')->findOrFail($id);
+        $pedido = Pedido::with(['cliente', 'itens.produto', 'loja', 'pagamento', 'entregador'])->findOrFail($id);
         /** @var Usuario $usuario */
         $usuario = $request->user();
 
@@ -368,7 +380,7 @@ final class PedidoPainelController
         ]);
 
         $entregador = Entregador::findOrFail($request->integer('entregador_id'));
-        $pedido = Pedido::findOrFail($id);
+        $pedido = Pedido::with(['cliente', 'itens.produto', 'loja', 'pagamento'])->findOrFail($id);
         $statusAnterior = $pedido->status;
 
         $novoStatus = in_array($pedido->status, ['pronto', 'em_preparo', 'aceito'], true)
@@ -388,16 +400,22 @@ final class PedidoPainelController
             'observacao' => "Despachado com motoboy {$entregador->nome}",
         ]);
 
-        event(new PedidoAtualizado($pedido, $statusAnterior));
-
         if ($pedido->canal === 'delivery') {
-            $loja = $pedido->loja ?? Loja::find($pedido->loja_id);
+            $loja = $pedido->loja ?? Loja::withoutGlobalScopes()->find($pedido->loja_id);
             if ($loja !== null) {
-                $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
-                $this->evolutionApi->notificarMotoboyPedidoPronto($pedido->load('entregador', 'cliente'), $instancia, $loja);
-                $this->evolutionApi->notificarMudancaStatus($pedido->load('cliente'), 'saiu_entrega');
+                try {
+                    $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
+                    $this->evolutionApi->notificarMotoboyPedidoPronto($pedido->load('entregador', 'cliente'), $instancia, $loja);
+                    $this->evolutionApi->notificarMudancaStatus($pedido->load('entregador', 'cliente'), 'saiu_entrega');
+                } catch (Throwable) {}
             }
         }
+
+        try {
+            if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) {
+                event(new PedidoAtualizado($pedido, $statusAnterior));
+            }
+        } catch (Throwable) {}
 
         return response()->json([
             'message' => "Pedido despachado com sucesso com {$entregador->nome}!",

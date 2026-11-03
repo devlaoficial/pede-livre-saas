@@ -7,6 +7,7 @@ namespace App\Domain\Bot\Services;
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Bot\Models\BotConversa;
 use App\Domain\Bot\Models\BotMensagem;
+use App\Domain\Clientes\Models\Cliente;
 use App\Domain\Entregas\Models\Entregador;
 use App\Domain\Pedidos\Models\Pedido;
 use App\Domain\Pedidos\Models\PedidoEvento;
@@ -14,6 +15,7 @@ use App\Support\Security\BlindIndexService;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 final class EvolutionApiService
 {
@@ -24,7 +26,7 @@ final class EvolutionApiService
     public function __construct(?BlindIndexService $blindIndex = null)
     {
         $this->baseUrl = rtrim((string) config('services.evolution.url', 'http://127.0.0.1:8085'), '/');
-        $this->apiKey = (string) config('services.evolution.api_key', 'devla_evolution_secret_2026');
+        $this->apiKey = (string) (config('services.evolution.api_key') ?: 'devla_evolution_secret_2026');
         $this->blindIndex = $blindIndex ?? app(BlindIndexService::class);
     }
 
@@ -37,7 +39,7 @@ final class EvolutionApiService
     }
 
     /**
-     * Consulta o status da conexão da instância no microserviço Evolution.
+     * Consulta o status da conexão da instância (compatível com Gateway Node e Evolution API v1/v2).
      *
      * @return array{instance: string, state: string, connected: bool, phone: ?string, qrBase64: ?string}
      */
@@ -45,22 +47,34 @@ final class EvolutionApiService
     {
         try {
             $response = Http::withHeaders(['apikey' => $this->apiKey])
-                ->timeout(8)
+                ->connectTimeout(2)
+                ->timeout(4)
                 ->get("{$this->baseUrl}/instance/status/{$instancia}");
 
+            if (!$response->successful() && in_array($response->status(), [400, 404, 405], true)) {
+                $response = Http::withHeaders(['apikey' => $this->apiKey])
+                    ->connectTimeout(2)
+                    ->timeout(4)
+                    ->get("{$this->baseUrl}/instance/connectionState/{$instancia}");
+            }
+
             if ($response->successful()) {
-                $dados = $response->json();
-                $state = (string) ($dados['state'] ?? ($dados['instance']['state'] ?? 'disconnected'));
-                $connected = (bool) ($dados['connected'] ?? ($state === 'open'));
+                $dados = (array) $response->json();
+                $state = (string) ($dados['state'] ?? ($dados['instance']['state'] ?? ($dados['instance']['status'] ?? 'disconnected')));
+                $connected = (bool) ($dados['connected'] ?? in_array(strtolower($state), ['open', 'connected'], true));
+                $rawPhone = $dados['phone'] ?? ($dados['instance']['owner'] ?? ($dados['instance']['wuid'] ?? null));
+                $phone = is_string($rawPhone) && $rawPhone !== '' ? preg_replace('/@.*$/', '', $rawPhone) : null;
+                $qrBase64 = $dados['qrBase64'] ?? ($dados['qrcode']['base64'] ?? ($dados['base64'] ?? null));
+
                 return [
-                    'instance' => (string) ($dados['instance']['instanceName'] ?? $dados['instance'] ?? $instancia),
-                    'state' => $state,
+                    'instance' => (string) ($dados['instance']['instanceName'] ?? (is_string($dados['instance'] ?? null) ? $dados['instance'] : $instancia)),
+                    'state' => $connected ? 'open' : $state,
                     'connected' => $connected,
-                    'phone' => !empty($dados['phone']) ? (string) $dados['phone'] : null,
-                    'qrBase64' => !empty($dados['qrBase64']) ? (string) $dados['qrBase64'] : null,
+                    'phone' => $phone,
+                    'qrBase64' => is_string($qrBase64) && $qrBase64 !== '' ? $qrBase64 : null,
                 ];
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::warning("[EvolutionApi] Falha ao consultar status da instância {$instancia}: " . $e->getMessage());
         }
 
@@ -74,7 +88,7 @@ final class EvolutionApiService
     }
 
     /**
-     * Inicia a sessão de pareamento e obtém o QR Code em Base64.
+     * Inicia a sessão de pareamento, garante webhook configurado e obtém o QR Code em Base64.
      *
      * @return array{instance: string, state: string, connected: bool, phone: ?string, qrBase64: ?string}
      */
@@ -82,22 +96,55 @@ final class EvolutionApiService
     {
         try {
             $response = Http::withHeaders(['apikey' => $this->apiKey])
-                ->timeout(15)
+                ->connectTimeout(3)
+                ->timeout(10)
                 ->post("{$this->baseUrl}/instance/connect/{$instancia}");
 
+            // Fallback automático para Evolution API nativa v1/v2 (GET /instance/connect/{instancia} ou POST /instance/create)
+            if (!$response->successful() && in_array($response->status(), [400, 404, 405], true)) {
+                $response = Http::withHeaders(['apikey' => $this->apiKey])
+                    ->connectTimeout(3)
+                    ->timeout(10)
+                    ->get("{$this->baseUrl}/instance/connect/{$instancia}");
+
+                if (!$response->successful()) {
+                    $webhookUrl = url('/api/webhooks/whatsapp/evolution');
+                    $response = Http::withHeaders(['apikey' => $this->apiKey])
+                        ->connectTimeout(3)
+                        ->timeout(10)
+                        ->post("{$this->baseUrl}/instance/create", [
+                            'instanceName' => $instancia,
+                            'qrcode' => true,
+                            'integration' => 'WHATSAPP-BAILEYS',
+                            'webhook' => $webhookUrl,
+                            'webhook_by_events' => false,
+                            'events' => ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'QRCODE_UPDATED'],
+                        ]);
+                }
+            }
+
             if ($response->successful()) {
-                $dados = $response->json();
-                $qrBase64 = $dados['qrBase64'] ?? $dados['qrcode']['base64'] ?? $dados['base64'] ?? null;
+                $dados = (array) $response->json();
+                $qrBase64 = $dados['qrBase64']
+                    ?? ($dados['qrcode']['base64'] ?? null)
+                    ?? ($dados['base64'] ?? null);
+
+                if (is_string($qrBase64) && $qrBase64 !== '' && !str_starts_with($qrBase64, 'data:image')) {
+                    $qrBase64 = 'data:image/png;base64,' . $qrBase64;
+                }
+
+                $state = (string) ($dados['state'] ?? ($dados['instance']['state'] ?? 'connecting'));
+                $connected = (bool) ($dados['connected'] ?? in_array(strtolower($state), ['open', 'connected'], true));
 
                 return [
-                    'instance' => (string) ($dados['instance'] ?? $instancia),
-                    'state' => (string) ($dados['state'] ?? 'connecting'),
-                    'connected' => (bool) ($dados['connected'] ?? false),
+                    'instance' => $instancia,
+                    'state' => $state,
+                    'connected' => $connected,
                     'phone' => !empty($dados['phone']) ? (string) $dados['phone'] : null,
                     'qrBase64' => is_string($qrBase64) ? $qrBase64 : null,
                 ];
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::error("[EvolutionApi] Falha ao iniciar conexão da instância {$instancia}: " . $e->getMessage());
         }
 
@@ -117,45 +164,147 @@ final class EvolutionApiService
     {
         try {
             $response = Http::withHeaders(['apikey' => $this->apiKey])
-                ->timeout(10)
+                ->connectTimeout(2)
+                ->timeout(6)
                 ->post("{$this->baseUrl}/instance/disconnect/{$instancia}");
 
+            if (!$response->successful() && in_array($response->status(), [400, 404, 405], true)) {
+                $response = Http::withHeaders(['apikey' => $this->apiKey])
+                    ->connectTimeout(2)
+                    ->timeout(6)
+                    ->delete("{$this->baseUrl}/instance/logout/{$instancia}");
+            }
+
             return $response->successful();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::warning("[EvolutionApi] Falha ao desconectar instância {$instancia}: " . $e->getMessage());
             return false;
         }
     }
 
     /**
-     * Envia mensagem de texto simples pelo WhatsApp da instância (sempre normalizando DDI 55).
+     * Envia mensagem de texto pelo WhatsApp com compatibilidade total (Gateway Node, Evolution v1 e Evolution v2)
+     * e resolução automática do 9º dígito brasileiro (13 e 12 dígitos).
      */
-    public function enviarMensagem(string $instancia, string $telefone, string $texto): bool
+    public function enviarMensagem(string $instancia, string $telefone, string $texto, ?int $lojaId = null): bool
     {
-        $telefoneLimpo = $this->blindIndex->normalizePhone($telefone);
-        if (empty($telefoneLimpo) || empty(trim($texto))) {
+        $textoLimpo = trim($texto);
+        $telefonePrincipal = $this->blindIndex->normalizePhone($telefone);
+
+        if ($telefonePrincipal === '' || $telefonePrincipal === '5500000000000' || $textoLimpo === '') {
             return false;
         }
 
+        // Constrói lista ordenada de números candidatos (priorizando conversa ativa do WhatsApp se existir, depois 13 e 12 dígitos com DDI 55)
+        $numerosParaTentar = [];
+
+        if ($lojaId !== null) {
+            try {
+                $candidatosBidx = $this->blindIndex->generatePhoneCandidates($telefone);
+                $conversaExistente = BotConversa::withoutGlobalScopes()
+                    ->where('loja_id', $lojaId)
+                    ->whereIn('telefone_bidx', $candidatosBidx)
+                    ->orderByDesc('updated_at')
+                    ->first();
+
+                if ($conversaExistente !== null && !empty($conversaExistente->telefone)) {
+                    $telConv = $this->blindIndex->normalizePhone((string) $conversaExistente->telefone);
+                    if (strlen($telConv) >= 12) {
+                        $numerosParaTentar[] = $telConv;
+                    }
+                }
+            } catch (Throwable) {}
+        }
+
+        $numerosParaTentar[] = $telefonePrincipal;
+        foreach ($this->blindIndex->normalizePhoneVariants($telefone) as $variante) {
+            if (str_starts_with($variante, '55') && strlen($variante) >= 12) {
+                $numerosParaTentar[] = $variante;
+            }
+        }
+        $numerosParaTentar = array_values(array_unique($numerosParaTentar));
+
+        foreach ($numerosParaTentar as $numero) {
+            if ($this->dispararRequisicaoSendText($instancia, $numero, $textoLimpo)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Executa o POST /message/sendText/{instancia} com fallback automático entre os formatos Evolution v2/Gateway e Evolution v1.
+     */
+    private function dispararRequisicaoSendText(string $instancia, string $numero, string $texto): bool
+    {
+        $url = "{$this->baseUrl}/message/sendText/{$instancia}";
+        $headers = [
+            'Content-Type' => 'application/json',
+            'apikey' => $this->apiKey,
+        ];
+
         try {
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'apikey' => $this->apiKey,
-            ])
-            ->timeout(10)
-            ->post("{$this->baseUrl}/message/sendText/{$instancia}", [
-                'number' => $telefoneLimpo,
-                'text' => trim($texto),
-            ]);
+            // 1. Formato Híbrido (aceito pelo Gateway Node, Evolution v2 e maioria das builds v1)
+            $response = Http::withHeaders($headers)
+                ->connectTimeout(2)
+                ->timeout(4)
+                ->post($url, [
+                    'number' => $numero,
+                    'text' => $texto,
+                    'textMessage' => [
+                        'text' => $texto,
+                    ],
+                    'options' => [
+                        'delay' => 250,
+                        'presence' => 'composing',
+                        'linkPreview' => false,
+                    ],
+                ]);
 
             if ($response->successful()) {
-                Log::info("[EvolutionApi] Mensagem enviada via [{$instancia}] para [{$telefoneLimpo}]");
+                Log::info("[EvolutionApi] Mensagem enviada via [{$instancia}] para [{$numero}]");
                 return true;
             }
 
-            Log::warning("[EvolutionApi] Erro ao enviar mensagem para [{$telefoneLimpo}]: " . $response->body());
-        } catch (Exception $e) {
-            Log::error("[EvolutionApi] Exceção ao enviar mensagem via [{$instancia}]: " . $e->getMessage());
+            // 2. Se retornou 400 ou 422 por validação estrita de schema, tenta formato puro Evolution v2 e depois puro Evolution v1
+            if (in_array($response->status(), [400, 422], true)) {
+                $respV2 = Http::withHeaders($headers)
+                    ->connectTimeout(2)
+                    ->timeout(4)
+                    ->post($url, [
+                        'number' => $numero,
+                        'text' => $texto,
+                    ]);
+
+                if ($respV2->successful()) {
+                    Log::info("[EvolutionApi] Mensagem enviada (v2) via [{$instancia}] para [{$numero}]");
+                    return true;
+                }
+
+                $respV1 = Http::withHeaders($headers)
+                    ->connectTimeout(2)
+                    ->timeout(4)
+                    ->post($url, [
+                        'number' => $numero,
+                        'options' => [
+                            'delay' => 250,
+                            'presence' => 'composing',
+                        ],
+                        'textMessage' => [
+                            'text' => $texto,
+                        ],
+                    ]);
+
+                if ($respV1->successful()) {
+                    Log::info("[EvolutionApi] Mensagem enviada (v1) via [{$instancia}] para [{$numero}]");
+                    return true;
+                }
+            }
+
+            Log::warning("[EvolutionApi] Falha HTTP {$response->status()} ao enviar mensagem para [{$numero}]: " . $response->body());
+        } catch (Throwable $e) {
+            Log::error("[EvolutionApi] Exceção ao conectar em [{$url}] para [{$numero}]: " . $e->getMessage());
         }
 
         return false;
@@ -176,13 +325,14 @@ final class EvolutionApiService
         $candidatosBidx = $this->blindIndex->generatePhoneCandidates($telefoneCliente);
 
         /** @var BotConversa|null $conversa */
-        $conversa = BotConversa::where('loja_id', $loja->id)
+        $conversa = BotConversa::withoutGlobalScopes()
+            ->where('loja_id', $loja->id)
             ->whereIn('telefone_bidx', $candidatosBidx)
             ->orderByDesc('updated_at')
             ->first();
 
         if ($conversa === null) {
-            $conversa = BotConversa::create([
+            $conversa = BotConversa::withoutGlobalScopes()->create([
                 'loja_id' => $loja->id,
                 'telefone_bidx' => $telBidx,
                 'telefone' => $telNormalizado,
@@ -204,7 +354,7 @@ final class EvolutionApiService
         $conversa->updated_at = now();
         $conversa->save();
 
-        BotMensagem::create([
+        BotMensagem::withoutGlobalScopes()->create([
             'loja_id' => $loja->id,
             'conversa_id' => $conversa->id,
             'direcao' => 'saida',
@@ -221,7 +371,10 @@ final class EvolutionApiService
     {
         try {
             /** @var Loja|null $loja */
-            $loja = $pedido->loja ?? Loja::withoutGlobalScopes()->find($pedido->loja_id);
+            $loja = $pedido->relationLoaded('loja') && $pedido->loja !== null
+                ? $pedido->loja
+                : Loja::withoutGlobalScopes()->find($pedido->loja_id);
+
             if ($loja === null) {
                 return;
             }
@@ -231,9 +384,14 @@ final class EvolutionApiService
             $notificarCliente = (bool) ($configWpp['notificar_pedidos'] ?? true);
             $notificarMotoboy = (bool) ($configWpp['notificar_motoboy'] ?? true);
 
-            $cliente = $pedido->cliente;
-            $telefoneCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
-            $nomeCliente = $cliente?->nome ?? 'Cliente';
+            // Busca o cliente de forma imune ao GlobalScope (garante que nunca venha null mesmo fora do contexto HTTP)
+            /** @var Cliente|null $cliente */
+            $cliente = ($pedido->relationLoaded('cliente') && $pedido->cliente !== null)
+                ? $pedido->cliente
+                : ($pedido->cliente_id ? Cliente::withoutGlobalScopes()->find($pedido->cliente_id) : null);
+
+            $telefoneCliente = $cliente?->telefone ? trim((string) $cliente->telefone) : null;
+            $nomeCliente = $cliente?->nome ?: 'Cliente';
             $primeiroNome = explode(' ', trim($nomeCliente))[0] ?: 'Cliente';
             $codigo = $pedido->codigo_publico;
             $lojaNome = $loja->nome;
@@ -277,17 +435,14 @@ final class EvolutionApiService
                         break;
 
                     case 'aceito':
-                        $mensagemCliente = "✅ *Pedido #{$codigo} Confirmado!* 👨‍🍳\n\n"
-                            . "Oi, *{$primeiroNome}*! O *{$lojaNome}* acabou de aceitar o seu pedido e ele já foi enviado para a nossa cozinha!\n\n"
-                            . "⏱️ *Previsão média:* {$tempoMedio} a " . ($tempoMedio + 15) . " min\n"
-                            . "📍 *Acompanhe em tempo real:*\n👉 {$trackingUrl}";
-                        break;
-
                     case 'em_preparo':
-                        $mensagemCliente = "👨‍🍳🔥 *Seu pedido #{$codigo} está em preparo!*\n\n"
-                            . "Oi, *{$primeiroNome}*! Nossa equipe de cozinha já está preparando o seu pedido com todo capricho no *{$lojaNome}*.\n\n"
-                            . "Assim que ficar pronto e sair para entrega, te avisamos por aqui na mesma hora!\n"
-                            . "👉 *Rastreio ao vivo:* {$trackingUrl}";
+                        $pedido->loadMissing(['itens']);
+                        $resumoItens = $pedido->itens->map(fn ($it) => "• {$it->qtd}x {$it->nome_snapshot}")->join("\n");
+                        $mensagemCliente = "✅ *Pedido #{$codigo} Aceito e em Preparo!* 👨‍🍳🔥\n\n"
+                            . "Oi, *{$primeiroNome}*! O *{$lojaNome}* acabou de confirmar o seu pedido e nossa cozinha já está preparando tudo com muito capricho!\n\n"
+                            . ($resumoItens !== '' ? "📋 *Itens em preparo:*\n{$resumoItens}\n\n" : '')
+                            . "⏱️ *Previsão média:* {$tempoMedio} a " . ($tempoMedio + 15) . " min\n"
+                            . "📍 *Acompanhe ao vivo:*\n👉 {$trackingUrl}";
                         break;
 
                     case 'pronto':
@@ -306,7 +461,8 @@ final class EvolutionApiService
                         break;
 
                     case 'saiu_entrega':
-                        $nomeEntregador = $pedido->entregador?->nome ?? 'Nosso entregador';
+                        $entregador = $pedido->entregador ?? ($pedido->entregador_id ? Entregador::withoutGlobalScopes()->find($pedido->entregador_id) : null);
+                        $nomeEntregador = $entregador?->nome ?? 'Nosso entregador';
                         $mensagemCliente = "🛵💨 *SEU PEDIDO SAIU PARA ENTREGA!* 🛵💨\n\n"
                             . "Oi, *{$primeiroNome}*! O entregador *{$nomeEntregador}* acabou de sair com o seu pedido *#{$codigo}* do *{$lojaNome}*!\n\n"
                             . "Fique atento(a) ao interfone ou campainha.\n"
@@ -336,9 +492,8 @@ final class EvolutionApiService
                 }
 
                 if ($mensagemCliente !== null) {
-                    // Registra sempre na conversa do painel e dispara via Evolution API
                     $this->registrarMensagemAutomaticaNaConversa($loja, $telefoneCliente, $mensagemCliente, $pedido, $contextoExtra);
-                    $this->enviarMensagem($instancia, $telefoneCliente, $mensagemCliente);
+                    $this->enviarMensagem($instancia, $telefoneCliente, $mensagemCliente, $loja->id);
                 }
             }
 
@@ -346,7 +501,7 @@ final class EvolutionApiService
             if ($notificarMotoboy && $pedido->canal === 'delivery' && $novoStatus === 'pronto') {
                 $this->notificarMotoboyPedidoPronto($pedido, $instancia, $loja);
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::error("[EvolutionApi] Falha ao notificar mudança de status do pedido #{$pedido->id}: " . $e->getMessage());
         }
     }
@@ -363,7 +518,8 @@ final class EvolutionApiService
                 return false;
             }
 
-            $cliente = $pedido->cliente;
+            /** @var Cliente|null $cliente */
+            $cliente = $pedido->cliente ?? ($pedido->cliente_id ? Cliente::withoutGlobalScopes()->find($pedido->cliente_id) : null);
             $telCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
             if (empty($telCliente) || $telCliente === '5500000000000') {
                 return false;
@@ -384,8 +540,8 @@ final class EvolutionApiService
                 'confirmacao_enviada_em' => now()->toIso8601String(),
             ]);
 
-            return $this->enviarMensagem($instancia, $telCliente, $msg);
-        } catch (Exception $e) {
+            return $this->enviarMensagem($instancia, $telCliente, $msg, $loja->id);
+        } catch (Throwable $e) {
             Log::error("[EvolutionApi] Falha ao solicitar confirmação de entrega: " . $e->getMessage());
             return false;
         }
@@ -397,14 +553,15 @@ final class EvolutionApiService
     public function notificarMotoboyPedidoPronto(Pedido $pedido, string $instancia, Loja $loja): void
     {
         /** @var Entregador|null $entregador */
-        $entregador = $pedido->entregador;
+        $entregador = $pedido->entregador ?? ($pedido->entregador_id ? Entregador::withoutGlobalScopes()->find($pedido->entregador_id) : null);
 
         if ($entregador !== null && !empty($entregador->telefone)) {
             $this->enviarAlertaEntregaParaMotoboy($pedido, $entregador, $instancia, $loja);
             return;
         }
 
-        $entregadoresAtivos = Entregador::where('loja_id', $loja->id)
+        $entregadoresAtivos = Entregador::withoutGlobalScopes()
+            ->where('loja_id', $loja->id)
             ->where('ativo', true)
             ->get();
 
@@ -422,7 +579,7 @@ final class EvolutionApiService
     {
         $telMotoboy = (string) $motoboy->telefone;
         $codigo = $pedido->codigo_publico;
-        $cliente = $pedido->cliente;
+        $cliente = $pedido->cliente ?? ($pedido->cliente_id ? Cliente::withoutGlobalScopes()->find($pedido->cliente_id) : null);
         $nomeCliente = $cliente?->nome ?? 'Cliente';
         $telCliente = $cliente?->telefone ? (string) $cliente->telefone : 'Não informado';
 
@@ -439,7 +596,7 @@ final class EvolutionApiService
         $taxaCentavos = $pedido->taxa_entrega;
         $taxaFormatada = number_format($taxaCentavos / 100, 2, ',', '.');
         $totalPedido = number_format($pedido->total / 100, 2, ',', '.');
-        $formaPagamento = strtoupper(str_replace('_', ' ', $pedido->forma_pagamento));
+        $formaPagamento = strtoupper(str_replace('_', ' ', (string) $pedido->forma_pagamento));
 
         $msgMotoboy = "🛵 *NOVO PEDIDO PRONTO PARA ENTREGA!* 🛵\n\n"
             . "📦 *Pedido #{$codigo}* ({$loja->nome})\n"
@@ -451,7 +608,7 @@ final class EvolutionApiService
             . "🗺️ *Abrir GPS / Google Maps:*\n👉 {$linkMaps}\n\n"
             . "✅ _Ao entregar, responda: *ENTREGUE {$codigo}*_";
 
-        $this->enviarMensagem($instancia, $telMotoboy, $msgMotoboy);
+        $this->enviarMensagem($instancia, $telMotoboy, $msgMotoboy, $loja->id);
     }
 
     /**
@@ -467,7 +624,7 @@ final class EvolutionApiService
             }
 
             $instancia = $this->obterNomeInstanciaLoja($loja);
-            $cliente = $pedido->cliente;
+            $cliente = $pedido->cliente ?? ($pedido->cliente_id ? Cliente::withoutGlobalScopes()->find($pedido->cliente_id) : null);
             $telCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
             if (empty($telCliente) || $telCliente === '5500000000000') {
                 return false;
@@ -495,8 +652,8 @@ final class EvolutionApiService
                 'confirmacao_pedido_id' => $pedido->id,
             ]);
 
-            return $this->enviarMensagem($instancia, $telCliente, $msg);
-        } catch (Exception $e) {
+            return $this->enviarMensagem($instancia, $telCliente, $msg, $loja->id);
+        } catch (Throwable $e) {
             Log::error("[EvolutionApi] Falha ao notificar atraso: " . $e->getMessage());
             return false;
         }
@@ -514,7 +671,7 @@ final class EvolutionApiService
             }
 
             $instancia = $this->obterNomeInstanciaLoja($loja);
-            $cliente = $pedido->cliente;
+            $cliente = $pedido->cliente ?? ($pedido->cliente_id ? Cliente::withoutGlobalScopes()->find($pedido->cliente_id) : null);
             $telCliente = $cliente?->telefone ? (string) $cliente->telefone : null;
             if (empty($telCliente) || $telCliente === '5500000000000' || $cliente->aceita_marketing === false) {
                 return false;
@@ -532,17 +689,17 @@ final class EvolutionApiService
                 . "⭐ 1 - Péssimo\n\n"
                 . "_(Basta responder aqui com o número da sua nota de 1 a 5)_";
 
-            $enviado = $this->enviarMensagem($instancia, $telCliente, $msg);
-            if (!$enviado) {
-                return false;
-            }
-
             $this->registrarMensagemAutomaticaNaConversa($loja, $telCliente, $msg, $pedido, [
                 'aguardando_avaliacao' => true,
                 'aguardando_confirmacao_entrega' => false,
                 'avaliacao_pedido_id' => $pedido->id,
                 'avaliacao_enviada_em' => now()->toIso8601String(),
             ]);
+
+            $enviado = $this->enviarMensagem($instancia, $telCliente, $msg, $loja->id);
+            if (!$enviado) {
+                return false;
+            }
 
             PedidoEvento::create([
                 'pedido_id' => $pedido->id,
@@ -552,7 +709,7 @@ final class EvolutionApiService
             ]);
 
             return true;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::error("[EvolutionApi] Falha ao enviar solicitação de avaliação: " . $e->getMessage());
             return false;
         }

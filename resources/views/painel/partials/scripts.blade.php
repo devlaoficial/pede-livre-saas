@@ -5,6 +5,8 @@
                 temSessaoSuperAdmin: false,
                 moduloAtivo: 'pedidos',
                 abaPedidoMobile: 'novo',
+                mostrarFiltrosMobile: false,
+                abaPdvMobile: 'produtos',
                 menuMobileAberto: false,
                 modalInstrucoesPwa: false,
                 onlineStatus: navigator.onLine !== false,
@@ -426,8 +428,8 @@
                             this.loja = d.data || d;
                             this.sincronizarConfigLoja(this.loja);
                             this.toastMsg = novoStatus
-                                ? '🟢 Loja aberta para receber pedidos no cardápio digital!'
-                                : '🔴 Recebimento de pedidos pausado manualmente.';
+                                ? 'Loja aberta para receber pedidos no cardápio digital!'
+                                : 'Recebimento de pedidos pausado manualmente.';
                         }
                     });
                 },
@@ -732,7 +734,7 @@
                                 );
                                 novosChegados.forEach(p => {
                                     this.dispararNotificacaoNativa(
-                                        `🔔 Novo Pedido #${p.codigo_publico || p.id}!`,
+                                        `Novo Pedido #${p.codigo_publico || p.id}!`,
                                         `${this.nomeClienteOuBalcao(p)} • ${this.formatarCentavos(p.total_centavos)} (${(p.canal || 'delivery').toUpperCase()})`,
                                         'pedidos',
                                         p.id
@@ -1420,6 +1422,7 @@
                     if (this.mesas.length === 0) this.carregarMesas();
                     if (this.entregadores.length === 0) this.carregarEntregas();
                     this.resetarPdv();
+                    this.abaPdvMobile = 'produtos';
                     this.modalPdv = true;
                 },
 
@@ -1640,6 +1643,16 @@
 
                 despacharMotoboyRapido(pedidoId, entregadorId) {
                     if (!entregadorId) return;
+                    const alvo = (this.pedidos || []).find(p => Number(p.id) === Number(pedidoId));
+                    const statusAntigo = alvo ? alvo.status : null;
+                    if (alvo) {
+                        alvo.status = 'saiu_entrega';
+                        alvo.entregador_id = Number(entregadorId);
+                    }
+                    if (this.pedidoSelecionado && Number(this.pedidoSelecionado.id) === Number(pedidoId)) {
+                        this.pedidoSelecionado.entregador_id = Number(entregadorId);
+                        this.pedidoSelecionado.status = 'saiu_entrega';
+                    }
                     fetch(`/api/painel/pedidos/${pedidoId}/atribuir-entregador`, {
                         method: 'POST',
                         headers: this.headersAuth(),
@@ -1649,14 +1662,20 @@
                     .then(res => {
                         if (res.ok) {
                             this.toastMsg = res.data.message || 'Pedido despachado para entrega com motoboy!';
-                            if (this.pedidoSelecionado && this.pedidoSelecionado.id === pedidoId) {
-                                this.pedidoSelecionado.entregador_id = Number(entregadorId);
-                                this.pedidoSelecionado.status = 'saiu_entrega';
+                            if (res.data.pedido) {
+                                const idx = this.pedidos.findIndex(p => Number(p.id) === Number(pedidoId));
+                                if (idx !== -1) this.pedidos[idx] = res.data.pedido;
+                                if (this.pedidoSelecionado && Number(this.pedidoSelecionado.id) === Number(pedidoId)) {
+                                    this.pedidoSelecionado = res.data.pedido;
+                                }
                             }
-                            this.carregarPedidos();
                         } else {
+                            if (alvo && statusAntigo) alvo.status = statusAntigo;
                             alert('Erro ao atribuir motoboy: ' + (res.data.message || 'Falha ao despachar'));
                         }
+                    })
+                    .catch(() => {
+                        if (alvo && statusAntigo) alvo.status = statusAntigo;
                     });
                 },
 
@@ -1697,9 +1716,8 @@
                 },
 
                 proximoStatus(pedido) {
-                    if (pedido.status === 'novo') return 'aceito';
-                    if (pedido.status === 'aceito') return 'em_preparo';
-                    if (pedido.status === 'em_preparo') return 'pronto';
+                    if (pedido.status === 'novo') return 'em_preparo';
+                    if (pedido.status === 'aceito' || pedido.status === 'em_preparo') return 'pronto';
                     if (pedido.status === 'pronto') {
                         if (pedido.canal === 'delivery') return 'saiu_entrega';
                         if (pedido.canal === 'retirada') return 'retirado';
@@ -1713,13 +1731,13 @@
                 rotuloProximoStatus(pedido) {
                     const prox = this.proximoStatus(pedido);
                     const map = {
-                        aceito: '✓ Aceitar Pedido',
-                        em_preparo: '🔥 Iniciar Preparo',
-                        pronto: '✓ Marcar como Pronto',
-                        saiu_entrega: '🛵 Despachar p/ Entrega',
-                        retirado: '🛍️ Confirmar Retirada',
-                        servido: '🍽️ Marcar Servido na Mesa',
-                        entregue: '✓ Concluir Entrega'
+                        aceito: 'Aceitar Pedido',
+                        em_preparo: 'Iniciar Preparo',
+                        pronto: 'Marcar como Pronto',
+                        saiu_entrega: 'Despachar p/ Entrega',
+                        retirado: 'Confirmar Retirada',
+                        servido: 'Marcar Servido na Mesa',
+                        entregue: 'Concluir Entrega'
                     };
                     return map[prox] || 'Avançar';
                 },
@@ -1807,18 +1825,46 @@
                 avancarPedido(pedido) {
                     const prox = this.proximoStatus(pedido);
                     if (!prox) return;
-                    const eraNovo = pedido.status === 'novo';
+                    const statusAnterior = pedido.status;
+                    const eraNovo = statusAnterior === 'novo';
+
+                    // Optimistic UI: Move o card instantaneamente (0ms de delay visual) e silencia campainha se não houver mais novos
+                    pedido.status = prox;
+                    const itemLista = (this.pedidos || []).find(p => Number(p.id) === Number(pedido.id));
+                    if (itemLista) itemLista.status = prox;
+                    this.verificarAlertaSonoro();
+                    this.atualizarBadgeAplicativo();
+
+                    if (eraNovo && this.autoImprimir80mm) {
+                        this.imprimirPedido(pedido.id, 'cozinha');
+                    }
+
                     fetch(`/api/painel/pedidos/${pedido.id}/status`, {
                         method: 'PATCH',
                         headers: this.headersAuth(),
                         body: JSON.stringify({ status: prox })
                     })
-                    .then(r => r.json())
-                    .then(() => {
-                        if (eraNovo && this.autoImprimir80mm) {
-                            this.imprimirPedido(pedido.id, 'cozinha');
+                    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+                    .then(({ ok, d }) => {
+                        if (ok && d && d.pedido) {
+                            const idx = this.pedidos.findIndex(p => Number(p.id) === Number(pedido.id));
+                            if (idx !== -1) {
+                                this.pedidos[idx] = d.pedido;
+                            }
+                            if (this.pedidoSelecionado && Number(this.pedidoSelecionado.id) === Number(pedido.id)) {
+                                this.pedidoSelecionado = d.pedido;
+                            }
+                        } else if (!ok) {
+                            pedido.status = statusAnterior;
+                            if (itemLista) itemLista.status = statusAnterior;
+                            this.verificarAlertaSonoro();
+                            alert(d?.message || 'Não foi possível avançar o status do pedido.');
                         }
-                        this.carregarPedidos();
+                    })
+                    .catch(() => {
+                        pedido.status = statusAnterior;
+                        if (itemLista) itemLista.status = statusAnterior;
+                        this.verificarAlertaSonoro();
                     });
                 },
 
@@ -1910,9 +1956,9 @@
                     localStorage.setItem('pl_som_habilitado', this.somHabilitado ? '1' : '0');
                     if (this.somHabilitado) {
                         this.tocarChime();
-                        this.toastMsg = '🔔 Alerta sonoro de novos pedidos ativado!';
+                        this.toastMsg = 'Alerta sonoro de novos pedidos ativado!';
                     } else {
-                        this.toastMsg = '🔕 Alerta sonoro silenciado.';
+                        this.toastMsg = 'Alerta sonoro silenciado.';
                     }
                     if (!this.somHabilitado && this.somInterval) {
                         clearInterval(this.somInterval);
@@ -1948,13 +1994,13 @@
                         this.pwaDeferredPrompt = null;
                         this.pwaPromptDisponivel = false;
                         this.modalInstrucoesPwa = false;
-                        this.toastMsg = '🎉 Aplicativo PedeLivre OS instalado com sucesso!';
+                        this.toastMsg = 'Aplicativo PedeLivre OS instalado com sucesso!';
                     });
 
                     // 3. Monitoramento Online / Offline em Tempo Real
                     window.addEventListener('online', () => {
                         this.onlineStatus = true;
-                        this.toastMsg = '🟢 Conexão restabelecida! Sincronizando pedidos...';
+                        this.toastMsg = 'Conexão restabelecida! Sincronizando pedidos...';
                         this.atualizarTudo();
                     });
                     window.addEventListener('offline', () => {
@@ -1998,7 +2044,7 @@
                     localStorage.setItem('pl_wakelock', this.wakeLockAtivo ? '1' : '0');
                     if (this.wakeLockAtivo) {
                         await this.adquirirWakeLock();
-                        this.toastMsg = '☀️ Modo Tela Sempre Acesa ativado para operação contínua!';
+                        this.toastMsg = 'Modo Tela Sempre Acesa ativado para operação contínua!';
                     } else {
                         if (this.wakeLockSentinel) {
                             await this.wakeLockSentinel.release().catch(() => {});
@@ -2015,7 +2061,7 @@
                     }
                     const perm = await Notification.requestPermission();
                     if (perm === 'granted') {
-                        this.toastMsg = '🔔 Notificações nativas ativadas com sucesso!';
+                        this.toastMsg = 'Notificações nativas ativadas com sucesso!';
                         this.modalInstrucoesPwa = false;
                         this.dispararNotificacaoNativa(
                             'PedeLivre OS Pronto!',
@@ -2113,7 +2159,7 @@
                         if (this.whatsappConectado) {
                             clearInterval(this.whatsappPolling);
                             this.whatsappPolling = null;
-                            this.toastMsg = '🎉 WhatsApp conectado com sucesso!';
+                            this.toastMsg = 'WhatsApp conectado com sucesso!';
                         }
                     }, 3500);
                 },
@@ -2182,7 +2228,7 @@
                         });
                         const d = await r.json();
                         if (d.success) {
-                            this.toastMsg = '✅ ' + d.message;
+                            this.toastMsg = '' + d.message;
                             this.whatsappMsgTeste = '';
                         } else {
                             alert(d.message || 'Falha ao enviar mensagem de teste.');
@@ -2219,7 +2265,7 @@
                         });
                         const d = await r.json();
                         if (r.ok && d.success) {
-                            this.toastMsg = `🚀 Campanha iniciada! ${d.enviados || 0} mensagens enviadas (Cupom: ${d.cupom || ''}).`;
+                            this.toastMsg = `Campanha iniciada! ${d.enviados || 0} mensagens enviadas (Cupom: ${d.cupom || ''}).`;
                             await this.carregarPreviewWinback();
                             if (this.carregarConversasWhatsapp) {
                                 this.carregarConversasWhatsapp(true);

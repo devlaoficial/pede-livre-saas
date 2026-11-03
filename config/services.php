@@ -31,7 +31,13 @@ return [
 
     'groq' => [
         'api_key' => env('GROQ_API_KEY'),
-        'chat_model' => env('GROQ_CHAT_MODEL', 'openai/gpt-oss-120b'),
+        'chat_model' => env('GROQ_CHAT_MODEL', 'llama-3.3-70b-versatile'),
         'whisper_model' => env('GROQ_WHISPER_MODEL', 'whisper-large-v3-turbo'),
+    ],
+
+    'monitoring' => [
+        'alert_email' => env('ADMIN_ALERT_EMAIL', ''),
+        'alert_whatsapp' => env('ADMIN_ALERT_WHATSAPP', ''),
+        'whatsapp_instance' => env('ADMIN_WHATSAPP_INSTANCE', ''),
     ],
 ];

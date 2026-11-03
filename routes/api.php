@@ -54,6 +54,18 @@ Route::prefix('auth')->group(function (): void {
     Route::post('2fa/verificar', [TwoFactorController::class, 'verify'])->middleware('auth:sanctum');
 });
 
+// 1.5. Healthcheck Público & Monitor de Uptime (dispara alerta por E-mail e WhatsApp se detectar queda)
+Route::get('health', function (\App\Support\Monitoring\SystemMonitorService $monitor) {
+    $res = $monitor->verificarSaudeSistema(true);
+    $code = $res['status'] === 'healthy' ? 200 : 503;
+    return response()->json([
+        'status' => $res['status'],
+        'checked_at' => $res['checked_at'],
+        'checks' => $res['checks'],
+    ], $code);
+});
+Route::get('admin/backups/{arquivo}/download', [SuperAdminController::class, 'baixarBackup']);
+
 // 2. Cryptographically Verified External Webhooks & OAuth Callback (Mercado Pago & Meta Cloud API)
 Route::get('webhooks/mercadopago', fn () => response()->json(['status' => 'ok', 'webhook' => 'mercadopago']));
 Route::post('webhooks/mercadopago', [MercadoPagoWebhookController::class, 'processar']);
@@ -96,6 +108,10 @@ Route::middleware([
         Route::patch('lojas/{id}', [SuperAdminController::class, 'atualizarLoja']);
         Route::patch('planos/{id}', [SuperAdminController::class, 'atualizarPlano']);
         Route::post('regua-inadimplencia', [SuperAdminController::class, 'processarReguaInadimplencia']);
+        Route::get('monitoramento', [SuperAdminController::class, 'monitoramento']);
+        Route::post('monitoramento/config', [SuperAdminController::class, 'salvarConfigMonitoramento']);
+        Route::post('monitoramento/testar-alerta', [SuperAdminController::class, 'testarAlerta']);
+        Route::post('backups/gerar', [SuperAdminController::class, 'gerarBackupAgora']);
         Route::post('lojas/{id}/impersonar', [ImpersonationController::class, 'impersonar'])
             ->middleware('throttle:10,1');
     });

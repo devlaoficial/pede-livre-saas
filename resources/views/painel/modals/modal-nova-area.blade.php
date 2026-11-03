@@ -2,14 +2,14 @@
         <div @click.away="modalNovaArea = false" class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4">
             <div class="flex justify-between items-center">
                 <h3 class="font-bold text-base text-white">Nova Taxa de Entrega</h3>
-                <button @click="modalNovaArea = false" class="text-slate-400">✕</button>
+                <button @click="modalNovaArea = false" class="text-slate-400"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <form @submit.prevent="salvarNovaArea()" class="space-y-3 text-xs">
                 <div>
                     <label class="font-bold text-slate-400 block mb-1">Tipo de Regra</label>
                     <select x-model="novaArea.tipo" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold">
-                        <option value="bairro">📍 Por Nome do Bairro</option>
-                        <option value="raio">📏 Por Raio de Distância (KM)</option>
+                        <option value="bairro">Por Nome do Bairro</option>
+                        <option value="raio">Por Raio de Distância (KM)</option>
                     </select>
                 </div>
 
@@ -55,7 +55,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3 rounded-xl text-sm">
+                <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 rounded-xl text-sm">
                     Salvar Regra de Entrega
                 </button>
             </form>

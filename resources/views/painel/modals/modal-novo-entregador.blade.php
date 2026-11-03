@@ -2,7 +2,7 @@
         <div @click.away="modalNovoEntregador = false" class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4">
             <div class="flex justify-between items-center">
                 <h3 class="font-bold text-base text-white">Cadastrar Entregador (Motoboy)</h3>
-                <button @click="modalNovoEntregador = false" class="text-slate-400">✕</button>
+                <button @click="modalNovoEntregador = false" class="text-slate-400"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <form @submit.prevent="salvarNovoEntregador()" class="space-y-3 text-xs">
                 <div>
@@ -26,7 +26,7 @@
                         <input type="text" x-model="novoEnt.valor_reais" required placeholder="7,00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white">
                     </div>
                 </div>
-                <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3 rounded-xl text-sm">
+                <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 rounded-xl text-sm">
                     Salvar Entregador
                 </button>
             </form>

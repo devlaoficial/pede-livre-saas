@@ -18,8 +18,10 @@ use App\Domain\Mesas\Models\Mesa;
 use App\Domain\Operacao\Models\Horario;
 use App\Domain\Pedidos\Models\Cupom;
 use App\Domain\Pedidos\Models\Pedido;
+use App\Support\Monitoring\SystemMonitorService;
 use App\Support\Security\BlindIndexService;
 use Carbon\CarbonImmutable;
+use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -470,5 +472,137 @@ final class SuperAdminController
             'message' => 'Régua de cobrança processada com sucesso!',
             'resultado' => $resultado,
         ]);
+    }
+
+    /**
+     * GET /api/admin/monitoramento
+     * Diagnóstico completo de saúde da infraestrutura, incidentes 500 e lista de backups.
+     */
+    public function monitoramento(Request $request, SystemMonitorService $monitor): JsonResponse
+    {
+        if ($erro = $this->autorizarAdmin($request)) {
+            return $erro;
+        }
+
+        return response()->json($monitor->verificarSaudeSistema(false));
+    }
+
+    /**
+     * POST /api/admin/monitoramento/config
+     * Salva e-mail e WhatsApp de alerta de queda e preferências de backup diário.
+     */
+    public function salvarConfigMonitoramento(Request $request, SystemMonitorService $monitor): JsonResponse
+    {
+        if ($erro = $this->autorizarAdmin($request, false, true)) {
+            return $erro;
+        }
+
+        $validated = $request->validate([
+            'alert_email' => ['nullable', 'email', 'max:150'],
+            'alert_whatsapp' => ['nullable', 'string', 'max:30'],
+            'whatsapp_instance' => ['nullable', 'string', 'max:80'],
+            'alerta_queda_ativo' => ['nullable', 'boolean'],
+            'alerta_erros_500_ativo' => ['nullable', 'boolean'],
+            'backup_auto_ativo' => ['nullable', 'boolean'],
+            'backup_enviar_email' => ['nullable', 'boolean'],
+            'backup_enviar_resumo_whatsapp' => ['nullable', 'boolean'],
+            'backup_horario' => ['nullable', 'string', 'max:10'],
+        ]);
+
+        $cfg = $monitor->salvarConfiguracao($validated);
+
+        return response()->json([
+            'message' => 'Configurações de Monitoramento, Alertas e Backup salvas com sucesso!',
+            'config' => $cfg,
+        ]);
+    }
+
+    /**
+     * POST /api/admin/monitoramento/testar-alerta
+     * Dispara imediatamente um alerta de teste no E-mail e no WhatsApp do administrador.
+     */
+    public function testarAlerta(Request $request, SystemMonitorService $monitor): JsonResponse
+    {
+        if ($erro = $this->autorizarAdmin($request, false, true)) {
+            return $erro;
+        }
+
+        if ($request->filled('alert_email') || $request->filled('alert_whatsapp')) {
+            $monitor->salvarConfiguracao($request->only(['alert_email', 'alert_whatsapp', 'whatsapp_instance']));
+        }
+
+        $texto = "✅ *TESTE DE MONITORAMENTO — PEDELIVRE OS*\n\n"
+            . "Seu canal de emergência para alertas de queda, falhas críticas e envio diário de backups está configurado e operando perfeitamente!\n\n"
+            . "🌐 *Ambiente:* " . config('app.url') . "\n"
+            . "🕒 *Data/Hora:* " . now()->format('d/m/Y H:i:s');
+
+        $res = $monitor->dispararAlertaIncidente(
+            '✅ [PedeLivre OS] Teste de Alerta de Monitoramento & Suporte',
+            $texto,
+            null
+        );
+
+        $canais = [];
+        if ($res['whatsapp_enviado']) $canais[] = 'WhatsApp';
+        if ($res['email_enviado']) $canais[] = 'E-mail';
+
+        $msg = !empty($canais)
+            ? 'Alerta de teste enviado com sucesso via ' . implode(' e ', $canais) . '!'
+            : 'Alerta processado! Verifique se o E-mail SMTP ou WhatsApp estão conectados.';
+
+        return response()->json([
+            'message' => $msg,
+            'resultado' => $res,
+        ]);
+    }
+
+    /**
+     * POST /api/admin/backups/gerar
+     * Gera um backup completo (.zip com SQL + JSON) imediatamente e envia por e-mail.
+     */
+    public function gerarBackupAgora(Request $request, SystemMonitorService $monitor): JsonResponse
+    {
+        if ($erro = $this->autorizarAdmin($request, false, true)) {
+            return $erro;
+        }
+
+        $enviarEmail = $request->boolean('enviar_email', true);
+        $res = $monitor->gerarBackupCompleto($enviarEmail);
+
+        $msgExtra = $res['email_enviado']
+            ? ' e enviado para o seu e-mail!'
+            : ' (salvo no servidor pronto para download)!';
+
+        return response()->json([
+            'message' => "Backup [{$res['arquivo']}] ({$res['tamanho_humano']}) gerado com sucesso{$msgExtra}",
+            'backup' => $res,
+            'backups' => $monitor->listarBackups(),
+        ]);
+    }
+
+    /**
+     * GET /api/admin/backups/{arquivo}/download
+     * Faz o download seguro de um arquivo .zip de backup.
+     */
+    public function baixarBackup(Request $request, string $arquivo, SystemMonitorService $monitor): Response
+    {
+        $user = $request->user();
+        if ($user === null && $request->filled('token')) {
+            $accessToken = PersonalAccessToken::findToken((string) $request->query('token'));
+            if ($accessToken !== null && $accessToken->tokenable instanceof Usuario) {
+                $user = $accessToken->tokenable;
+            }
+        }
+
+        if ($user === null || !$user->isSuperAdmin()) {
+            return response()->json(['error' => 'FORBIDDEN'], Response::HTTP_FORBIDDEN);
+        }
+
+        $caminho = $monitor->obterCaminhoBackupSeguro($arquivo);
+        if ($caminho === null) {
+            return response()->json(['error' => 'ARQUIVO_NAO_ENCONTRADO'], Response::HTTP_NOT_FOUND);
+        }
+
+        return response()->download($caminho, basename($caminho));
     }
 }

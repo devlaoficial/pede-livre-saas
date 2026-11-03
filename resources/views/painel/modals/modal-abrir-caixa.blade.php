@@ -4,13 +4,13 @@
              class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-5 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                 <div class="flex items-center gap-2">
-                    <span class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black">💵</span>
+                    <span class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></span>
                     <div>
-                        <h4 class="font-black text-white text-base">Abrir Turno de Caixa</h4>
+                        <h4 class="font-bold text-white text-base">Abrir Turno de Caixa</h4>
                         <p class="text-[11px] text-slate-400">Informe o fundo de troco inicial da gaveta</p>
                     </div>
                 </div>
-                <button @click="modalAbrirCaixa = false" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+                <button @click="modalAbrirCaixa = false" class="text-slate-400 hover:text-white font-bold text-lg"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
 
             <form @submit.prevent="abrirTurnoCaixa()" class="space-y-4 text-xs">
@@ -47,8 +47,8 @@
                         Cancelar
                     </button>
                     <button type="submit" :disabled="salvandoCaixa"
-                        class="w-2/3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black py-2.5 rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-1.5">
-                        <span x-show="!salvandoCaixa">✓ Confirmar Abertura</span>
+                        class="w-2/3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-1.5">
+                        <span x-show="!salvandoCaixa">Confirmar Abertura</span>
                         <span x-show="salvandoCaixa">Abrindo Caixa...</span>
                     </button>
                 </div>

@@ -6,21 +6,23 @@
     <meta name="theme-color" content="#06080f">
     <title>Criar Restaurante Grátis (14 Dias) — PedeLivre OS</title>
 
-    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <!-- Google Fonts: Inter & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
+        html, body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; font-synthesis: none; }
+        .font-extrabold { font-weight: 700; }
         [x-cloak] { display: none !important; }
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: #06080f;
         }
         .font-mono-code {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'Inter', monospace;
         }
     </style>
 </head>
@@ -36,11 +38,11 @@
         <!-- Barra Superior de Navegação Rápida -->
         <div class="flex items-center justify-between mb-6">
             <a href="/" class="inline-flex items-center gap-3 group">
-                <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-amber-500 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-rose-600/30">
+                <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-amber-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-rose-600/30">
                     P
                 </div>
                 <div>
-                    <span class="text-lg font-black tracking-tight text-white">Pede<span class="text-rose-500">Livre</span></span>
+                    <span class="text-lg font-bold tracking-tight text-white">Pede<span class="text-rose-500">Livre</span></span>
                     <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 ml-1">14 Dias Grátis</span>
                 </div>
             </a>
@@ -57,9 +59,9 @@
                 <div class="space-y-6">
                     <div>
                         <span class="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            ⚡ Ativação Instantânea · R$ 0,00 Hoje
+                            Ativação Instantânea · R$ 0,00 Hoje
                         </span>
-                        <h2 class="mt-3 text-xl sm:text-2xl font-black text-white leading-snug">
+                        <h2 class="mt-3 text-xl sm:text-2xl font-bold text-white leading-snug">
                             Seu restaurante pronto para vender em menos de 2 minutos.
                         </h2>
                         <p class="mt-1 text-xs text-slate-400 leading-relaxed">
@@ -81,10 +83,10 @@
                         </div>
 
                         <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-600 to-amber-500 flex items-center justify-center font-black text-xl text-white shrink-0 shadow-lg"
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-600 to-amber-500 flex items-center justify-center font-bold text-xl text-white shrink-0 shadow-lg"
                                  x-text="(form.nome_loja || 'R').trim().charAt(0).toUpperCase()"></div>
                             <div class="min-w-0 flex-1">
-                                <div class="font-black text-white text-sm truncate" x-text="form.nome_loja || 'Nome do Seu Restaurante'"></div>
+                                <div class="font-bold text-white text-sm truncate" x-text="form.nome_loja || 'Nome do Seu Restaurante'"></div>
                                 <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-0.5">
                                     <span class="text-emerald-400 font-bold">● Aberto agora</span>
                                     <span>•</span>
@@ -95,15 +97,15 @@
 
                         <div class="grid grid-cols-3 gap-2 pt-1 text-center text-[10px]">
                             <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2">
-                                <span class="block font-black text-emerald-400">0% Taxa</span>
+                                <span class="block font-bold text-emerald-400">0% Taxa</span>
                                 <span class="text-slate-400">Comissão</span>
                             </div>
                             <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2">
-                                <span class="block font-black text-white">PIX Direto</span>
+                                <span class="block font-bold text-white">PIX Direto</span>
                                 <span class="text-slate-400">Na sua conta</span>
                             </div>
                             <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2">
-                                <span class="block font-black text-amber-400">14 Dias</span>
+                                <span class="block font-bold text-amber-400">14 Dias</span>
                                 <span class="text-slate-400">Teste Grátis</span>
                             </div>
                         </div>
@@ -112,14 +114,14 @@
                     <!-- Resumo do Plano Selecionado -->
                     <div class="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4 space-y-2.5 text-xs">
                         <div class="flex items-center justify-between">
-                            <span class="font-black text-white uppercase tracking-wider" x-text="detalhesPlanoSelecionado.titulo"></span>
-                            <span class="font-black text-rose-400" x-text="detalhesPlanoSelecionado.preco + '/mês após 14 dias'"></span>
+                            <span class="font-bold text-white uppercase tracking-wider" x-text="detalhesPlanoSelecionado.titulo"></span>
+                            <span class="font-bold text-rose-400" x-text="detalhesPlanoSelecionado.preco + '/mês após 14 dias'"></span>
                         </div>
                         <p class="text-[11px] text-slate-400" x-text="detalhesPlanoSelecionado.resumo"></p>
                         <div class="space-y-1.5 pt-1 border-t border-white/[0.06] text-[11px] text-slate-300">
                             <template x-for="(item, idx) in detalhesPlanoSelecionado.itens" :key="idx">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-emerald-400 font-black">✓</span>
+                                    <span class="text-emerald-400 font-bold"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
                                     <span x-text="item"></span>
                                 </div>
                             </template>
@@ -129,8 +131,8 @@
 
                 <!-- Rodapé de Garantias -->
                 <div class="pt-4 border-t border-white/[0.07] flex items-center justify-between text-[11px] text-slate-400">
-                    <span>🔒 Sem cobrança hoje</span>
-                    <span>✓ Cancele em 1 clique</span>
+                    <span>Sem cobrança hoje</span>
+                    <span>Cancele em 1 clique</span>
                 </div>
             </div>
 
@@ -138,16 +140,16 @@
             <div class="lg:col-span-7 p-6 sm:p-8 lg:p-10">
                 <div class="space-y-5">
                     <div>
-                        <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Criar Minha Loja Grátis</h1>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Criar Minha Loja Grátis</h1>
                         <p class="text-xs sm:text-sm text-slate-400 mt-1">Preencha os dados abaixo para liberar seu cardápio digital e painel de pedidos imediatamente.</p>
                     </div>
 
                     <!-- Alerta de Erro -->
                     <template x-if="erro">
                         <div class="bg-rose-950/70 border border-rose-500/40 text-rose-200 text-xs font-semibold rounded-2xl p-4 flex items-start gap-2.5 shadow-lg">
-                            <span class="text-rose-400 text-sm shrink-0">⚠️</span>
+                            <span class="text-rose-400 text-sm shrink-0"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span>
                             <span class="flex-1" x-text="erro"></span>
-                            <button type="button" @click="erro = ''" class="text-rose-400 hover:text-white font-bold">✕</button>
+                            <button type="button" @click="erro = ''" class="text-rose-400 hover:text-white font-bold"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                         </div>
                     </template>
 
@@ -160,13 +162,13 @@
                                      class="p-3 rounded-2xl border cursor-pointer transition select-none"
                                      :class="form.plano === 'delivery' ? 'bg-rose-500/15 border-rose-500 text-white shadow-md' : 'bg-[#06080f] border-white/[0.08] text-slate-400 hover:border-white/[0.2]'">
                                     <div class="flex items-center justify-between">
-                                        <span class="font-black text-xs text-white">Delivery</span>
+                                        <span class="font-bold text-xs text-white">Delivery</span>
                                         <span class="w-4 h-4 rounded-full border flex items-center justify-center text-[10px]"
-                                              :class="form.plano === 'delivery' ? 'bg-rose-500 border-rose-500 text-white font-black' : 'border-slate-600'">
-                                            <span x-show="form.plano === 'delivery'">✓</span>
+                                              :class="form.plano === 'delivery' ? 'bg-rose-500 border-rose-500 text-white font-bold' : 'border-slate-600'">
+                                            <span x-show="form.plano === 'delivery'"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
                                         </span>
                                     </div>
-                                    <div class="font-black text-sm text-emerald-400 mt-1">R$ 99,90<span class="text-[10px] text-slate-400 font-normal">/mês</span></div>
+                                    <div class="font-bold text-sm text-emerald-400 mt-1">R$ 99,90<span class="text-[10px] text-slate-400 font-normal">/mês</span></div>
                                     <div class="text-[10px] text-slate-400 mt-0.5">Entrega, Retirada &amp; PIX</div>
                                 </div>
 
@@ -174,13 +176,13 @@
                                      class="p-3 rounded-2xl border cursor-pointer transition select-none"
                                      :class="form.plano === 'presencial' ? 'bg-rose-500/15 border-rose-500 text-white shadow-md' : 'bg-[#06080f] border-white/[0.08] text-slate-400 hover:border-white/[0.2]'">
                                     <div class="flex items-center justify-between">
-                                        <span class="font-black text-xs text-white">Presencial</span>
+                                        <span class="font-bold text-xs text-white">Presencial</span>
                                         <span class="w-4 h-4 rounded-full border flex items-center justify-center text-[10px]"
-                                              :class="form.plano === 'presencial' ? 'bg-rose-500 border-rose-500 text-white font-black' : 'border-slate-600'">
-                                            <span x-show="form.plano === 'presencial'">✓</span>
+                                              :class="form.plano === 'presencial' ? 'bg-rose-500 border-rose-500 text-white font-bold' : 'border-slate-600'">
+                                            <span x-show="form.plano === 'presencial'"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
                                         </span>
                                     </div>
-                                    <div class="font-black text-sm text-emerald-400 mt-1">R$ 149,90<span class="text-[10px] text-slate-400 font-normal">/mês</span></div>
+                                    <div class="font-bold text-sm text-emerald-400 mt-1">R$ 149,90<span class="text-[10px] text-slate-400 font-normal">/mês</span></div>
                                     <div class="text-[10px] text-slate-400 mt-0.5">+ PDV, Mesas QR &amp; KDS</div>
                                 </div>
 
@@ -188,14 +190,14 @@
                                      class="p-3 rounded-2xl border cursor-pointer transition select-none relative"
                                      :class="form.plano === 'premium' ? 'bg-rose-500/15 border-rose-500 text-white shadow-md' : 'bg-[#06080f] border-white/[0.08] text-slate-400 hover:border-white/[0.2]'">
                                     <div class="flex items-center justify-between">
-                                        <span class="font-black text-xs text-white">Premium Total</span>
+                                        <span class="font-bold text-xs text-white">Premium Total</span>
                                         <span class="w-4 h-4 rounded-full border flex items-center justify-center text-[10px]"
-                                              :class="form.plano === 'premium' ? 'bg-rose-500 border-rose-500 text-white font-black' : 'border-slate-600'">
-                                            <span x-show="form.plano === 'premium'">✓</span>
+                                              :class="form.plano === 'premium' ? 'bg-rose-500 border-rose-500 text-white font-bold' : 'border-slate-600'">
+                                            <span x-show="form.plano === 'premium'"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
                                         </span>
                                     </div>
-                                    <div class="font-black text-sm text-emerald-400 mt-1">R$ 249,90<span class="text-[10px] text-slate-400 font-normal">/mês</span></div>
-                                    <div class="text-[10px] text-rose-300 font-bold mt-0.5">🔥 + WhatsApp IA &amp; CRM</div>
+                                    <div class="font-bold text-sm text-emerald-400 mt-1">R$ 249,90<span class="text-[10px] text-slate-400 font-normal">/mês</span></div>
+                                    <div class="text-[10px] text-rose-300 font-bold mt-0.5">+ WhatsApp IA &amp; CRM</div>
                                 </div>
                             </div>
                         </div>
@@ -268,7 +270,7 @@
                                 <div class="flex items-center justify-between mb-1">
                                     <label class="block text-[11px] font-bold text-slate-400">Crie uma Senha Forte (Mín. 8 caracteres) *</label>
                                     <button type="button" @click="mostrarSenha = !mostrarSenha" class="text-[11px] font-bold text-slate-400 hover:text-rose-400">
-                                        <span x-text="mostrarSenha ? '🙈 Ocultar' : '👁️ Mostrar'"></span>
+                                        <span x-text="mostrarSenha ? 'Ocultar' : 'Mostrar'"></span>
                                     </button>
                                 </div>
                                 <input :type="mostrarSenha ? 'text' : 'password'" x-model="form.senha" required minlength="8" placeholder="Mínimo de 8 caracteres"
@@ -288,11 +290,11 @@
                         </div>
 
                         <button type="submit" :disabled="carregando"
-                            class="w-full bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-110 disabled:opacity-50 text-white font-black py-4 rounded-2xl text-sm shadow-2xl shadow-rose-600/30 transition active:scale-98 flex items-center justify-center gap-2">
+                            class="w-full bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-110 disabled:opacity-50 text-white font-bold py-4 rounded-2xl text-sm shadow-2xl shadow-rose-600/30 transition active:scale-98 flex items-center justify-center gap-2">
                             <template x-if="carregando">
                                 <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                             </template>
-                            <span x-text="carregando ? 'Configurando seu restaurante...' : '🚀 Criar Minha Loja e Acessar o Painel Agora →'"></span>
+                            <span x-text="carregando ? 'Configurando seu restaurante...' : 'Criar Minha Loja e Acessar o Painel Agora →'"></span>
                         </button>
                     </form>
                 </div>

@@ -7,7 +7,7 @@
                     <div class="flex justify-between items-start border-b border-slate-800 pb-3">
                         <div>
                             <div class="flex items-center gap-2">
-                                <span class="text-lg font-black text-rose-400" x-text="'Pedido #' + pedidoSelecionado.codigo_publico"></span>
+                                <span class="text-lg font-bold text-rose-400" x-text="'Pedido #' + pedidoSelecionado.codigo_publico"></span>
                                 <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-bold uppercase text-[10px]" x-text="pedidoSelecionado.canal"></span>
                                 <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px]"
                                     :class="{
@@ -22,14 +22,14 @@
                             </div>
                             <p class="text-slate-400 mt-0.5" x-text="'Recebido há ' + pedidoSelecionado.tempo_decorrido_minutos + ' minutos'"></p>
                         </div>
-                        <button @click="pedidoSelecionado = null; mostrandoMotivoCancelamento = false" class="text-slate-400 hover:text-white text-base font-bold">✕</button>
+                        <button @click="pedidoSelecionado = null; mostrandoMotivoCancelamento = false" class="text-slate-400 hover:text-white text-base font-bold"><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                     </div>
 
                     <!-- Alerta de Pedido Cancelado (se houver) -->
                     <template x-if="pedidoSelecionado.status === 'cancelado'">
                         <div class="bg-red-950/40 border border-red-500/30 rounded-2xl p-3.5 space-y-1">
-                            <span class="font-extrabold text-red-400 flex items-center gap-1.5">
-                                <span>🚫</span> Pedido Cancelado
+                            <span class="font-semibold text-red-400 flex items-center gap-1.5">
+                                <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> Pedido Cancelado
                             </span>
                             <p class="text-slate-300 text-xs" x-text="'Motivo registrado: ' + (pedidoSelecionado.cancelado_motivo || 'Cancelado pelo operador')"></p>
                         </div>
@@ -44,7 +44,7 @@
                         <template x-if="pedidoSelecionado.whatsapp_notificacao_url">
                             <a :href="pedidoSelecionado.whatsapp_notificacao_url" target="_blank"
                                class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition">
-                                <span>💬</span> WhatsApp
+                                <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg></span> WhatsApp
                             </a>
                         </template>
                     </div>
@@ -53,10 +53,10 @@
                     <template x-if="pedidoSelecionado.endereco && (pedidoSelecionado.endereco.rua || pedidoSelecionado.endereco.logradouro)">
                         <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-2">
                             <div class="flex items-center justify-between">
-                                <span class="font-bold text-slate-300">📍 Endereço de Entrega</span>
+                                <span class="font-bold text-slate-300">Endereço de Entrega</span>
                                 <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((pedidoSelecionado.endereco.rua || pedidoSelecionado.endereco.logradouro) + ', ' + pedidoSelecionado.endereco.numero + ' - ' + pedidoSelecionado.endereco.bairro + ', ' + (pedidoSelecionado.endereco.cidade || ''))"
                                    target="_blank" class="text-sky-400 hover:underline font-bold">
-                                    🗺️ Google Maps ↗
+                                    Google Maps ↗
                                 </a>
                             </div>
                             <div class="text-slate-200 font-semibold" x-text="(pedidoSelecionado.endereco.rua || pedidoSelecionado.endereco.logradouro) + ', ' + pedidoSelecionado.endereco.numero + (pedidoSelecionado.endereco.complemento ? ' (' + pedidoSelecionado.endereco.complemento + ')' : '')"></div>
@@ -71,7 +71,7 @@
                     <template x-if="pedidoSelecionado.canal === 'delivery' && pedidoSelecionado.status === 'pronto'">
                         <div class="bg-slate-950 border border-emerald-500/30 rounded-2xl p-3.5 space-y-2">
                             <span class="font-bold text-emerald-400 flex items-center gap-1.5">
-                                <span>🛵</span> Despachar Entrega Imediatamente
+                                <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path></svg></span> Despachar Entrega Imediatamente
                             </span>
                             <div class="flex gap-2">
                                 <select x-model="pedidoSelecionado.entregador_id"
@@ -83,7 +83,7 @@
                                 </select>
                                 <button type="button" @click="despacharMotoboyRapido(pedidoSelecionado.id, pedidoSelecionado.entregador_id)"
                                     :disabled="!pedidoSelecionado.entregador_id"
-                                    class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black px-4 py-2 rounded-xl transition">
+                                    class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold px-4 py-2 rounded-xl transition">
                                     Despachar
                                 </button>
                             </div>
@@ -92,7 +92,7 @@
 
                     <!-- Itens e Adicionais -->
                     <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-2">
-                        <div class="font-bold text-slate-300">🍔 Itens do Pedido</div>
+                        <div class="font-bold text-slate-300">Itens do Pedido</div>
                         <template x-for="it in pedidoSelecionado.itens" :key="it.id">
                             <div class="border-b border-slate-800/80 last:border-0 pb-2 last:pb-0">
                                 <div class="flex justify-between font-bold text-white">
@@ -103,7 +103,7 @@
                                     <div class="text-slate-400 pl-3 text-[11px]" x-text="it.adicionais.map(a => '+ ' + a.nome).join(', ')"></div>
                                 </template>
                                 <template x-if="it.observacao">
-                                    <div class="text-amber-400 font-bold pl-3 text-[11px]" x-text="'⚠️ Obs: ' + it.observacao"></div>
+                                    <div class="text-amber-400 font-bold pl-3 text-[11px]" x-text="'Obs: ' + it.observacao"></div>
                                 </template>
                             </div>
                         </template>
@@ -115,23 +115,23 @@
                         <div class="flex justify-between text-slate-400" x-show="pedidoSelecionado.taxa_entrega_centavos > 0"><span>Taxa de Entrega:</span><span x-text="formatarCentavos(pedidoSelecionado.taxa_entrega_centavos)"></span></div>
                         <div class="flex justify-between text-emerald-400" x-show="pedidoSelecionado.desconto_centavos > 0"><span>Desconto Cupom:</span><span x-text="'- ' + formatarCentavos(pedidoSelecionado.desconto_centavos)"></span></div>
                         <div class="flex justify-between text-emerald-400" x-show="pedidoSelecionado.desconto_cashback_centavos > 0"><span>Cashback Fidelidade:</span><span x-text="'- ' + formatarCentavos(pedidoSelecionado.desconto_cashback_centavos)"></span></div>
-                        <div class="flex justify-between items-center text-white font-black text-sm pt-1.5 border-t border-slate-800">
+                        <div class="flex justify-between items-center text-white font-bold text-sm pt-1.5 border-t border-slate-800">
                             <div class="flex items-center gap-2">
                                 <span x-text="'Total (' + (pedidoSelecionado.forma_pagamento || '').toUpperCase() + ')'"></span>
                                 <span class="text-[10px] px-2 py-0.5 rounded-full uppercase"
                                       :class="pedidoSelecionado.pagamento_status === 'aprovado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'"
-                                      x-text="pedidoSelecionado.pagamento_status === 'aprovado' ? '✓ Pago' : '⏳ Pendente'"></span>
+                                      x-text="pedidoSelecionado.pagamento_status === 'aprovado' ? 'Pago' : '⏳ Pendente'"></span>
                             </div>
                             <span class="text-emerald-400" x-text="formatarCentavos(pedidoSelecionado.total_centavos)"></span>
                         </div>
                         <template x-if="pedidoSelecionado.troco_para">
-                            <div class="text-amber-300 font-bold pt-1" x-text="'💵 Levar troco para: ' + formatarCentavos(pedidoSelecionado.troco_para)"></div>
+                            <div class="text-amber-300 font-bold pt-1" x-text="'Levar troco para: ' + formatarCentavos(pedidoSelecionado.troco_para)"></div>
                         </template>
                         <template x-if="pedidoSelecionado.pagamento_status !== 'aprovado' && pedidoSelecionado.status !== 'cancelado'">
                             <div class="pt-2">
                                 <button type="button" @click="confirmarPagamentoPedido(pedidoSelecionado)"
-                                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl text-xs shadow transition">
-                                    ✓ Confirmar Recebimento do Pagamento
+                                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs shadow transition">
+                                    Confirmar Recebimento do Pagamento
                                 </button>
                             </div>
                         </template>
@@ -140,10 +140,10 @@
                     <!-- Botões de Impressão 80mm -->
                     <div class="flex gap-2">
                         <button @click="imprimirPedido(pedidoSelecionado.id, 'cozinha')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5">
-                            <span>🖨️</span> Cupom Cozinha
+                            <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg></span> Cupom Cozinha
                         </button>
                         <button @click="imprimirPedido(pedidoSelecionado.id, 'entrega')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5">
-                            <span>🖨️</span> Cupom Caixa/Entrega
+                            <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg></span> Cupom Caixa/Entrega
                         </button>
                     </div>
 
@@ -153,14 +153,14 @@
                             <template x-if="!mostrandoMotivoCancelamento">
                                 <button type="button" @click="mostrandoMotivoCancelamento = true"
                                     class="w-full bg-slate-950 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-800 font-bold py-2 rounded-xl transition flex items-center justify-center gap-1.5">
-                                    <span>✕</span> Cancelar este Pedido
+                                    <span><svg class="w-3.5 h-3.5 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></span> Cancelar este Pedido
                                 </button>
                             </template>
 
                             <template x-if="mostrandoMotivoCancelamento">
                                 <div class="bg-rose-950/30 border border-rose-500/40 rounded-2xl p-3.5 space-y-2.5">
-                                    <span class="font-extrabold text-rose-300 flex items-center gap-1.5">
-                                        <span>⚠️</span> Motivo do Cancelamento
+                                    <span class="font-semibold text-rose-300 flex items-center gap-1.5">
+                                        <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> Motivo do Cancelamento
                                     </span>
                                     <select x-model="motivoCancelamento" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold focus:border-rose-500 focus:outline-none">
                                         <option value="Cliente solicitou o cancelamento">Cliente solicitou o cancelamento</option>
@@ -180,7 +180,7 @@
                                             Voltar
                                         </button>
                                         <button type="button" @click="confirmarCancelamentoPedidoModal()"
-                                            class="w-2/3 bg-rose-600 hover:bg-rose-700 text-white font-black py-2 rounded-xl shadow-lg transition">
+                                            class="w-2/3 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl shadow-lg transition">
                                             Confirmar Cancelamento
                                         </button>
                                     </div>

@@ -297,12 +297,16 @@ final class CheckoutController
                 return $pedido;
             });
 
-            // Dispatch real-time WebSocket event for Merchant Kanban & Staff KDS
-            event(new PedidoCriado($pedido->load('cliente')));
-
             // Send immediate real-time WhatsApp confirmation + live tracking link (and PIX code if PIX)
             try {
-                $this->evolutionApi->notificarMudancaStatus($pedido->load(['cliente', 'itens', 'pagamento']), 'novo');
+                $this->evolutionApi->notificarMudancaStatus($pedido->load(['cliente', 'itens', 'pagamento', 'loja']), 'novo');
+            } catch (\Throwable) {}
+
+            // Dispatch real-time WebSocket event for Merchant Kanban & Staff KDS (isolated so missing Reverb never blocks)
+            try {
+                if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) {
+                    event(new PedidoCriado($pedido->load('cliente')));
+                }
             } catch (\Throwable) {}
 
             $trackingSignature = hash_hmac('sha256', $pedido->tracking_token_hash, (string) config('app.key'));

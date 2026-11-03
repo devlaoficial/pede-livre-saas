@@ -5,18 +5,22 @@ declare(strict_types=1);
 namespace App\Domain\Pagamentos\Controllers;
 
 use App\Domain\Assinaturas\Models\Fatura;
+use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Assinaturas\Services\AssinaturaPlataformaService;
 use App\Domain\Pagamentos\Models\Pagamento;
 use App\Domain\Pagamentos\Models\WebhookLog;
 use App\Domain\Pedidos\Events\PagamentoConfirmado;
+use App\Domain\Pedidos\Models\Pedido;
 use App\Domain\Pedidos\Services\FluxoStatusPedidoService;
 use App\Support\Security\SensitiveDataRedactor;
 use App\Support\Security\WebhookSignatureValidator;
+use App\Support\Tenancy\LojaContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 final class MercadoPagoWebhookController
 {
@@ -24,7 +28,8 @@ final class MercadoPagoWebhookController
         private readonly WebhookSignatureValidator $signatureValidator,
         private readonly SensitiveDataRedactor $redactor,
         private readonly FluxoStatusPedidoService $fluxoService,
-        private readonly AssinaturaPlataformaService $assinaturaService
+        private readonly AssinaturaPlataformaService $assinaturaService,
+        private readonly LojaContext $lojaContext
     ) {}
 
     /**
@@ -94,7 +99,11 @@ final class MercadoPagoWebhookController
             }
 
             // 4. Defense-in-Depth Verification against Mercado Pago API
-            $loja = $pagamento->pedido?->loja ?? \App\Domain\Assinaturas\Models\Loja::withoutGlobalScopes()->find($pagamento->loja_id);
+            $loja = Loja::withoutGlobalScopes()->find($pagamento->loja_id);
+            if ($loja !== null) {
+                $this->lojaContext->setLoja($loja);
+            }
+
             $tokenLoja = $loja?->mp_access_token;
             $statusPagamentoMp = 'approved';
 
@@ -112,24 +121,31 @@ final class MercadoPagoWebhookController
             if ($statusPagamentoMp === 'approved') {
                 $pagamento->update(['status' => 'aprovado']);
 
-                $pedido = $pagamento->pedido;
+                /** @var Pedido|null $pedido */
+                $pedido = Pedido::withoutGlobalScopes()
+                    ->with(['cliente', 'itens', 'loja', 'pagamento'])
+                    ->find($pagamento->pedido_id);
+
                 if ($pedido !== null) {
                     $pedido->update(['pagamento_status' => 'aprovado']);
 
-                    // Broadcast real-time event to Reverb
-                    event(new PagamentoConfirmado($pedido));
-
-                    // Auto-advance order if in 'novo' status
+                    // Auto-advance order if in 'novo' status and notify customer via WhatsApp
                     if ($pedido->status === 'novo') {
                         $this->fluxoService->transicionar(
                             $pedido,
-                            'aceito',
+                            'em_preparo',
                             null,
                             null,
                             null,
-                            'Pagamento PIX aprovado via webhook Mercado Pago.'
+                            'Pagamento PIX aprovado automaticamente via webhook Mercado Pago.'
                         );
                     }
+
+                    try {
+                        if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) {
+                            event(new PagamentoConfirmado($pedido));
+                        }
+                    } catch (Throwable) {}
                 }
 
                 $log->update(['processado' => true]);
@@ -139,7 +155,7 @@ final class MercadoPagoWebhookController
             }
 
             return response()->json(['message' => 'Webhook processado com sucesso'], Response::HTTP_OK);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $log->update(['erro' => $e->getMessage()]);
             return response()->json(['error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         } finally {

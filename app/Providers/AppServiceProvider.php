@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Assinaturas\Console\GerarBackupCommand;
+use App\Domain\Assinaturas\Console\MonitorarSaudeCommand;
 use App\Domain\Assinaturas\Console\ProcessarInadimplenciaCommand;
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Assinaturas\Services\AssinaturaPlataformaService;
 use App\Domain\Assinaturas\Services\ReguaInadimplenciaService;
 use App\Domain\Autenticacao\Models\Usuario;
 use App\Domain\Bot\Commands\DispararWinBackCommand;
+use App\Domain\Bot\Services\EvolutionApiService;
 use App\Domain\Bot\Services\WhatsAppMetaCloudService;
 use App\Domain\Catalogo\Models\Categoria;
 use App\Domain\Catalogo\Models\Combo;
@@ -44,6 +47,7 @@ use App\Domain\Pedidos\Services\CaixaService;
 use App\Domain\Pedidos\Services\ImpressaoEscPosService;
 use App\Policies\LojaPolicy;
 use App\Policies\UsuarioPolicy;
+use App\Support\Monitoring\SystemMonitorService;
 use App\Support\Security\BlindIndexService;
 use App\Support\Security\SafeImageUploadService;
 use App\Support\Security\SensitiveDataRedactor;
@@ -71,6 +75,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->singleton(CaixaService::class, fn () => new CaixaService());
         $this->app->singleton(CashbackService::class, fn () => new CashbackService());
         $this->app->singleton(WhatsAppMetaCloudService::class, fn ($app) => new WhatsAppMetaCloudService($app->make(BlindIndexService::class)));
+        $this->app->singleton(SystemMonitorService::class, fn ($app) => new SystemMonitorService($app->make(EvolutionApiService::class)));
     }
 
     public function boot(): void
@@ -99,6 +104,8 @@ final class AppServiceProvider extends ServiceProvider
         // 3. Custom Domain CLI Commands
         if ($this->app->runningInConsole()) {
             $this->commands([
+                MonitorarSaudeCommand::class,
+                GerarBackupCommand::class,
                 ProcessarInadimplenciaCommand::class,
                 RecuperarCarrinhosCommand::class,
                 VerificarPedidosAtrasadosCommand::class,

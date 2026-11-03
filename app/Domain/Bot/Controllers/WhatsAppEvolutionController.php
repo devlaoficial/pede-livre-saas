@@ -230,7 +230,7 @@ final class WhatsAppEvolutionController
             ? $request->string('mensagem')->toString()
             : "Olá! 🚀 Teste de conexão WhatsApp do PedeLivre para a loja *{$loja->nome}* concluído com sucesso!";
 
-        $enviado = $this->evolutionApi->enviarMensagem($instancia, $telefone, $texto);
+        $enviado = $this->evolutionApi->enviarMensagem($instancia, $telefone, $texto, $loja->id);
 
         return response()->json([
             'success' => $enviado,
@@ -330,7 +330,7 @@ final class WhatsAppEvolutionController
                     $linkCardapio = url("/p/{$loja->slug}");
                     $msgFallback = "Olá! Não consegui ouvir seu áudio com clareza. 🎙️😅\n\nPoderia enviar sua mensagem por texto ou tentar gravar novamente? Se preferir ver nossos produtos e fazer um pedido direto, acesse:\n👉 {$linkCardapio}";
                     if ($ehPayloadNativoEvolution) {
-                        $this->evolutionApi->enviarMensagem($instancia, $telefoneRemetente, $msgFallback);
+                        $this->evolutionApi->enviarMensagem($instancia, $telefoneRemetente, $msgFallback, $loja->id);
                     }
                     return response()->json([
                         'status' => 'audio_nao_compreendido',
@@ -360,7 +360,7 @@ final class WhatsAppEvolutionController
 
                 // Se veio diretamente da Evolution API nativa (que não envia replyText sozinha), dispara via sendText
                 if ($ehPayloadNativoEvolution && !empty($respostaTexto)) {
-                    $this->evolutionApi->enviarMensagem($instancia, $telefoneRemetente, $respostaTexto);
+                    $this->evolutionApi->enviarMensagem($instancia, $telefoneRemetente, $respostaTexto, $loja->id);
                 }
 
                 return response()->json([
@@ -564,7 +564,7 @@ final class WhatsAppEvolutionController
         $texto = trim($request->string('mensagem')->toString());
         $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
 
-        $enviado = $this->evolutionApi->enviarMensagem($instancia, $conversa->telefone, $texto);
+        $enviado = $this->evolutionApi->enviarMensagem($instancia, $conversa->telefone, $texto, $loja->id);
         if (!$enviado) {
             return response()->json([
                 'error' => 'FALHA_ENVIO_WHATSAPP',
@@ -625,7 +625,7 @@ final class WhatsAppEvolutionController
         if ($avisarCliente) {
             $msg = "Olá! Um de nossos atendentes acabou de entrar nesta conversa para te atender pessoalmente! 👨‍💼 Como podemos te ajudar agora?";
             $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
-            $this->evolutionApi->enviarMensagem($instancia, $conversa->telefone, $msg);
+            $this->evolutionApi->enviarMensagem($instancia, $conversa->telefone, $msg, $loja->id);
 
             BotMensagem::create([
                 'loja_id' => $loja->id,
@@ -669,7 +669,7 @@ final class WhatsAppEvolutionController
         if ($avisarCliente) {
             $msg = "Atendimento humano finalizado! Se precisar de algo mais, nosso assistente virtual está pronto para te ajudar a qualquer momento. Basta digitar *MENU*! 🤖✨";
             $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
-            $this->evolutionApi->enviarMensagem($instancia, $conversa->telefone, $msg);
+            $this->evolutionApi->enviarMensagem($instancia, $conversa->telefone, $msg, $loja->id);
 
             BotMensagem::create([
                 'loja_id' => $loja->id,

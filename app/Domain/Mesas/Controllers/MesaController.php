@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 final class MesaController
 {
@@ -97,14 +98,18 @@ final class MesaController
         ];
         Cache::put($cacheKey, $chamados, now()->addMinutes(30));
 
-        // Broadcast event to Merchant KDS / POS channel
-        event(new GarcomChamado(
-            lojaId: $loja->id,
-            mesaId: $mesa->id,
-            mesaNumero: $mesa->numero,
-            mesaNome: $mesa->nome,
-            horario: $horario
-        ));
+        // Broadcast event safely (never block if Reverb is disabled/offline)
+        try {
+            if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) {
+                event(new GarcomChamado(
+                    lojaId: $loja->id,
+                    mesaId: $mesa->id,
+                    mesaNumero: $mesa->numero,
+                    mesaNome: $mesa->nome,
+                    horario: $horario
+                ));
+            }
+        } catch (Throwable) {}
 
         return response()->json([
             'message' => 'Garçom notificado! Um atendente virá à sua mesa em instantes.',
