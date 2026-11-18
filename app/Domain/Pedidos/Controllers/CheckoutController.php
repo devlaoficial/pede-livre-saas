@@ -19,6 +19,7 @@ use App\Domain\Pedidos\Requests\CriarPedidoRequest;
 use App\Domain\Pedidos\Requests\ValidarCupomRequest;
 use App\Domain\Pedidos\Resources\PedidoPublicoTrackingResource;
 use App\Domain\Pedidos\Services\CalculoPedidoService;
+use App\Domain\Pedidos\Services\FluxoStatusPedidoService;
 use App\Support\Security\BlindIndexService;
 use App\Support\Tenancy\LojaContext;
 use DomainException;
@@ -38,7 +39,8 @@ final class CheckoutController
         private readonly MercadoPagoPixService $pixService,
         private readonly BlindIndexService $blindIndex,
         private readonly LojaContext $context,
-        private readonly EvolutionApiService $evolutionApi
+        private readonly EvolutionApiService $evolutionApi,
+        private readonly FluxoStatusPedidoService $fluxoService
     ) {}
 
     public function calcularFrete(CalcularFreteRequest $request): JsonResponse
@@ -297,10 +299,31 @@ final class CheckoutController
                 return $pedido;
             });
 
-            // Send immediate real-time WhatsApp confirmation + live tracking link (and PIX code if PIX)
-            try {
-                $this->evolutionApi->notificarMudancaStatus($pedido->load(['cliente', 'itens', 'pagamento', 'loja']), 'novo');
-            } catch (\Throwable) {}
+            // Modo 100% Autônomo: Pedidos com pagamento presencial (dinheiro, cartão na entrega)
+            // são aceitos e avançados para preparo imediatamente na cozinha sem depender de atendente humano.
+            $autoAceitar = (bool) ($loja->config_json['auto_aceitar_pedidos'] ?? true);
+            if ($autoAceitar && $pedido->forma_pagamento !== 'pix') {
+                try {
+                    $this->fluxoService->transicionar(
+                        $pedido,
+                        'em_preparo',
+                        null,
+                        null,
+                        null,
+                        'Pedido aceito e enviado para preparo automaticamente (Modo 100% Autônomo).'
+                    );
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("[Checkout] Falha ao auto-aceitar pedido #{$pedido->id}: {$e->getMessage()}");
+                    try {
+                        $this->evolutionApi->notificarMudancaStatus($pedido->load(['cliente', 'itens', 'pagamento', 'loja']), 'novo');
+                    } catch (\Throwable) {}
+                }
+            } else {
+                // Pedidos PIX (aguardando webhook de pagamento) ou lojas sem auto-aceite
+                try {
+                    $this->evolutionApi->notificarMudancaStatus($pedido->load(['cliente', 'itens', 'pagamento', 'loja']), 'novo');
+                } catch (\Throwable) {}
+            }
 
             // Dispatch real-time WebSocket event for Merchant Kanban & Staff KDS (isolated so missing Reverb never blocks)
             try {

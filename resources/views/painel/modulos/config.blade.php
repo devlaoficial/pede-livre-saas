@@ -67,6 +67,45 @@
                             </div>
                         </div>
 
+                        <!-- Piloto Automático / Modo 100% Autônomo -->
+                        <div class="border-t border-slate-800 pt-4 mt-2 space-y-3 bg-gradient-to-r from-emerald-950/30 to-slate-950 p-4 rounded-2xl border border-emerald-500/20">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span class="font-bold text-sm text-white">Modo 100% Autônomo (Piloto Automático)</span>
+                                </div>
+                                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                    Zero Fila &amp; Sem Atendente
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                Permite que sua operação funcione 24/7 de forma 100% independente: pedidos entram direto para a cozinha, clientes são notificados no WhatsApp em cada etapa e pedidos finalizam sozinhos.
+                            </p>
+                            <div class="space-y-2 pt-1">
+                                <label class="flex items-start gap-2.5 text-xs text-slate-200 cursor-pointer bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 hover:border-emerald-500/40 transition">
+                                    <input type="checkbox" x-model="configLoja.auto_aceitar_pedidos" class="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500">
+                                    <div>
+                                        <strong class="text-white block">Auto-Aceite e Roteamento para a Cozinha</strong>
+                                        <span class="text-[11px] text-slate-400">Aceita pedidos (PIX aprovados e pagamentos na entrega) e envia imediatamente para o KDS/cozinha sem esperar clique humano.</span>
+                                    </div>
+                                </label>
+                                <label class="flex items-start gap-2.5 text-xs text-slate-200 cursor-pointer bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 hover:border-emerald-500/40 transition">
+                                    <input type="checkbox" x-model="configLoja.notificar_whatsapp_automatico" class="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500">
+                                    <div>
+                                        <strong class="text-white block">Notificações WhatsApp em Tempo Real</strong>
+                                        <span class="text-[11px] text-slate-400">Envia link de rastreio ao vivo, alertas de preparo, saída para entrega com dados do motoboy e pesquisa NPS pós-entrega.</span>
+                                    </div>
+                                </label>
+                                <label class="flex items-start gap-2.5 text-xs text-slate-200 cursor-pointer bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 hover:border-emerald-500/40 transition">
+                                    <input type="checkbox" x-model="configLoja.auto_finalizar_pedidos" class="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500">
+                                    <div>
+                                        <strong class="text-white block">Auto-Finalização de Pedidos em Rota (Auto-Complete)</strong>
+                                        <span class="text-[11px] text-slate-400">Conclui pedidos esquecidos em rota após 120min, creditando cashback e liberando convite para avaliação 5 estrelas.</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
                         <!-- Parâmetros Operacionais Avançados -->
                         <div class="border-t border-slate-800 pt-3 mt-2 space-y-3">
                             <span class="font-semibold text-slate-300 block">Parâmetros Operacionais (Preparo, Cashback, Salão &amp; Pizzaria)</span>

@@ -243,7 +243,7 @@ final class WinBackService
      *     motivo?: string
      * }
      */
-    public function executarCampanhaLoja(Loja $loja, bool $ignorarCooldown = false): array
+    public function executarCampanhaLoja(Loja $loja, bool $ignorarCooldown = false, ?int $limiteOverride = null): array
     {
         $config = $loja->config_json['whatsapp'] ?? [];
         $instancia = $this->evolutionApi->obterNomeInstanciaLoja($loja);
@@ -262,6 +262,10 @@ final class WinBackService
         }
 
         $clientes = $this->obterClientesElegiveis($loja);
+        if ($limiteOverride !== null && $limiteOverride > 0) {
+            $clientes = $clientes->take($limiteOverride);
+        }
+
         if ($clientes->isEmpty()) {
             return [
                 'success' => true,

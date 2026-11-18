@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 
 final class DispararWinBackCommand extends Command
 {
-    protected $signature = 'pedelivre:disparar-winback {--loja= : ID específico de uma loja para disparar} {--forcar : Ignora restrição de horário comercial}';
+    protected $signature = 'pedelivre:disparar-winback {--loja= : ID específico de uma loja para disparar} {--limite= : Limite máximo de clientes por loja} {--forcar : Ignora restrição de horário comercial}';
     protected $description = 'Dispara campanhas automáticas de reativação (Win-Back) para clientes inativos via WhatsApp com controle anti-ban';
 
     public function handle(WinBackService $winBackService): int
@@ -18,6 +18,7 @@ final class DispararWinBackCommand extends Command
         $this->info('Iniciando rotina de Campanhas Win-Back no WhatsApp...');
 
         $lojaId = $this->option('loja');
+        $limite = $this->option('limite') ? (int) $this->option('limite') : null;
         $forcar = (bool) $this->option('forcar');
 
         // Por boas práticas e respeito ao cliente (LGPD e Anti-Ban), disparos automáticos
@@ -48,7 +49,7 @@ final class DispararWinBackCommand extends Command
 
             $this->line("Avaliando loja: {$loja->nome} (ID #{$loja->id})...");
 
-            $resultado = $winBackService->executarCampanhaLoja($loja);
+            $resultado = $winBackService->executarCampanhaLoja($loja, false, $limite);
 
             if (!empty($resultado['motivo'])) {
                 $this->comment(" -> Loja {$loja->nome}: {$resultado['motivo']}");

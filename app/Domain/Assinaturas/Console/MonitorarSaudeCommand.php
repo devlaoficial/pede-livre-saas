@@ -27,6 +27,8 @@ final class MonitorarSaudeCommand extends Command
             }
         }
 
-        return $resultado['status'] === 'healthy' ? self::SUCCESS : self::FAILURE;
+        // O diagnóstico envia alertas por E-mail e WhatsApp se encontrar falhas críticas.
+        // Retornamos SUCCESS para que o scheduler do Laravel não polua o log com exceções de exit code.
+        return self::SUCCESS;
     }
 }

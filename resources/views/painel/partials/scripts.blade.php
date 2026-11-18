@@ -368,7 +368,10 @@
                         taxa_servico_pct: Number(cfg.taxa_servico_pct ?? 10),
                         cashback_pct: Number(cfg.cashback_pct ?? 5),
                         estrategia_pizza_meio_a_meio: cfg.estrategia_pizza_meio_a_meio || 'maior_preco',
-                        impressao_automatica_ao_aceitar: cfg.impressao_automatica_ao_aceitar !== false
+                        impressao_automatica_ao_aceitar: cfg.impressao_automatica_ao_aceitar !== false,
+                        auto_aceitar_pedidos: cfg.auto_aceitar_pedidos !== false,
+                        notificar_whatsapp_automatico: cfg.notificar_whatsapp_automatico !== false,
+                        auto_finalizar_pedidos: cfg.auto_finalizar_pedidos !== false
                     };
                 },
 
@@ -730,6 +733,9 @@
                         uf: this.configLoja.uf,
                         config_json: {
                             aceita_pedidos: this.lojaAbertaManual,
+                            auto_aceitar_pedidos: Boolean(this.configLoja.auto_aceitar_pedidos),
+                            notificar_whatsapp_automatico: Boolean(this.configLoja.notificar_whatsapp_automatico),
+                            auto_finalizar_pedidos: Boolean(this.configLoja.auto_finalizar_pedidos),
                             tempo_medio_preparo_min: Number(this.configLoja.tempo_medio_preparo_min || 35),
                             taxa_servico_pct: Number(this.configLoja.taxa_servico_pct ?? 10),
                             cashback_pct: Number(this.configLoja.cashback_pct ?? 5),

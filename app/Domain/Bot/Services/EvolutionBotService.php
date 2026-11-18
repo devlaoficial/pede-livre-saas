@@ -7,6 +7,7 @@ namespace App\Domain\Bot\Services;
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Bot\Models\BotConversa;
 use App\Domain\Bot\Models\BotMensagem;
+use App\Domain\Catalogo\Services\HorarioFuncionamentoService;
 use App\Domain\Clientes\Models\Cliente;
 use App\Domain\Entregas\Models\Entregador;
 use App\Domain\Fidelidade\Models\Avaliacao;
@@ -54,7 +55,8 @@ final class EvolutionBotService
         private readonly BlindIndexService $blindIndex,
         private readonly EvolutionApiService $evolutionApi,
         private readonly RecuperadorVendasService $recuperadorService,
-        private readonly AiChatService $aiChatService
+        private readonly AiChatService $aiChatService,
+        private readonly HorarioFuncionamentoService $horarioService
     ) {}
 
     /**
@@ -404,9 +406,23 @@ final class EvolutionBotService
             }
             if ($pedeCardapio || ($podeRecomprar && $textoUpper === '2') || (!$podeRecomprar && $textoUpper === '1')) {
                 $linkCardapio = url("/p/{$loja->slug}");
+                $statusLoja = $this->horarioService->avaliarStatusLoja($loja);
+
+                $avisoFechado = '';
+                if (!$statusLoja['aberto_agora']) {
+                    $avisoFechado = "\n\n⚠️ *Aviso de Atendimento:* No momento nossa cozinha está *fechada*. ";
+                    if (!empty($statusLoja['proximo_horario_abertura'])) {
+                        $avisoFechado .= "Abriremos {$statusLoja['proximo_horario_abertura']}!";
+                    } elseif (!empty($statusLoja['mensagem_status'])) {
+                        $avisoFechado .= "({$statusLoja['mensagem_status']})";
+                    }
+                    $avisoFechado .= "\nMesmo assim, você pode conferir todos os itens, combos e montar seu pedido!";
+                }
+
                 $resposta = "Que maravilha falar com você! 🍔🍕😋\n\n"
                     . "Aqui está o link do nosso cardápio digital completo com fotos, combos, adicionais e promoções:\n"
-                    . "👉 {$linkCardapio}\n\n"
+                    . "👉 {$linkCardapio}"
+                    . $avisoFechado . "\n\n"
                     . "Basta clicar no link, montar o seu pedido em poucos toques e escolher a forma de pagamento que preferir. Estamos prontos para preparar tudo com muito carinho!";
                 $this->registrarResposta($loja, $conversa, $resposta);
                 return $resposta;
@@ -499,6 +515,11 @@ final class EvolutionBotService
                     . "✅ _Se já recebeu seu pedido, responda *JÁ RECEBI*!_\n\n";
             }
 
+            $statusLoja = $this->horarioService->avaliarStatusLoja($loja);
+            $linhaStatusLoja = $statusLoja['aberto_agora']
+                ? "🟢 *Aberto agora para pedidos!*\n\n"
+                : ("🔴 *No momento nossa cozinha está fechada* (" . ($statusLoja['proximo_horario_abertura'] ? "Abre {$statusLoja['proximo_horario_abertura']}" : $statusLoja['mensagem_status']) . ")\n\n");
+
             if ($podeRecomprar && $ultimoPedidoFinalizado !== null && $cliente !== null) {
                 $itensResumo = $ultimoPedidoFinalizado->itens->map(fn ($it) => "{$it->qtd}x {$it->nome_snapshot}")->join(', ');
                 $totalFmt = number_format($ultimoPedidoFinalizado->total / 100, 2, ',', '.');
@@ -506,6 +527,7 @@ final class EvolutionBotService
                 $endTexto = !empty($end['rua']) ? "{$end['rua']}, {$end['numero']}" : 'Endereço cadastrado';
 
                 $resposta = "Olá, *{$primeiroNome}*! Que alegria falar com você no *{$loja->nome}*! 👋🍔\n\n"
+                    . $linhaStatusLoja
                     . $blocoPedidoAtivo
                     . "Quer repetir seu último pedido favorito?\n"
                     . "📦 *Itens:* {$itensResumo}\n"
@@ -517,6 +539,7 @@ final class EvolutionBotService
                     . "4️⃣ Digite *HUMANO* para falar com um atendente";
             } else {
                 $resposta = "Olá, *{$primeiroNome}*! Seja muito bem-vindo(a) ao *{$loja->nome}*! 👋🍔\n\n"
+                    . $linhaStatusLoja
                     . $blocoPedidoAtivo
                     . "Como posso te ajudar agora? Escolha uma das opções:\n\n"
                     . "1️⃣ *CARDÁPIO* — Ver itens e fazer pedido\n"

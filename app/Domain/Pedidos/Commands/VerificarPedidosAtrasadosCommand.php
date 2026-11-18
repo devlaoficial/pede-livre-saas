@@ -6,6 +6,7 @@ namespace App\Domain\Pedidos\Commands;
 
 use App\Domain\Bot\Services\EvolutionApiService;
 use App\Domain\Pedidos\Models\Pedido;
+use App\Domain\Pedidos\Services\FluxoStatusPedidoService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
@@ -14,7 +15,7 @@ final class VerificarPedidosAtrasadosCommand extends Command
     protected $signature = 'pedelivre:verificar-atrasos';
     protected $description = 'Verifica pedidos em preparo com tempo elevado e solicita confirmação de entrega ao cliente caso o lojista esqueça de dar baixa no painel';
 
-    public function handle(EvolutionApiService $evolutionApi): int
+    public function handle(EvolutionApiService $evolutionApi, FluxoStatusPedidoService $fluxoService): int
     {
         $this->info('1. Verificando pedidos em preparo com tempo elevado na cozinha...');
 
@@ -108,7 +109,46 @@ final class VerificarPedidosAtrasadosCommand extends Command
             }
         }
 
-        $this->info("Total de alertas de preparo: {$totalNotificados} | Check-ins de entrega: {$totalConfirmacoes}.");
+        $this->info('3. Finalizando automaticamente pedidos esquecidos em rota ou balcão (Auto-Complete)...');
+
+        $pedidosParaAutoFinalizar = Pedido::withoutGlobalScopes()
+            ->whereIn('canal', ['delivery', 'retirada', 'balcao'])
+            ->whereIn('status', ['saiu_entrega', 'pronto'])
+            ->where('updated_at', '<=', now()->subMinutes(120))
+            ->with(['loja', 'cliente', 'pagamento'])
+            ->get();
+
+        $totalAutoFinalizados = 0;
+
+        foreach ($pedidosParaAutoFinalizar as $pedido) {
+            $loja = $pedido->loja;
+            if ($loja === null) {
+                continue;
+            }
+
+            $autoFinalizar = (bool) ($loja->config_json['auto_finalizar_pedidos'] ?? true);
+            if (!$autoFinalizar) {
+                continue;
+            }
+
+            try {
+                $fluxoService->transicionar(
+                    $pedido,
+                    'entregue',
+                    null,
+                    null,
+                    null,
+                    'Pedido finalizado automaticamente pelo modo autônomo (tempo limite em rota excedido).',
+                    false
+                );
+                $totalAutoFinalizados++;
+                $this->line("✓ Pedido #{$pedido->codigo_publico} da loja [{$loja->nome}] finalizado automaticamente com sucesso.");
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("[AutoFinalizar] Falha ao finalizar pedido #{$pedido->id}: {$e->getMessage()}");
+            }
+        }
+
+        $this->info("Total de alertas de preparo: {$totalNotificados} | Check-ins de entrega: {$totalConfirmacoes} | Auto-finalizados: {$totalAutoFinalizados}.");
         return Command::SUCCESS;
     }
 }

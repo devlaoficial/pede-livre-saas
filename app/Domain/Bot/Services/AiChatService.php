@@ -6,6 +6,7 @@ namespace App\Domain\Bot\Services;
 
 use App\Domain\Assinaturas\Models\Loja;
 use App\Domain\Catalogo\Models\Categoria;
+use App\Domain\Catalogo\Services\HorarioFuncionamentoService;
 use App\Domain\Pedidos\Models\Pedido;
 use Exception;
 use Illuminate\Support\Facades\Cache;
@@ -16,6 +17,10 @@ final class AiChatService
 {
     private const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
     private const GROQ_WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
+
+    public function __construct(
+        private readonly HorarioFuncionamentoService $horarioService
+    ) {}
 
     /**
      * Transcreve áudio do WhatsApp (base64 ou binário) em texto em português via Groq Whisper.
@@ -113,6 +118,20 @@ PEDIDO ATUAL DESTE CLIENTE EM TEMPO REAL:
 PEDIDO_INFO;
             }
 
+            $statusLoja = $this->horarioService->avaliarStatusLoja($loja);
+            $abertoTexto = $statusLoja['aberto_agora'] ? 'SIM (Aberto agora para pedidos)' : 'NÃO (Cozinha fechada no momento)';
+            $proximaAbertura = $statusLoja['proximo_horario_abertura'] ?? 'Consulte nossos horários padrão';
+            $msgStatus = $statusLoja['mensagem_status'] ?? '';
+
+            $infoHorarios = <<<HORARIOS_INFO
+
+STATUS OPERACIONAL E HORÁRIOS DA LOJA EM TEMPO REAL:
+- Aberto agora para pedidos: {$abertoTexto}
+- Informação de horário/turno: {$msgStatus}
+- Próxima abertura prevista: {$proximaAbertura}
+- Importante: Se o cliente perguntar se a loja está aberta, se está funcionando ou qual o horário de funcionamento, responda com precisão baseado nos dados acima. Se estiver fechado, explique gentilmente quando abrirá e mencione que ele pode conferir os itens e montar o pedido antecipadamente em {$linkCardapio}.
+HORARIOS_INFO;
+
             $systemPrompt = <<<PROMPT
 Você é o atendente virtual inteligente, educado, caloroso e ágil do restaurante "{$loja->nome}".
 Seu papel é ajudar clientes no WhatsApp com dúvidas sobre o cardápio, ingredientes, opções, sabores, horários e acompanhamento de pedidos.
@@ -123,6 +142,7 @@ DIRETRIZES DE COMUNICAÇÃO:
 3. Se o cliente perguntar sobre um item ou sabor que o restaurante NÃO possui, avise com gentileza que não tem no momento e sugira uma opção similar do cardápio.
 4. Se o cliente estiver perguntando sobre o pedido em andamento e houver dados em "PEDIDO ATUAL DESTE CLIENTE", informe o status exato e envie o link de acompanhamento em tempo real. Caso contrário, convide-o a pedir pelo cardápio online: {$linkCardapio}
 5. Use poucos emojis com moderação (🍔, 🍕, 😋, ❤️, ✨). Mantenha tom de excelência e hospitalidade.
+{$infoHorarios}
 {$contextoPedido}
 
 {$cardapioResumo}
