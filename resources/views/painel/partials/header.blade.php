@@ -1,8 +1,8 @@
-<!-- HEADER OPERACIONAL PREMIUM (Ultra Limpo no Celular & Completo no Desktop — 100% SVG) -->
+<!-- HEADER OPERACIONAL PREMIUM (Minimalista, Sem Botões Duplicados — 100% SVG) -->
 <header class="bg-[#080c17]/95 backdrop-blur-xl border-b border-slate-800/80 px-3.5 lg:px-6 py-2.5 lg:py-3 flex items-center justify-between gap-2 shrink-0 pt-safe z-20">
-    <!-- Esquerda: Avatar Mobile + Título do Módulo -->
+    <!-- Esquerda: Avatar Mobile + Título do Módulo Atual -->
     <div class="flex items-center gap-2.5 min-w-0">
-        <!-- Botão Avatar Mobile (< lg) -->
+        <!-- Botão Menu Mobile (< lg) -->
         <button type="button" @click="menuMobileAberto = true"
                 class="lg:hidden relative shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-[#f43f5e] to-[#be123c] flex items-center justify-center text-white font-bold text-sm shadow-md shadow-rose-600/25 active:scale-95 transition">
             <span>P</span>
@@ -12,7 +12,7 @@
 
         <div class="min-w-0">
             <div class="flex items-center gap-2">
-                <h1 class="text-sm sm:text-base lg:text-xl font-bold text-white tracking-tight truncate" x-text="tituloModulo()"></h1>
+                <h1 class="text-sm sm:text-base lg:text-lg font-bold text-white tracking-tight truncate" x-text="tituloModulo()"></h1>
                 <span class="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0"
                       :class="onlineStatus ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'">
                     <span class="w-1.5 h-1.5 rounded-full" :class="onlineStatus ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-ping'"></span>
@@ -23,45 +23,38 @@
         </div>
     </div>
 
-    <!-- Direita: Controles Enxutos no Mobile e Completos no Desktop -->
+    <!-- Direita: Status Essenciais da Operação (Zero Duplicação com a Sidebar) -->
     <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <!-- 1. Status Loja Aberta / Pausada -->
+        <!-- 1. Chave Principal: Loja Aberta / Pausada -->
         <button @click="alternarStatusLojaAberta()"
             title="Abrir ou pausar o recebimento de pedidos no cardápio digital"
-            class="bg-[#111726] border px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center gap-1.5 transition active:scale-95"
+            class="bg-[#111726] border px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center gap-1.5 transition active:scale-95"
             :class="lojaAbertaManual !== false
                 ? 'border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10'
                 : 'border-rose-500/40 text-rose-300 hover:bg-rose-500/10'">
             <span class="w-2 h-2 rounded-full shrink-0" :class="lojaAbertaManual !== false ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'"></span>
-            <span x-text="lojaAbertaManual !== false ? 'Aberta' : 'Pausada'"></span>
+            <span x-text="lojaAbertaManual !== false ? 'Loja Aberta' : 'Loja Pausada'"></span>
         </button>
 
-        <!-- 2. Status WhatsApp (Visível em Tablet/Desktop >= md) -->
-        <button @click="mudarModulo('whatsapp')"
-            class="hidden md:flex bg-[#111726] border border-slate-800 hover:border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 items-center gap-2 transition">
-            <span class="w-2 h-2 rounded-full" :class="whatsappConectado ? 'bg-emerald-400' : 'bg-amber-400'"></span>
-            <span x-text="whatsappConectado ? 'WhatsApp ativo' : 'Conectar WhatsApp'"></span>
+        <!-- 2. Indicador Rápido de WhatsApp (Leva direto p/ Conexão QR se desconectado ou Chat se conectado) -->
+        <button @click="mudarModulo('whatsapp'); subAbaWhatsapp = whatsappConectado ? 'chat' : 'conexao'"
+            class="hidden md:flex bg-[#111726] border px-3 py-1.5 rounded-xl text-xs font-bold items-center gap-2 transition"
+            :class="whatsappConectado ? 'border-slate-800 text-slate-300 hover:border-slate-700' : 'border-amber-500/40 text-amber-300 bg-amber-500/10 hover:bg-amber-500/15'">
+            <span class="w-2 h-2 rounded-full" :class="whatsappConectado ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'"></span>
+            <span x-text="whatsappConectado ? 'WhatsApp Online' : 'Conectar WhatsApp'"></span>
             <span x-show="totalAguardandoHumano > 0"
                   class="bg-amber-400 text-slate-950 font-bold text-[10px] px-1.5 py-0.2 rounded-full animate-pulse"
                   x-text="totalAguardandoHumano"></span>
         </button>
 
-        <!-- 3. Status do Caixa (Desktop XL) -->
-        <button @click="mudarModulo('financeiro')"
-            class="hidden xl:flex bg-[#111726] border border-slate-800 hover:border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 items-center gap-1.5 transition">
-            <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-            <span x-text="caixaStatus.aberto ? 'Caixa aberto' : 'Caixa fechado'"></span>
+        <!-- 3. Indicador de Caixa (Desktop >= lg) -->
+        <button @click="mudarModulo('financeiro'); abaFinanceiro = 'caixa'"
+            class="hidden lg:flex bg-[#111726] border border-slate-800 hover:border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 items-center gap-1.5 transition">
+            <span class="w-2 h-2 rounded-full" :class="caixaStatus.aberto ? 'bg-emerald-400' : 'bg-slate-500'"></span>
+            <span x-text="caixaStatus.aberto ? 'Caixa Aberto' : 'Caixa Fechado'"></span>
         </button>
 
-        <!-- 4. Botão Wake Lock (Desktop/Tablet >= sm; no celular fica na gaveta Módulos) -->
-        <button @click="alternarWakeLock()"
-            :title="wakeLockAtivo ? 'Modo Tela Sempre Acesa ATIVO' : 'Ativar Modo Tela Sempre Acesa'"
-            class="hidden sm:flex p-2 rounded-xl border text-xs font-bold transition items-center gap-1"
-            :class="wakeLockAtivo ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-[#111726] border-slate-800 text-slate-400 hover:text-white'">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-        </button>
-
-        <!-- 5. Sino de Alerta Sonoro (Mobile & Desktop) -->
+        <!-- 4. Campainha Sonora -->
         <button @click="alternarSom()"
             :title="somHabilitado ? 'Campainha ativada' : 'Campainha silenciada'"
             class="p-2 rounded-xl border transition relative"
@@ -72,25 +65,17 @@
                   class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>
         </button>
 
-        <!-- 6. Copiar Link do Cardápio (Desktop >= sm) -->
-        <button @click="copiarLinkCardapio()"
-            title="Copiar link público do cardápio digital"
+        <!-- 5. Link Rápido do Cardápio -->
+        <a :href="'/p/' + (loja?.slug || '')" target="_blank"
+            title="Abrir cardápio digital público em nova guia"
             class="hidden sm:flex bg-[#111726] border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold items-center gap-1.5 transition">
-            <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-            <span class="hidden xl:inline">Cardápio</span>
-        </button>
-
-        <!-- 7. Botão Novo Pedido PDV (Visível no Desktop >= lg; no Mobile já fica no centro da barra inferior) -->
-        <button @click="abrirModalPdv()"
-            class="hidden lg:flex bg-gradient-to-r from-[#f43f5e] to-[#e11d48] hover:from-[#fb7185] hover:to-[#f43f5e] text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg shadow-rose-600/25 items-center gap-1.5 transition active:scale-95">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
-            <span>Novo pedido</span>
-            <kbd class="text-[10px] font-mono bg-black/25 px-1.5 py-0.2 rounded ml-0.5">F2</kbd>
-        </button>
+            <span>Ver Cardápio</span>
+            <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        </a>
     </div>
 </header>
 
-<!-- BARRA DE ALERTA URGENTE: NOVOS PEDIDOS AGUARDANDO ACEITE (Compacta em 1 linha no Mobile) -->
+<!-- BARRA DE ALERTA URGENTE: NOVOS PEDIDOS AGUARDANDO ACEITE -->
 <template x-if="colunas.novo.length > 0">
     <div class="bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-white px-3.5 lg:px-6 py-2 flex items-center justify-between gap-2 shrink-0 shadow-lg z-30">
         <div class="flex items-center gap-2 text-xs font-bold min-w-0">

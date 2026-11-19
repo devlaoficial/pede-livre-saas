@@ -63,6 +63,9 @@
                 buscaCatalogo: '',
                 filtroStatusCatalogo: 'todos',
                 abaCatalogo: 'produtos',
+                abaConfig: 'dados',
+                abaEntregas: 'acerto',
+                abaFinanceiro: 'caixa',
                 filtroCategoriaId: '',
                 loja: null,
                 assinaturaSaaS: null,
@@ -651,7 +654,7 @@
                     if (mod === 'mesas') { this.carregarMesas(); this.carregarChamadosGarcom(); }
                     if (mod === 'entregas') { this.carregarEntregas(); this.carregarFechamentoMotoboys(); }
                     if (mod === 'crm' || mod === 'financeiro') { this.carregarFinanceiro(); this.carregarCupons(); this.carregarCaixa(); }
-                    if (mod === 'config') { this.carregarLoja(); this.carregarHorarios(); }
+                    if (mod === 'config') { this.carregarLoja(); this.carregarHorarios(); this.carregarStatusMp(); this.carregarAssinaturaSaaS(); }
                     if (mod === 'whatsapp') { this.carregarStatusWhatsapp(); this.carregarConversasWhatsapp(); }
                 },
 
@@ -2450,9 +2453,11 @@
                     this.subAbaWhatsapp = subAba;
                     if (subAba === 'chat') {
                         this.carregarConversasWhatsapp();
-                    } else if (subAba === 'config') {
+                    } else if (['conexao', 'config', 'marketing'].includes(subAba)) {
                         this.carregarStatusWhatsapp();
-                        this.carregarPreviewWinback();
+                        if (subAba === 'marketing') {
+                            this.carregarPreviewWinback();
+                        }
                     }
                 },
 

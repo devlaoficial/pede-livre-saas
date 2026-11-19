@@ -160,7 +160,7 @@
                               :class="moduloAtivo === 'financeiro' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30' : 'bg-[#111726] text-slate-400 group-hover:text-white'">
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
                         </span>
-                        <span>Caixa &amp; PIX 0%</span>
+                        <span>Caixa &amp; Relatórios</span>
                     </span>
                     <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
                           :class="caixaStatus.aberto ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'"
@@ -221,7 +221,7 @@
                               :class="moduloAtivo === 'config' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30' : 'bg-[#111726] text-slate-400 group-hover:text-white'">
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
                         </span>
-                        <span>Loja &amp; Horários</span>
+                        <span>Configurações &amp; PIX</span>
                     </span>
                 </button>
             </div>

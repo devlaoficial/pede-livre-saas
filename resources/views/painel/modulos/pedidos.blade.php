@@ -89,67 +89,28 @@
             </div>
 
             <!-- ========================================================================= -->
-            <!-- TOPO DESKTOP/TABLET (md:grid): 4 KPI CARDS EXECUTIVOS + BARRA DE FILTROS  -->
+            <!-- TOPO DESKTOP/TABLET (>= md): BARRA FINA UNIFICADA (RESUMO + FILTROS + BUSCA) -->
             <!-- ========================================================================= -->
-            <div class="hidden md:grid md:grid-cols-4 gap-3.5 px-6 pt-5 pb-2 shrink-0">
-                <div class="bg-[#0d1322]/90 border border-slate-800/90 rounded-2xl p-4 flex items-start justify-between gap-2 shadow-sm">
-                    <div class="space-y-1 min-w-0">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Pedidos Hoje</span>
-                        <div class="text-2xl lg:text-3xl font-bold font-mono text-white tracking-tight" x-text="pedidos.length"></div>
-                        <p class="text-[11px] text-slate-400 font-medium truncate"
-                           x-text="contadoresFiltros.delivery + ' delivery • ' + contadoresFiltros.balcao + ' balcão • ' + contadoresFiltros.mesa + ' mesa'"></p>
-                    </div>
-                    <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/25 text-rose-400 flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                    </div>
-                </div>
-
-                <div class="bg-[#0d1322]/90 border border-slate-800/90 rounded-2xl p-4 flex items-start justify-between gap-2 shadow-sm">
-                    <div class="space-y-1 min-w-0">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Faturamento Hoje</span>
-                        <div class="text-2xl lg:text-3xl font-bold font-mono text-emerald-400 tracking-tight truncate" x-text="formatarCentavos(volumeDiaCentavos)"></div>
-                        <p class="text-[11px] text-slate-400 font-medium truncate"
-                           x-text="'Ticket médio ' + formatarCentavos(pedidos.length ? Math.round(volumeDiaCentavos / pedidos.length) : 0)"></p>
-                    </div>
-                    <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                </div>
-
-                <div class="bg-[#0d1322]/90 border border-slate-800/90 rounded-2xl p-4 flex items-start justify-between gap-2 shadow-sm">
-                    <div class="space-y-1 min-w-0">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Em Preparo</span>
-                        <div class="flex items-baseline gap-2">
-                            <span class="text-2xl lg:text-3xl font-bold font-mono text-amber-400 tracking-tight" x-text="colunas.em_preparo.length"></span>
-                            <span x-show="colunas.novo.length > 0" class="text-[11px] font-bold text-rose-400" x-text="'+' + colunas.novo.length + ' novo(s)'"></span>
+            <div class="hidden md:flex px-6 pt-3.5 pb-1.5 items-center justify-between gap-3 shrink-0 flex-wrap">
+                <!-- Esquerda: Resumo Compacto do Dia + Filtros de Canal e Pagamento -->
+                <div class="flex items-center gap-2.5 overflow-x-auto no-scrollbar">
+                    <!-- Pílula de Resumo Hoje -->
+                    <div class="bg-[#0d1322] border border-slate-800/90 px-3.5 py-1.5 rounded-xl flex items-center gap-3 text-xs shrink-0">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-400">Hoje:</span>
+                            <strong class="text-white font-mono" x-text="pedidos.length + ' ped'"></strong>
                         </div>
-                        <p class="text-[11px] text-slate-400 font-medium truncate"
-                           x-text="colunas.em_preparo.length === 0 ? 'Cozinha livre agora' : ('SLA médio: ' + (loja?.config_json?.tempo_medio_preparo_min || 35) + ' min')"></p>
-                    </div>
-                    <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/25 text-amber-400 flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path></svg>
-                    </div>
-                </div>
-
-                <div class="bg-[#0d1322]/90 border border-slate-800/90 rounded-2xl p-4 flex items-start justify-between gap-2 shadow-sm">
-                    <div class="space-y-1 min-w-0">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">A Receber / Rua</span>
-                        <div class="flex items-baseline gap-2">
-                            <span class="text-2xl lg:text-3xl font-bold font-mono text-sky-400 tracking-tight" x-text="contadoresFiltros.pendente"></span>
-                            <span class="text-[11px] text-slate-400 font-semibold" x-text="colunas.pronto_e_em_rota.length + ' em rota'"></span>
+                        <span class="text-slate-700">|</span>
+                        <div class="flex items-center gap-1">
+                            <strong class="text-emerald-400 font-mono" x-text="formatarCentavos(volumeDiaCentavos)"></strong>
                         </div>
-                        <p class="text-[11px] text-slate-400 font-medium truncate"
-                           x-text="contadoresFiltros.pago + ' pedido(s) já quitados'"></p>
+                        <template x-if="contadoresFiltros.pendente > 0">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/25"
+                                  x-text="contadoresFiltros.pendente + ' a receber'"></span>
+                        </template>
                     </div>
-                    <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/25 text-sky-400 flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path></svg>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Barra de Filtros Desktop (>= md) -->
-            <div class="hidden md:flex px-6 py-2 items-center justify-between gap-3 shrink-0">
-                <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                    <!-- Filtro de Canais -->
                     <div class="bg-[#0d1322] border border-slate-800/90 p-1 rounded-xl flex items-center gap-1 text-xs shrink-0">
                         <button @click="filtroCanal = 'todos'"
                             class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1.5"
@@ -177,6 +138,7 @@
                         </button>
                     </div>
 
+                    <!-- Filtro de Pagamento -->
                     <div class="bg-[#0d1322] border border-slate-800/90 p-1 rounded-xl flex items-center gap-1 text-xs shrink-0">
                         <button @click="filtroPagamento = 'todos'"
                             class="px-2.5 py-1 rounded-lg font-bold transition"
@@ -198,23 +160,16 @@
                     </div>
                 </div>
 
+                <!-- Direita: Busca Instantânea -->
                 <div class="flex items-center gap-2">
-                    <div class="relative w-64">
+                    <div class="relative w-60 lg:w-64">
                         <svg class="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         <input type="text" x-model="buscaPedido" placeholder="Buscar #código, cliente ou telefone..."
-                            class="w-full bg-[#0d1322] border border-slate-800/90 rounded-xl pl-8 pr-7 py-2 text-xs text-white placeholder-slate-500 focus:border-rose-500 focus:outline-none transition">
+                            class="w-full bg-[#0d1322] border border-slate-800/90 rounded-xl pl-8 pr-7 py-1.5 text-xs text-white placeholder-slate-500 focus:border-rose-500 focus:outline-none transition">
                         <button x-show="buscaPedido" @click="buscaPedido = ''" class="absolute right-2.5 top-2 text-slate-500 hover:text-white text-xs">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                     </div>
-
-                    <button @click="alternarAutoImpressao()"
-                        title="Ativar impressão automática na impressora térmica 80mm ao aceitar pedidos"
-                        class="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition shrink-0"
-                        :class="autoImprimir80mm ? 'bg-sky-500/15 border-sky-500/40 text-sky-300' : 'bg-[#0d1322] border-slate-800/90 text-slate-400 hover:text-white'">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                        <span x-text="autoImprimir80mm ? 'Auto 80mm ON' : 'Auto 80mm'"></span>
-                    </button>
                 </div>
             </div>
 

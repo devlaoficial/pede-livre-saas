@@ -1,23 +1,36 @@
         <div x-cloak x-show="moduloAtivo === 'whatsapp'" class="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 space-y-6">
             
-            <!-- Sub-Navegação do Módulo WhatsApp -->
-            <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+            <!-- Sub-Navegação do Módulo WhatsApp (4 Abas Separadas por Foco — Zero Mistura) -->
+            <div class="bg-[#0d1322] border border-slate-800/90 p-2 rounded-2xl flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
                 <button @click="mudarSubAbaWhatsapp('chat')"
-                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition relative"
-                    :class="subAbaWhatsapp === 'chat' ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'">
-                    <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg></span>
-                    <span class="sm:hidden">Chat ao Vivo</span><span class="hidden sm:inline">Central de Atendimento ao Vivo</span>
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition"
+                    :class="subAbaWhatsapp === 'chat' ? 'bg-rose-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    <span>1. Chat ao Vivo</span>
                     <span x-show="totalAguardandoHumano > 0"
                         class="bg-amber-400 text-slate-950 text-[10px] font-bold px-1.5 py-0.2 rounded-full animate-pulse"
-                        x-text="totalAguardandoHumano + ' humano'"></span>
+                        x-text="totalAguardandoHumano"></span>
+                </button>
+
+                <button @click="mudarSubAbaWhatsapp('conexao')"
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition"
+                    :class="subAbaWhatsapp === 'conexao' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'">
+                    <span class="w-2 h-2 rounded-full" :class="whatsappConectado ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'"></span>
+                    <span>2. Conexão &amp; QR Code</span>
                 </button>
 
                 <button @click="mudarSubAbaWhatsapp('config')"
-                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition"
-                    :class="subAbaWhatsapp === 'config' ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'">
-                    <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg></span>
-                    <span>Robôs &amp; Automações</span>
-                    <span class="w-2 h-2 rounded-full" :class="whatsappConectado ? 'bg-emerald-400' : 'bg-slate-600'"></span>
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition"
+                    :class="subAbaWhatsapp === 'config' ? 'bg-rose-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <span>3. Robô &amp; Avisos de Pedido</span>
+                </button>
+
+                <button @click="mudarSubAbaWhatsapp('marketing')"
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition"
+                    :class="subAbaWhatsapp === 'marketing' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+                    <span>4. Vendas, NPS &amp; Win-Back</span>
                 </button>
             </div>
 
@@ -268,12 +281,12 @@
             </div>
 
             <!-- ========================================================= -->
-            <!-- SUB-ABA 2: AUTOMAÇÕES, ROBÔS & QR CODE                     -->
+            <!-- SUB-ABAS 2, 3 E 4: CONEXÃO QR, ROBÔ DE PEDIDOS E MARKETING -->
             <!-- ========================================================= -->
-            <div x-show="subAbaWhatsapp === 'config'" class="space-y-6">
+            <div x-show="['conexao', 'config', 'marketing'].includes(subAbaWhatsapp)" class="space-y-6">
                 
-                <!-- Banner de Conexão do WhatsApp -->
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 relative overflow-hidden">
+                <!-- SUB-ABA 2: Banner de Conexão do WhatsApp (QR Code) -->
+                <div x-show="subAbaWhatsapp === 'conexao'" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 relative overflow-hidden">
                     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div class="space-y-1">
                             <div class="flex items-center gap-2">
@@ -344,10 +357,10 @@
                 </div>
 
                 <!-- Grade de Automações & Bot Inteligente -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div x-show="['config', 'marketing'].includes(subAbaWhatsapp)" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                     <!-- Card 1: Notificações de Pedido para Clientes -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div x-show="subAbaWhatsapp === 'config'" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <span class="text-2xl"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></span>
@@ -381,7 +394,7 @@
                     </div>
 
                     <!-- Card 2: Despacho para Motoboys -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div x-show="subAbaWhatsapp === 'config'" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <span class="text-2xl"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path></svg></span>
@@ -415,7 +428,7 @@
                     </div>
 
                     <!-- Card 3: Bot Anti-Ansiedade e Atendimento Humanizado -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div x-show="subAbaWhatsapp === 'config'" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <span class="text-2xl"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
@@ -449,7 +462,7 @@
                     </div>
 
                     <!-- Card 4: Recuperador Automático de PIX Abandonado -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div x-show="subAbaWhatsapp === 'marketing'" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <span class="text-2xl"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></span>
@@ -480,7 +493,7 @@
                     </div>
 
                     <!-- Card 5: Re-compra em 1-Clique ("Pedir o de Sempre") -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div x-show="subAbaWhatsapp === 'marketing'" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <span class="text-2xl"><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
@@ -511,7 +524,7 @@
                     </div>
 
                     <!-- Card 6: Atendente Inteligente (IA Conversacional & Transcrição de Áudio) -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div x-show="subAbaWhatsapp === 'config'" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
@@ -545,7 +558,7 @@
                     </div>
 
                     <!-- Card 7: Alerta Proativo de Demora na Cozinha -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div x-show="subAbaWhatsapp === 'config'" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
@@ -587,7 +600,7 @@
                     </div>
 
                     <!-- Card 8: Avaliações Google Maps (NPS Viral) & Satisfação -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
+                    <div x-show="subAbaWhatsapp === 'marketing'" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between">
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
@@ -635,7 +648,7 @@
                     </div>
 
                     <!-- Card 9: Reativação Win-Back Automática & Anti-Ban -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between"
+                    <div x-show="subAbaWhatsapp === 'marketing'" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 flex flex-col justify-between"
                          x-init="carregarPreviewWinback()">
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
@@ -715,7 +728,7 @@
                 </div>
 
                 <!-- Caixa de Teste de Disparo ao Vivo -->
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
+                <div x-show="subAbaWhatsapp === 'conexao'" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
                     <h3 class="font-bold text-sm text-white flex items-center gap-2">
                         <span><svg class="w-4 h-4 shrink-0 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span> Testar Envio de Mensagem pelo WhatsApp
                     </h3>
