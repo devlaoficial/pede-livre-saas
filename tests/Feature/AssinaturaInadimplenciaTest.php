@@ -124,4 +124,28 @@ final class AssinaturaInadimplenciaTest extends TestCase
         $this->assertSame('cancelada', $this->assinatura->fresh()->status);
         $this->assertSame('cancelada', $this->loja->fresh()->status);
     }
+
+    public function test_autonomous_invoice_generation_and_realtime_client_error_telemetry(): void
+    {
+        // 1. Self-service subscription summary and on-demand PIX invoice generation
+        $resResumo = $this->actingAs($this->dono, 'sanctum')->getJson('/api/assinatura/resumo');
+        $resResumo->assertStatus(200);
+        $resResumo->assertJsonStructure(['assinatura', 'planos', 'faturas']);
+
+        $resFatura = $this->actingAs($this->dono, 'sanctum')->postJson('/api/assinatura/gerar-fatura');
+        $resFatura->assertStatus(200);
+        $this->assertNotEmpty($resFatura->json('fatura.pix_copia_cola'));
+
+        // 2. Real-time client error telemetry endpoint captures frontend/checkout bugs
+        $resTelemetry = $this->postJson('/api/telemetry/client-error', [
+            'type' => 'CardapioJSRuntimeError',
+            'message' => 'TypeError: Cannot read properties of null',
+            'source' => 'cardapio.js',
+            'line' => 42,
+            'url' => 'https://pedelivre.devla.com.br/p/loja-saas-fase9',
+            'loja_slug' => 'loja-saas-fase9',
+        ]);
+        $resTelemetry->assertStatus(200);
+        $this->assertTrue($resTelemetry->json('registrado'));
+    }
 }

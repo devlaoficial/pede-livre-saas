@@ -1,4 +1,40 @@
     <script>
+        (function() {
+            function reportClientBug(payload) {
+                try {
+                    fetch('/api/telemetry/client-error', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify(payload),
+                        keepalive: true
+                    }).catch(function() {});
+                } catch (e) {}
+            }
+            window.addEventListener('error', function(ev) {
+                if (!ev || !ev.message) return;
+                reportClientBug({
+                    type: 'PainelJSRuntimeError',
+                    message: String(ev.message),
+                    source: String(ev.filename || 'painel'),
+                    line: Number(ev.lineno || 0),
+                    url: window.location.href,
+                    loja_slug: 'painel-lojista'
+                });
+            });
+            window.addEventListener('unhandledrejection', function(ev) {
+                var reason = ev && ev.reason ? (ev.reason.message || String(ev.reason)) : '';
+                if (!reason) return;
+                reportClientBug({
+                    type: 'PainelUnhandledPromise',
+                    message: String(reason),
+                    source: 'painel-promise',
+                    line: 0,
+                    url: window.location.href,
+                    loja_slug: 'painel-lojista'
+                });
+            });
+        })();
+
         function painelApp() {
             return {
                 autenticado: false,
@@ -29,6 +65,9 @@
                 abaCatalogo: 'produtos',
                 filtroCategoriaId: '',
                 loja: null,
+                assinaturaSaaS: null,
+                faturaSaaSAtiva: null,
+                gerandoFaturaSaaS: false,
                 lojaAbertaManual: true,
                 configLoja: {
                     nome: '',
@@ -42,7 +81,10 @@
                     taxa_servico_pct: 10,
                     cashback_pct: 5,
                     estrategia_pizza_meio_a_meio: 'maior_preco',
-                    impressao_automatica_ao_aceitar: true
+                    impressao_automatica_ao_aceitar: true,
+                    auto_aceitar_pedidos: true,
+                    notificar_whatsapp_automatico: true,
+                    auto_finalizar_pedidos: true
                 },
                 horariosLoja: [],
                 pedidos: [],
@@ -408,6 +450,7 @@
                             this.carregarConversasWhatsapp(true);
                             this.carregarCaixa();
                             this.carregarHorarios();
+                            this.carregarAssinaturaSaaS();
                             const params = new URLSearchParams(window.location.search);
                             if (params.get('mp_oauth') === 'sucesso') {
                                 this.toastMsg = 'Conta Mercado Pago conectada com sucesso via login!';
@@ -720,6 +763,37 @@
                                 this.sincronizarConfigLoja(this.loja);
                             }
                         });
+                },
+
+                carregarAssinaturaSaaS() {
+                    fetch('/api/assinatura/resumo', { headers: this.headersAuth() })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                            if (d) {
+                                this.assinaturaSaaS = d.assinatura || null;
+                                const faturas = d.faturas || [];
+                                this.faturaSaaSAtiva = faturas.find(f => f.status === 'pendente' || f.status === 'vencida') || null;
+                            }
+                        })
+                        .catch(() => {});
+                },
+
+                gerarFaturaAssinatura() {
+                    this.gerandoFaturaSaaS = true;
+                    fetch('/api/assinatura/gerar-fatura', {
+                        method: 'POST',
+                        headers: this.headersAuth()
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.fatura) {
+                            this.faturaSaaSAtiva = d.fatura;
+                            this.toastMsg = d.message || 'Fatura PIX gerada com sucesso!';
+                        }
+                    })
+                    .finally(() => {
+                        this.gerandoFaturaSaaS = false;
+                    });
                 },
 
                 salvarDadosLoja() {

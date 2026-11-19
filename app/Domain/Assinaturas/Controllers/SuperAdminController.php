@@ -310,9 +310,23 @@ final class SuperAdminController
                     'timezone' => 'America/Sao_Paulo',
                     'tempo_medio_preparo_min' => 35,
                     'aceita_pedidos' => true,
+                    'auto_aceitar_pedidos' => true,
+                    'notificar_whatsapp_automatico' => true,
+                    'auto_finalizar_pedidos' => true,
+                    'impressao_automatica_ao_aceitar' => true,
                     'estrategia_pizza_meio_a_meio' => 'maior_preco',
                     'taxa_servico_pct' => 10,
                     'cashback_pct' => 5.0,
+                    'whatsapp' => [
+                        'notificar_pedidos' => true,
+                        'notificar_motoboy' => true,
+                        'alerta_atraso_ativo' => true,
+                        'minutos_alerta_atraso' => 35,
+                        'pesquisa_satisfacao_ativa' => true,
+                        'recuperacao_pix_ativa' => true,
+                        'recompra_um_clique_ativa' => true,
+                        'winback_ativo' => true,
+                    ],
                 ],
             ]);
 
@@ -503,6 +517,9 @@ final class SuperAdminController
             'whatsapp_instance' => ['nullable', 'string', 'max:80'],
             'alerta_queda_ativo' => ['nullable', 'boolean'],
             'alerta_erros_500_ativo' => ['nullable', 'boolean'],
+            'alerta_bugs_frontend_ativo' => ['nullable', 'boolean'],
+            'alerta_novas_lojas_ativo' => ['nullable', 'boolean'],
+            'alerta_webhooks_ativo' => ['nullable', 'boolean'],
             'backup_auto_ativo' => ['nullable', 'boolean'],
             'backup_enviar_email' => ['nullable', 'boolean'],
             'backup_enviar_resumo_whatsapp' => ['nullable', 'boolean'],
@@ -515,6 +532,44 @@ final class SuperAdminController
             'message' => 'Configurações de Monitoramento, Alertas e Backup salvas com sucesso!',
             'config' => $cfg,
         ]);
+    }
+
+    /**
+     * POST /api/admin/monitoramento/limpar-incidentes
+     * Limpa o histórico de incidentes e erros resolvidos no painel Super Admin.
+     */
+    public function limparIncidentes(Request $request, SystemMonitorService $monitor): JsonResponse
+    {
+        if ($erro = $this->autorizarAdmin($request, false, true)) {
+            return $erro;
+        }
+
+        $monitor->limparIncidentes();
+
+        return response()->json([
+            'message' => 'Histórico de incidentes limpo com sucesso!',
+            'incidentes_recentes' => [],
+        ]);
+    }
+
+    /**
+     * POST /api/telemetry/client-error
+     * Endpoint público (com rate-limit) que recebe erros JavaScript / Checkout / UI em tempo real do navegador do cliente/lojista.
+     */
+    public function reportarErroCliente(Request $request, SystemMonitorService $monitor): JsonResponse
+    {
+        $dados = $request->validate([
+            'message' => ['required', 'string', 'max:500'],
+            'type' => ['nullable', 'string', 'max:80'],
+            'source' => ['nullable', 'string', 'max:255'],
+            'line' => ['nullable', 'integer'],
+            'url' => ['nullable', 'string', 'max:300'],
+            'loja_slug' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $res = $monitor->reportarErroCliente($dados, $request);
+
+        return response()->json($res);
     }
 
     /**

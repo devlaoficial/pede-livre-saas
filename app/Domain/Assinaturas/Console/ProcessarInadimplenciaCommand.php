@@ -17,7 +17,8 @@ final class ProcessarInadimplenciaCommand extends Command
         $resultado = $reguaService->processarInadimplencia();
 
         $this->info(sprintf(
-            'Régua processada: %d lembretes | %d lojas em modo leitura (7d+) | %d lojas suspensas (15d+).',
+            'Régua processada: %d faturas geradas | %d lembretes | %d lojas em modo leitura (7d+) | %d lojas suspensas (15d+).',
+            $resultado['faturas_geradas'] ?? 0,
             $resultado['lembretes_enviados'],
             $resultado['lojas_inadimplentes_7d'],
             $resultado['lojas_suspensas_15d']

@@ -33,7 +33,7 @@ final class FluxoStatusPedidoService
      */
     private const TRANSIÇÕES_CANAL = [
         'delivery' => [
-            'novo' => ['aceito', 'em_preparo', 'pronto', 'saiu_entrega', 'entregue', 'cancelado'],
+            'novo' => ['aceito', 'em_preparo', 'pronto', 'saiu_entrega', 'cancelado'],
             'aceito' => ['em_preparo', 'pronto', 'saiu_entrega', 'entregue', 'cancelado'],
             'em_preparo' => ['pronto', 'saiu_entrega', 'entregue', 'cancelado'],
             'pronto' => ['saiu_entrega', 'entregue', 'cancelado'],
@@ -177,9 +177,7 @@ final class FluxoStatusPedidoService
 
         // 5. Safe WebSocket Broadcast (Isolated in try/catch so missing Reverb server never delays or breaks the flow)
         try {
-            if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) {
-                event(new PedidoAtualizado($pedidoAtualizado, $statusAtual));
-            }
+            event(new PedidoAtualizado($pedidoAtualizado, $statusAtual));
         } catch (Throwable $e) {
             Log::debug("[FluxoStatusPedido] Broadcast ignorado: " . $e->getMessage());
         }

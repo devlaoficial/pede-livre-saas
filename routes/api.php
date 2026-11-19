@@ -65,6 +65,7 @@ Route::get('health', function (\App\Support\Monitoring\SystemMonitorService $mon
     ], $code);
 });
 Route::get('admin/backups/{arquivo}/download', [SuperAdminController::class, 'baixarBackup']);
+Route::post('telemetry/client-error', [SuperAdminController::class, 'reportarErroCliente'])->middleware('throttle:20,1');
 
 // 2. Cryptographically Verified External Webhooks & OAuth Callback (Mercado Pago & Meta Cloud API)
 Route::get('webhooks/mercadopago', fn () => response()->json(['status' => 'ok', 'webhook' => 'mercadopago']));
@@ -111,6 +112,7 @@ Route::middleware([
         Route::get('monitoramento', [SuperAdminController::class, 'monitoramento']);
         Route::post('monitoramento/config', [SuperAdminController::class, 'salvarConfigMonitoramento']);
         Route::post('monitoramento/testar-alerta', [SuperAdminController::class, 'testarAlerta']);
+        Route::post('monitoramento/limpar-incidentes', [SuperAdminController::class, 'limparIncidentes']);
         Route::post('backups/gerar', [SuperAdminController::class, 'gerarBackupAgora']);
         Route::post('lojas/{id}/impersonar', [ImpersonationController::class, 'impersonar'])
             ->middleware('throttle:10,1');
@@ -118,6 +120,8 @@ Route::middleware([
 
     // SaaS Subscriptions, Plan Upgrades & 3-Click Self-Service Cancellation
     Route::prefix('assinatura')->group(function (): void {
+        Route::get('resumo', [AssinaturaController::class, 'resumo']);
+        Route::post('gerar-fatura', [AssinaturaController::class, 'gerarFatura']);
         Route::post('alterar-plano', [AssinaturaController::class, 'alterarPlano']);
         Route::post('cancelar', [AssinaturaController::class, 'cancelar']);
     });

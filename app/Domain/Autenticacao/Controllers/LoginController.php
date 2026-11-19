@@ -147,9 +147,23 @@ final class LoginController
                     'timezone' => 'America/Sao_Paulo',
                     'tempo_medio_preparo_min' => 35,
                     'aceita_pedidos' => true,
+                    'auto_aceitar_pedidos' => true,
+                    'notificar_whatsapp_automatico' => true,
+                    'auto_finalizar_pedidos' => true,
+                    'impressao_automatica_ao_aceitar' => true,
                     'estrategia_pizza_meio_a_meio' => 'maior_preco',
                     'taxa_servico_pct' => 10,
                     'cashback_pct' => 5.0,
+                    'whatsapp' => [
+                        'notificar_pedidos' => true,
+                        'notificar_motoboy' => true,
+                        'alerta_atraso_ativo' => true,
+                        'minutos_alerta_atraso' => 35,
+                        'pesquisa_satisfacao_ativa' => true,
+                        'recuperacao_pix_ativa' => true,
+                        'recompra_um_clique_ativa' => true,
+                        'winback_ativo' => true,
+                    ],
                 ],
             ]);
 
@@ -218,8 +232,71 @@ final class LoginController
                 'status' => 'livre',
             ]);
 
+            // Cardápio inicial de boas-vindas para operação imediata (editável com 1 clique no painel)
+            $catInicial = \App\Domain\Catalogo\Models\Categoria::create([
+                'loja_id' => $loja->id,
+                'nome' => 'Destaques da Casa',
+                'descricao' => 'Nossas especialidades preparadas na hora',
+                'ordem' => 1,
+                'ativa' => true,
+                'canais' => $todosCanais,
+            ]);
+
+            \App\Domain\Catalogo\Models\Produto::create([
+                'loja_id' => $loja->id,
+                'categoria_id' => $catInicial->id,
+                'nome' => 'Especial da Casa (Exemplo — Edite no Painel)',
+                'descricao' => 'Produto demonstrativo para você testar seu cardápio digital agora mesmo. Edite ou substitua na aba Cardápio.',
+                'preco_centavos' => 3490,
+                'preco_promocional_centavos' => 2990,
+                'controla_estoque' => false,
+                'ativo' => true,
+                'esgotado' => false,
+                'destaque' => true,
+                'ordem' => 1,
+                'tempo_preparo_min' => 25,
+                'estacao_kds' => 'geral',
+                'canais' => $todosCanais,
+            ]);
+
+            \App\Domain\Pedidos\Models\Cupom::create([
+                'loja_id' => $loja->id,
+                'codigo' => 'BEMVINDO10',
+                'tipo' => 'percentual',
+                'valor' => 10,
+                'minimo_centavos' => 2500,
+                'validade' => now()->addDays(30),
+                'limite_por_cliente' => 1,
+                'ativo' => true,
+                'canais' => ['delivery', 'retirada'],
+            ]);
+
             return [$loja, $usuario];
         });
+
+        // Notificação Autônoma em Tempo Real: avisa o Dono do SaaS sobre o novo cliente e dá boas-vindas ao lojista
+        if (!app()->environment('testing')) {
+            try {
+                $monitor = app(\App\Support\Monitoring\SystemMonitorService::class);
+                $cfg = $monitor->obterConfiguracao();
+                if (!empty($cfg['alerta_novas_lojas_ativo'])) {
+                    $linkCardapio = url("/p/{$loja->slug}");
+                    $resumoLead = "🚀 *NOVA LOJA CADASTRADA NO SAAS PEDELIVRE!*\n\n"
+                        . "🏪 *Restaurante:* {$loja->nome}\n"
+                        . "👤 *Proprietário:* {$usuario->nome}\n"
+                        . "📱 *WhatsApp:* {$loja->telefone_whatsapp}\n"
+                        . "📧 *E-mail:* {$usuario->email}\n"
+                        . "💎 *Plano:* " . strtoupper((string) $plano->nome) . " (Trial 14 dias)\n"
+                        . "🔗 *Cardápio:* {$linkCardapio}";
+
+                    $monitor->dispararAlertaIncidente(
+                        "🚀 [PedeLivre SaaS] Nova Loja Cadastrada: {$loja->nome}",
+                        $resumoLead,
+                        null
+                    );
+                }
+            } catch (\Throwable) {}
+        }
 
         $token = $usuario->createToken('cadastro-web', ['role:dono_loja'])->plainTextToken;
 

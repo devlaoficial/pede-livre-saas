@@ -1141,6 +1141,42 @@
     <!-- 11. LÓGICA REATIVA ALPINE.JS (100% DADOS REAIS DE PRODUÇÃO)    -->
     <!-- ============================================================== -->
     <script>
+        (function() {
+            var currentSlug = @json($loja->slug ?? 'cardapio');
+            window.__reportarBugCardapio = function(payload) {
+                try {
+                    fetch('/api/telemetry/client-error', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify(Object.assign({
+                            url: window.location.href,
+                            loja_slug: currentSlug
+                        }, payload)),
+                        keepalive: true
+                    }).catch(function() {});
+                } catch (e) {}
+            };
+            window.addEventListener('error', function(ev) {
+                if (!ev || !ev.message) return;
+                window.__reportarBugCardapio({
+                    type: 'CardapioJSRuntimeError',
+                    message: String(ev.message),
+                    source: String(ev.filename || 'cardapio'),
+                    line: Number(ev.lineno || 0)
+                });
+            });
+            window.addEventListener('unhandledrejection', function(ev) {
+                var reason = ev && ev.reason ? (ev.reason.message || String(ev.reason)) : '';
+                if (!reason) return;
+                window.__reportarBugCardapio({
+                    type: 'CardapioUnhandledPromise',
+                    message: String(reason),
+                    source: 'cardapio-promise',
+                    line: 0
+                });
+            });
+        })();
+
         function cardapioApp() {
             const mesaInicial = @json($mesa ?? null);
             const lojaSlug = @json($loja->slug);
@@ -1827,8 +1863,18 @@
                         body: JSON.stringify(payload)
                     })
                     .then(async r => {
-                        const data = await r.json();
-                        if (!r.ok) throw new Error(data.message || 'Erro ao processar pedido.');
+                        const data = await r.json().catch(() => ({}));
+                        if (!r.ok) {
+                            if (r.status >= 500 && window.__reportarBugCardapio) {
+                                window.__reportarBugCardapio({
+                                    type: 'CheckoutHttpError_' + r.status,
+                                    message: data.message || ('Falha HTTP ' + r.status + ' ao finalizar pedido'),
+                                    source: 'checkout-submit',
+                                    line: r.status
+                                });
+                            }
+                            throw new Error(data.message || 'Erro ao processar pedido.');
+                        }
                         this.pedidoCriado = data;
                         this.ultimoPedido = data;
                         this.carrinho = [];

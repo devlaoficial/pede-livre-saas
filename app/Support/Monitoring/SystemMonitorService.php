@@ -35,11 +35,14 @@ final class SystemMonitorService
     public function obterConfiguracao(): array
     {
         $padrao = [
-            'alert_email' => (string) config('services.monitoring.alert_email', env('ADMIN_ALERT_EMAIL', '')),
-            'alert_whatsapp' => (string) config('services.monitoring.alert_whatsapp', env('ADMIN_ALERT_WHATSAPP', '')),
+            'alert_email' => (string) (config('services.monitoring.alert_email') ?: env('ADMIN_ALERT_EMAIL', 'luukasviniciosaragao@gmail.com')),
+            'alert_whatsapp' => (string) (config('services.monitoring.alert_whatsapp') ?: env('ADMIN_ALERT_WHATSAPP', '5531971200780')),
             'whatsapp_instance' => (string) config('services.monitoring.whatsapp_instance', env('ADMIN_WHATSAPP_INSTANCE', '')),
             'alerta_queda_ativo' => true,
             'alerta_erros_500_ativo' => true,
+            'alerta_bugs_frontend_ativo' => true,
+            'alerta_novas_lojas_ativo' => true,
+            'alerta_webhooks_ativo' => true,
             'backup_auto_ativo' => true,
             'backup_enviar_email' => true,
             'backup_enviar_resumo_whatsapp' => true,
@@ -51,7 +54,14 @@ final class SystemMonitorService
         if (File::exists($path)) {
             $salvo = json_decode((string) File::get($path), true);
             if (is_array($salvo)) {
-                return array_merge($padrao, $salvo);
+                $merged = array_merge($padrao, $salvo);
+                if (empty($merged['alert_email'])) {
+                    $merged['alert_email'] = $padrao['alert_email'];
+                }
+                if (empty($merged['alert_whatsapp'])) {
+                    $merged['alert_whatsapp'] = $padrao['alert_whatsapp'];
+                }
+                return $merged;
             }
         }
 
@@ -73,6 +83,9 @@ final class SystemMonitorService
             'whatsapp_instance' => trim((string) ($novosDados['whatsapp_instance'] ?? $atual['whatsapp_instance'])),
             'alerta_queda_ativo' => (bool) ($novosDados['alerta_queda_ativo'] ?? $atual['alerta_queda_ativo']),
             'alerta_erros_500_ativo' => (bool) ($novosDados['alerta_erros_500_ativo'] ?? $atual['alerta_erros_500_ativo']),
+            'alerta_bugs_frontend_ativo' => (bool) ($novosDados['alerta_bugs_frontend_ativo'] ?? ($atual['alerta_bugs_frontend_ativo'] ?? true)),
+            'alerta_novas_lojas_ativo' => (bool) ($novosDados['alerta_novas_lojas_ativo'] ?? ($atual['alerta_novas_lojas_ativo'] ?? true)),
+            'alerta_webhooks_ativo' => (bool) ($novosDados['alerta_webhooks_ativo'] ?? ($atual['alerta_webhooks_ativo'] ?? true)),
             'backup_auto_ativo' => (bool) ($novosDados['backup_auto_ativo'] ?? $atual['backup_auto_ativo']),
             'backup_enviar_email' => (bool) ($novosDados['backup_enviar_email'] ?? $atual['backup_enviar_email']),
             'backup_enviar_resumo_whatsapp' => (bool) ($novosDados['backup_enviar_resumo_whatsapp'] ?? $atual['backup_enviar_resumo_whatsapp']),
@@ -200,6 +213,69 @@ final class SystemMonitorService
             ];
         }
 
+        // 5. Auto-Healing SaaS & Monitoramento de Webhooks
+        try {
+            // Self-healing: garante que todas as lojas ativas/trial tenham registro de Assinatura sincronizado
+            $lojasSemAssinatura = Loja::withoutGlobalScopes()
+                ->whereIn('status', ['ativa', 'trial'])
+                ->get();
+
+            $autoCorrigidas = 0;
+            foreach ($lojasSemAssinatura as $l) {
+                $temAssinatura = \App\Domain\Assinaturas\Models\Assinatura::withoutGlobalScopes()
+                    ->where('loja_id', $l->id)
+                    ->exists();
+                if (!$temAssinatura) {
+                    \App\Domain\Assinaturas\Models\Assinatura::withoutGlobalScopes()->create([
+                        'loja_id' => $l->id,
+                        'plano_id' => $l->plano_id ?: 3,
+                        'status' => $l->status,
+                        'ciclo' => 'mensal',
+                        'proximo_vencimento' => $l->trial_ate
+                            ? $l->trial_ate->toDateString()
+                            : now()->addMonth()->toDateString(),
+                    ]);
+                    $autoCorrigidas++;
+                }
+            }
+
+            // Verifica falhas críticas de webhooks nos últimos 30 minutos
+            $webhooksComErro = \App\Domain\Pagamentos\Models\WebhookLog::withoutGlobalScopes()
+                ->whereNotNull('erro')
+                ->where('erro', '!=', 'Pagamento local não encontrado')
+                ->where('created_at', '>=', now()->subMinutes(30))
+                ->count();
+
+            $checks['saas_autonomy'] = [
+                'status' => $webhooksComErro > 0 ? 'warning' : 'ok',
+                'auto_healed' => $autoCorrigidas,
+                'webhook_errors_30m' => $webhooksComErro,
+                'message' => $webhooksComErro > 0
+                    ? "{$webhooksComErro} falha(s) em webhook nos últimos 30m"
+                    : 'Auto-Healing & Webhooks 100% operacionais',
+            ];
+
+            if ($dispararAlertaSeDegradado && $webhooksComErro > 0) {
+                $cfg = $this->obterConfiguracao();
+                if (!empty($cfg['alerta_webhooks_ativo'])) {
+                    $ultimoErro = \App\Domain\Pagamentos\Models\WebhookLog::withoutGlobalScopes()
+                        ->whereNotNull('erro')
+                        ->where('erro', '!=', 'Pagamento local não encontrado')
+                        ->latest('id')
+                        ->first();
+                    $detalhe = $ultimoErro ? $ultimoErro->erro : 'Erro desconhecido';
+                    $this->dispararAlertaIncidente(
+                        '⚠️ [PedeLivre OS] Falha em Webhook Detectada',
+                        "⚠️ *ALERTA DE WEBHOOK (MERCADO PAGO / WHATSAPP)*\n\nForam detectadas *{$webhooksComErro}* falha(s) de processamento de webhook nos últimos 30 minutos.\n💬 *Último erro:* {$detalhe}",
+                        'webhook_error_alert_' . md5((string) $detalhe),
+                        30
+                    );
+                }
+            }
+        } catch (Throwable) {
+            // Ignora silenciosamente caso tabelas ainda não estejam migradas
+        }
+
         $statusGeral = empty($problemasCriticos) ? 'healthy' : 'critical';
 
         if ($dispararAlertaSeDegradado && !empty($problemasCriticos)) {
@@ -221,11 +297,99 @@ final class SystemMonitorService
     }
 
     /**
+     * Captura bugs e erros em tempo real vindos do Frontend (JavaScript, Alpine.js, Checkout, Cardápio ou Painel)
+     * e envia alerta imediato no WhatsApp e E-mail do dono do SaaS para agir antes do cliente reclamar.
+     *
+     * @param array<string, mixed> $dados
+     * @return array{registrado: bool, alerta_disparado: bool}
+     */
+    public function reportarErroCliente(array $dados, ?Request $request = null): array
+    {
+        try {
+            $mensagem = trim((string) ($dados['message'] ?? 'Erro JavaScript não especificado'));
+            $tipo = trim((string) ($dados['type'] ?? 'FrontendError'));
+            $arquivo = trim((string) ($dados['source'] ?? 'browser'));
+            $linha = (int) ($dados['line'] ?? 0);
+            $urlPagina = trim((string) ($dados['url'] ?? ($request ? $request->fullUrl() : 'Web')));
+            $lojaSlug = trim((string) ($dados['loja_slug'] ?? 'global'));
+
+            // Filtra ruídos inofensivos de extensões de navegador
+            $ruidosIgnorados = [
+                'ResizeObserver loop',
+                'Script error.',
+                'extension://',
+                'chrome-extension://',
+                'moz-extension://',
+                'Non-Error promise rejection captured with value: undefined',
+            ];
+            foreach ($ruidosIgnorados as $ruido) {
+                if (stripos($mensagem, $ruido) !== false || stripos($arquivo, $ruido) !== false) {
+                    return ['registrado' => false, 'alerta_disparado' => false];
+                }
+            }
+
+            $localFormatado = $linha > 0 ? basename($arquivo) . ":{$linha}" : basename($arquivo);
+            $incidente = [
+                'id' => uniqid('fe_'),
+                'data' => now()->format('d/m/Y H:i:s'),
+                'tipo' => "[FRONTEND] {$tipo}",
+                'mensagem' => mb_substr($mensagem, 0, 350),
+                'arquivo' => $localFormatado ?: 'client-js',
+                'url' => "Loja: {$lojaSlug} | {$urlPagina}",
+            ];
+
+            $this->registrarIncidenteNoHistorico($incidente);
+
+            $cfg = $this->obterConfiguracao();
+            if (empty($cfg['alerta_bugs_frontend_ativo'])) {
+                return ['registrado' => true, 'alerta_disparado' => false];
+            }
+
+            $chaveDeduplicacao = 'alerta_bug_fe_' . md5($tipo . ':' . $localFormatado . ':' . $mensagem);
+            $resumo = "🐞 *BUG / ERRO EM TEMPO REAL DETECTADO NO CLIENTE*\n\n"
+                . "🏪 *Loja / Escopo:* {$lojaSlug}\n"
+                . "⚠️ *Tipo:* {$tipo}\n"
+                . "💬 *Erro:* {$incidente['mensagem']}\n"
+                . "📂 *Origem:* {$incidente['arquivo']}\n"
+                . "🌐 *Página:* {$urlPagina}\n"
+                . "🕒 *Horário:* {$incidente['data']}";
+
+            $res = $this->dispararAlertaIncidente(
+                "🐞 [PedeLivre OS] Bug em Tempo Real Detectado ({$lojaSlug})",
+                $resumo,
+                $chaveDeduplicacao,
+                15
+            );
+
+            return [
+                'registrado' => true,
+                'alerta_disparado' => $res['whatsapp_enviado'] || $res['email_enviado'],
+            ];
+        } catch (Throwable) {
+            return ['registrado' => false, 'alerta_disparado' => false];
+        }
+    }
+
+    /**
+     * Limpa o histórico de incidentes resolvidos no painel Super Admin.
+     */
+    public function limparIncidentes(): void
+    {
+        $path = storage_path('app/' . self::INCIDENTS_FILE);
+        File::ensureDirectoryExists(dirname($path));
+        File::put($path, json_encode([], JSON_PRETTY_PRINT));
+    }
+
+    /**
      * Captura exceções críticas não tratadas (Erro 500) em qualquer rota do sistema,
      * grava no log de incidentes e alerta o administrador via WhatsApp e E-mail (com controle anti-spam).
      */
     public function reportarExcecaoCritica(Throwable $e, ?Request $request = null): void
     {
+        if (app()->environment('testing')) {
+            return;
+        }
+
         try {
             $classe = get_class($e);
             $ignorar = [
@@ -543,6 +707,11 @@ final class SystemMonitorService
             foreach ($rows as $r) {
                 $tabelas[] = (string) $r->name;
             }
+        } elseif ($driver === 'pgsql') {
+            $rows = DB::select("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public'");
+            foreach ($rows as $r) {
+                $tabelas[] = (string) $r->tablename;
+            }
         } else {
             $rows = DB::select('SHOW TABLES');
             foreach ($rows as $r) {
@@ -621,21 +790,37 @@ final class SystemMonitorService
 
     /**
      * Resolve qual instância Evolution usar para disparar o alerta ao administrador.
+     * Busca automaticamente a primeira instância conectada dentre a configurada e as lojas ativas.
      *
      * @param array<string, mixed> $cfg
      */
     private function resolverInstanciaAlerta(array $cfg): string
     {
+        $candidatas = [];
+
         if (!empty($cfg['whatsapp_instance'])) {
-            return (string) $cfg['whatsapp_instance'];
+            $candidatas[] = (string) $cfg['whatsapp_instance'];
         }
 
-        $primeiraLoja = Loja::withoutGlobalScopes()->orderBy('id')->first();
-        if ($primeiraLoja !== null) {
-            return $this->evolutionApi->obterNomeInstanciaLoja($primeiraLoja);
+        try {
+            $lojas = Loja::withoutGlobalScopes()->orderBy('id')->get();
+            foreach ($lojas as $loja) {
+                $candidatas[] = $this->evolutionApi->obterNomeInstanciaLoja($loja);
+            }
+        } catch (Throwable) {}
+
+        $candidatas = array_values(array_unique($candidatas));
+
+        foreach ($candidatas as $instancia) {
+            try {
+                $status = $this->evolutionApi->obterStatusInstancia($instancia);
+                if (!empty($status['connected'])) {
+                    return $instancia;
+                }
+            } catch (Throwable) {}
         }
 
-        return 'pedelivre-loja-1';
+        return $candidatas[0] ?? 'pedelivre-loja-1';
     }
 
     /**

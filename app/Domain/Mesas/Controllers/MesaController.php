@@ -100,15 +100,13 @@ final class MesaController
 
         // Broadcast event safely (never block if Reverb is disabled/offline)
         try {
-            if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) {
-                event(new GarcomChamado(
-                    lojaId: $loja->id,
-                    mesaId: $mesa->id,
-                    mesaNumero: $mesa->numero,
-                    mesaNome: $mesa->nome,
-                    horario: $horario
-                ));
-            }
+            event(new GarcomChamado(
+                lojaId: $loja->id,
+                mesaId: $mesa->id,
+                mesaNumero: $mesa->numero,
+                mesaNome: $mesa->nome,
+                horario: $horario
+            ));
         } catch (Throwable) {}
 
         return response()->json([

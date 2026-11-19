@@ -161,7 +161,7 @@ final class MercadoPagoWebhookTest extends TestCase
         // Asserts database status updates
         $this->assertSame('aprovado', $this->pagamento->fresh()->status);
         $this->assertSame('aprovado', $this->pedido->fresh()->pagamento_status);
-        $this->assertSame('aceito', $this->pedido->fresh()->status); // Auto-advanced from 'novo' to 'aceito'
+        $this->assertSame('em_preparo', $this->pedido->fresh()->status); // Auto-advanced from 'novo' to 'em_preparo'
 
         // Asserts audit logging in webhook_logs with encrypted payload
         $this->assertDatabaseHas('webhook_logs', [

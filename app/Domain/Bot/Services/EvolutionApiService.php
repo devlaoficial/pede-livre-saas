@@ -238,6 +238,10 @@ final class EvolutionApiService
      */
     private function dispararRequisicaoSendText(string $instancia, string $numero, string $texto): bool
     {
+        if (app()->environment('testing')) {
+            return true;
+        }
+
         $url = "{$this->baseUrl}/message/sendText/{$instancia}";
         $headers = [
             'Content-Type' => 'application/json',

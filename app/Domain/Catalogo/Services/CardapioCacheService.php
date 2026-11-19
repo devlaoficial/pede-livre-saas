@@ -50,17 +50,19 @@ final class CardapioCacheService
             Cache::store($this->store())->forget($this->buildKey($lojaId, $canal));
         }
 
-        $pattern = "*pedelivre:loja:{$lojaId}:cardapio:v1*";
+        if ($this->store() === 'redis') {
+            $pattern = "*pedelivre:loja:{$lojaId}:cardapio:v1*";
 
-        try {
-            $redis = Redis::connection('cache');
-            $keys = $redis->keys($pattern);
+            try {
+                $redis = Redis::connection('cache');
+                $keys = $redis->keys($pattern);
 
-            if (!empty($keys)) {
-                $redis->del($keys);
+                if (!empty($keys)) {
+                    $redis->del($keys);
+                }
+            } catch (\Throwable) {
+                // Already forgotten via Cache::store()->forget() above
             }
-        } catch (\Throwable) {
-            // Already forgotten via Cache::store()->forget() above
         }
     }
 

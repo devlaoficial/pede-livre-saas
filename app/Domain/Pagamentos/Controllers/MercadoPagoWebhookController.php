@@ -142,9 +142,7 @@ final class MercadoPagoWebhookController
                     }
 
                     try {
-                        if (config('broadcasting.default') && !in_array(config('broadcasting.default'), ['null', 'log'], true)) {
-                            event(new PagamentoConfirmado($pedido));
-                        }
+                        event(new PagamentoConfirmado($pedido));
                     } catch (Throwable) {}
                 }
 

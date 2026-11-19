@@ -519,8 +519,20 @@
                                     <input type="checkbox" x-model="configMonitoramento.alerta_queda_ativo" class="rounded text-rose-600">
                                 </label>
                                 <label class="flex items-center justify-between cursor-pointer">
-                                    <span class="text-slate-200 font-semibold">Alertar automaticamente em caso de Erro Crítico (HTTP 500)</span>
+                                    <span class="text-slate-200 font-semibold">Alertar em tempo real em caso de Erro Crítico Backend (HTTP 500)</span>
                                     <input type="checkbox" x-model="configMonitoramento.alerta_erros_500_ativo" class="rounded text-rose-600">
+                                </label>
+                                <label class="flex items-center justify-between cursor-pointer">
+                                    <span class="text-slate-200 font-semibold">Alertar em tempo real se ocorrer Bug Frontend / Checkout no Cliente</span>
+                                    <input type="checkbox" x-model="configMonitoramento.alerta_bugs_frontend_ativo" class="rounded text-rose-600">
+                                </label>
+                                <label class="flex items-center justify-between cursor-pointer">
+                                    <span class="text-slate-200 font-semibold">Alertar em tempo real quando uma Nova Loja se cadastrar no SaaS</span>
+                                    <input type="checkbox" x-model="configMonitoramento.alerta_novas_lojas_ativo" class="rounded text-emerald-500">
+                                </label>
+                                <label class="flex items-center justify-between cursor-pointer">
+                                    <span class="text-slate-200 font-semibold">Alertar se houver falha em Webhook PIX / WhatsApp</span>
+                                    <input type="checkbox" x-model="configMonitoramento.alerta_webhooks_ativo" class="rounded text-amber-500">
                                 </label>
                                 <label class="flex items-center justify-between cursor-pointer">
                                     <span class="text-slate-200 font-semibold">Enviar cópia do Backup (.ZIP) diariamente por E-mail</span>
@@ -595,25 +607,31 @@
                             </div>
                         </div>
 
-                        <!-- Histórico de Incidentes / Erros 500 Capturados -->
+                        <!-- Histórico de Incidentes / Erros 500 & Bugs Frontend Capturados em Tempo Real -->
                         <div class="pt-3 border-t border-slate-800 space-y-2">
                             <div class="flex items-center justify-between text-xs">
-                                <span class="font-bold text-slate-300">Últimos Erros Críticos Capturados</span>
-                                <span class="text-[11px] text-slate-500" x-text="(monitoramento.incidentes_recentes || []).length + ' registro(s)'"></span>
+                                <span class="font-bold text-slate-300">Telemetria em Tempo Real (Backend 500 &amp; Bugs Frontend)</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[11px] text-slate-500" x-text="(monitoramento.incidentes_recentes || []).length + ' registro(s)'"></span>
+                                    <template x-if="(monitoramento.incidentes_recentes || []).length > 0">
+                                        <button type="button" @click="limparIncidentes()" class="text-[11px] font-bold text-rose-400 hover:underline">Limpar</button>
+                                    </template>
+                                </div>
                             </div>
                             <template x-if="(monitoramento.incidentes_recentes || []).length === 0">
                                 <div class="bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 rounded-xl p-2.5 text-xs font-semibold text-center">
-                                    Zero erros críticos registrados recentemente. Sistema 100% estável!
+                                    Zero bugs ou erros críticos registrados. Sistema 100% estável e monitorado em tempo real!
                                 </div>
                             </template>
-                            <div class="space-y-1.5 max-h-40 overflow-y-auto">
-                                <template x-for="inc in (monitoramento.incidentes_recentes || []).slice(0, 5)" :key="inc.id">
+                            <div class="space-y-1.5 max-h-44 overflow-y-auto">
+                                <template x-for="inc in (monitoramento.incidentes_recentes || []).slice(0, 8)" :key="inc.id">
                                     <div class="bg-rose-950/25 border border-rose-500/30 rounded-xl p-2.5 text-[11px] space-y-0.5">
                                         <div class="flex justify-between font-bold text-rose-300">
                                             <span x-text="inc.tipo + ' (' + inc.arquivo + ')'"></span>
                                             <span x-text="inc.data"></span>
                                         </div>
-                                        <div class="text-slate-300 truncate" x-text="inc.mensagem"></div>
+                                        <div class="text-slate-200 break-words" x-text="inc.mensagem"></div>
+                                        <div class="text-[10px] text-slate-400 truncate" x-text="inc.url || ''"></div>
                                     </div>
                                 </template>
                             </div>
@@ -789,6 +807,9 @@
                     whatsapp_instance: '',
                     alerta_queda_ativo: true,
                     alerta_erros_500_ativo: true,
+                    alerta_bugs_frontend_ativo: true,
+                    alerta_novas_lojas_ativo: true,
+                    alerta_webhooks_ativo: true,
                     backup_auto_ativo: true,
                     backup_enviar_email: true,
                     backup_enviar_resumo_whatsapp: true,
@@ -942,6 +963,18 @@
                     })
                     .finally(() => {
                         this.testandoAlerta = false;
+                    });
+                },
+
+                limparIncidentes() {
+                    fetch('/api/admin/monitoramento/limpar-incidentes', {
+                        method: 'POST',
+                        headers: this.headersAuth()
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        this.monitoramento.incidentes_recentes = [];
+                        this.avisoSucesso = d.message || 'Histórico de incidentes limpo!';
                     });
                 },
 

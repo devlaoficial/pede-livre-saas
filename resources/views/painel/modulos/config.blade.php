@@ -146,10 +146,13 @@
                 <div class="lg:col-span-5 space-y-6">
                     <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 flex flex-col justify-between">
                         <div class="space-y-3">
-                            <span class="text-xs font-bold uppercase text-rose-400">Minha Assinatura PedeLivre</span>
-                            <h3 class="text-xl font-bold text-white" x-text="'Plano ' + (loja?.plano || 'Premium')"></h3>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase text-rose-400">Minha Assinatura PedeLivre</span>
+                                <span class="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">0% Comissão</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-white" x-text="'Plano ' + (assinaturaSaaS?.plano_nome || loja?.plano || 'Premium').toUpperCase()"></h3>
                             <p class="text-xs text-slate-400 leading-relaxed">
-                                Seu ambiente opera com 0% de comissão sobre vendas e isolamento total de dados da sua loja.
+                                Seu ambiente opera com 0% de comissão sobre vendas, renovação 100% automática via PIX e isolamento total de dados da sua loja.
                             </p>
                             <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-2 text-xs">
                                 <div class="flex justify-between">
@@ -158,14 +161,41 @@
                                           :class="loja?.status === 'ativa' || loja?.status === 'trial' ? 'text-emerald-400' : 'text-amber-400'"
                                           x-text="loja?.status === 'trial' ? 'Em Período Trial' : (loja?.status === 'ativa' ? 'Ativa e Regular' : (loja?.status || 'Ativa'))"></span>
                                 </div>
+                                <div class="flex justify-between" x-show="assinaturaSaaS?.proximo_vencimento">
+                                    <span class="text-slate-400">Próximo Vencimento:</span>
+                                    <span class="text-white font-bold" x-text="assinaturaSaaS?.proximo_vencimento"></span>
+                                </div>
                                 <div class="flex justify-between"><span class="text-slate-400">Comissão sobre Vendas:</span><span class="text-emerald-400 font-bold">0% (Isento)</span></div>
                                 <div class="flex justify-between"><span class="text-slate-400">Link Público:</span><a :href="'/p/' + (loja?.slug || '')" target="_blank" class="text-rose-400 font-bold hover:underline" x-text="'/p/' + (loja?.slug || '')"></a></div>
                             </div>
+
+                            <!-- Fatura PIX SaaS Aberta / Renovação Autônoma -->
+                            <template x-if="faturaSaaSAtiva">
+                                <div class="bg-amber-950/30 border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5 text-xs">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-bold text-amber-300">⚡ Fatura PIX da Assinatura</span>
+                                        <span class="font-bold text-white" x-text="'Venc: ' + (faturaSaaSAtiva.vencimento || '-')"></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" readonly :value="faturaSaaSAtiva.pix_copia_cola" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-[11px] text-emerald-300 font-mono">
+                                        <button type="button" @click="navigator.clipboard.writeText(faturaSaaSAtiva.pix_copia_cola); toastMsg = 'PIX Copia e Cola da fatura copiado!'"
+                                                class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl shrink-0">
+                                            Copiar PIX
+                                        </button>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400">Após o pagamento do PIX no seu banco, sua assinatura é renovada e liberada automaticamente em segundos.</p>
+                                </div>
+                            </template>
                         </div>
 
-                        <button @click="copiarLinkCardapio()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-center text-xs transition shadow-lg">
-                            Copiar Link do Cardápio p/ WhatsApp &amp; Bio
-                        </button>
+                        <div class="space-y-2">
+                            <button type="button" @click="gerarFaturaAssinatura()" :disabled="gerandoFaturaSaaS" class="w-full bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold py-2.5 rounded-xl text-center text-xs transition">
+                                <span x-text="gerandoFaturaSaaS ? 'Gerando PIX...' : (faturaSaaSAtiva ? 'Atualizar Código PIX da Fatura' : 'Gerar Fatura PIX de Renovação')"></span>
+                            </button>
+                            <button @click="copiarLinkCardapio()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-center text-xs transition shadow-lg">
+                                Copiar Link do Cardápio p/ WhatsApp &amp; Bio
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Horários de Funcionamento -->

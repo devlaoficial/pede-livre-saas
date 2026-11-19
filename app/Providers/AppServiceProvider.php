@@ -70,7 +70,11 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->singleton(MercadoPagoOAuthService::class, fn () => new MercadoPagoOAuthService());
         $this->app->singleton(MercadoPagoPixService::class, fn () => new MercadoPagoPixService());
         $this->app->singleton(AssinaturaPlataformaService::class, fn () => new AssinaturaPlataformaService());
-        $this->app->singleton(ReguaInadimplenciaService::class, fn () => new ReguaInadimplenciaService());
+        $this->app->singleton(ReguaInadimplenciaService::class, fn ($app) => new ReguaInadimplenciaService(
+            $app->make(AssinaturaPlataformaService::class),
+            $app->make(EvolutionApiService::class),
+            $app->make(SystemMonitorService::class)
+        ));
         $this->app->singleton(ComandaService::class, fn ($app) => new ComandaService($app->make(SensitiveDataRedactor::class)));
         $this->app->singleton(CaixaService::class, fn () => new CaixaService());
         $this->app->singleton(CashbackService::class, fn () => new CashbackService());
