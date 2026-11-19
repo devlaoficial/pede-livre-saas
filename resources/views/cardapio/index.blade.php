@@ -1255,6 +1255,9 @@
             });
         })();
 
+        @php
+            $bandeirasAceitasLoja = (string) ($loja->config_json['bandeiras_aceitas'] ?? 'Visa, Mastercard, Elo, Hipercard');
+        @endphp
         function cardapioApp() {
             const mesaInicial = @json($mesa ?? null);
             const lojaSlug = @json($loja->slug);
@@ -1296,7 +1299,7 @@
                     cartao_debito_entrega: {{ ($loja->config_json['pagamento_cartao_debito_entrega'] ?? true) ? 'true' : 'false' }},
                     dinheiro: {{ ($loja->config_json['pagamento_dinheiro'] ?? true) ? 'true' : 'false' }},
                     voucher: {{ ($loja->config_json['pagamento_voucher'] ?? false) ? 'true' : 'false' }},
-                    bandeiras: @json($loja->config_json['bandeiras_aceitas'] ?? 'Visa, Mastercard, Elo, Hipercard')
+                    bandeiras: @json($bandeirasAceitasLoja)
                 },
                 checkout: {
                     canal: mesaInicial ? 'mesa' : 'delivery',
