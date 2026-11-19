@@ -1290,13 +1290,13 @@
                 mensagemCupom: '',
                 freteCentavos: taxaInicialPadrao,
                 configPagamentos: {
-                    pix: @json((bool) ($loja->config_json['pagamento_pix'] ?? true)),
-                    cartao_online: @json((bool) ($loja->config_json['pagamento_cartao_online'] ?? false)),
-                    cartao_credito_entrega: @json((bool) ($loja->config_json['pagamento_cartao_credito_entrega'] ?? true)),
-                    cartao_debito_entrega: @json((bool) ($loja->config_json['pagamento_cartao_debito_entrega'] ?? true)),
-                    dinheiro: @json((bool) ($loja->config_json['pagamento_dinheiro'] ?? true)),
-                    voucher: @json((bool) ($loja->config_json['pagamento_voucher'] ?? false)),
-                    bandeiras: @json((string) ($loja->config_json['bandeiras_aceitas'] ?? 'Visa, Mastercard, Elo, Hipercard'))
+                    pix: {{ ($loja->config_json['pagamento_pix'] ?? true) ? 'true' : 'false' }},
+                    cartao_online: {{ ($loja->config_json['pagamento_cartao_online'] ?? false) ? 'true' : 'false' }},
+                    cartao_credito_entrega: {{ ($loja->config_json['pagamento_cartao_credito_entrega'] ?? true) ? 'true' : 'false' }},
+                    cartao_debito_entrega: {{ ($loja->config_json['pagamento_cartao_debito_entrega'] ?? true) ? 'true' : 'false' }},
+                    dinheiro: {{ ($loja->config_json['pagamento_dinheiro'] ?? true) ? 'true' : 'false' }},
+                    voucher: {{ ($loja->config_json['pagamento_voucher'] ?? false) ? 'true' : 'false' }},
+                    bandeiras: @json($loja->config_json['bandeiras_aceitas'] ?? 'Visa, Mastercard, Elo, Hipercard')
                 },
                 checkout: {
                     canal: mesaInicial ? 'mesa' : 'delivery',
@@ -1309,8 +1309,8 @@
                     bairro: '',
                     cidade: @json($loja->cidade ?? ''),
                     uf: @json($loja->uf ?? ''),
-                    forma_pagamento: @json(((bool) ($loja->config_json['pagamento_pix'] ?? true)) ? 'pix' : (((bool) ($loja->config_json['pagamento_cartao_credito_entrega'] ?? true) || (bool) ($loja->config_json['pagamento_cartao_debito_entrega'] ?? true)) ? 'cartao_maquina' : 'dinheiro')),
-                    tipo_cartao_entrega: @json(((bool) ($loja->config_json['pagamento_cartao_credito_entrega'] ?? true)) ? 'credito' : 'debito'),
+                    forma_pagamento: '{{ ($loja->config_json['pagamento_pix'] ?? true) ? 'pix' : ((($loja->config_json['pagamento_cartao_credito_entrega'] ?? true) || ($loja->config_json['pagamento_cartao_debito_entrega'] ?? true)) ? 'cartao_maquina' : 'dinheiro') }}',
+                    tipo_cartao_entrega: '{{ ($loja->config_json['pagamento_cartao_credito_entrega'] ?? true) ? 'credito' : 'debito' }}',
                     troco_reais: '',
                     observacoes: ''
                 },
