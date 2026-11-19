@@ -62,6 +62,7 @@ final class MercadoPagoOAuthController
             'access_token' => ['nullable', 'string', 'max:255'],
             'public_key' => ['nullable', 'string', 'max:255'],
             'chave_pix' => ['nullable', 'string', 'max:140'],
+            'auto_confirmar_pix_chave' => ['nullable', 'boolean'],
         ]);
 
         $token = trim((string) ($dados['access_token'] ?? ''));
@@ -70,7 +71,7 @@ final class MercadoPagoOAuthController
         if ($token === '' && $chavePix === '') {
             return response()->json([
                 'error' => 'DADOS_OBRIGATORIOS',
-                'message' => 'Informe seu Access Token do Mercado Pago (APP_USR-...) ou sua Chave PIX principal.',
+                'message' => 'Informe sua Chave PIX principal (CPF, CNPJ, Celular, E-mail ou Aleatória).',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -81,6 +82,11 @@ final class MercadoPagoOAuthController
         if ($chavePix !== '') {
             $configAtual['chave_pix'] = $chavePix;
         }
+        if ($request->has('auto_confirmar_pix_chave')) {
+            $configAtual['auto_confirmar_pix_chave'] = $request->boolean('auto_confirmar_pix_chave');
+        } elseif (!isset($configAtual['auto_confirmar_pix_chave'])) {
+            $configAtual['auto_confirmar_pix_chave'] = true;
+        }
 
         // Case 1: Only Chave PIX was provided (Direct BCB PIX mode without Mercado Pago token)
         if ($token === '') {
@@ -89,9 +95,11 @@ final class MercadoPagoOAuthController
             ]);
 
             return response()->json([
-                'message' => "Chave PIX [{$chavePix}] salva com sucesso! O cardápio já está emitindo QR Code PIX oficial do Banco Central.",
+                'message' => "Chave PIX [{$chavePix}] ativada com sucesso! Seus clientes já podem pagar por PIX com validação automática de comprovante.",
                 'conectado' => !empty($loja->mp_access_token),
+                'pix_ativo' => true,
                 'chave_pix' => $chavePix,
+                'auto_confirmar_pix_chave' => (bool) ($configAtual['auto_confirmar_pix_chave'] ?? true),
                 'modo' => !empty($loja->mp_access_token) ? 'producao' : 'pix_direto',
             ]);
         }
@@ -277,10 +285,12 @@ final class MercadoPagoOAuthController
 
         return response()->json([
             'conectado' => $conectado,
+            'pix_ativo' => $conectado || !empty($chavePix),
             'mp_user_id' => $loja?->mp_user_id,
             'mp_conta_nome' => $cfg['mp_conta_nome'] ?? null,
             'mp_conectado_em' => $cfg['mp_conectado_em'] ?? null,
             'chave_pix' => $chavePix,
+            'auto_confirmar_pix_chave' => (bool) ($cfg['auto_confirmar_pix_chave'] ?? true),
             'public_key' => $cfg['mp_public_key'] ?? null,
             'modo' => $conectado ? (str_starts_with((string) $token, 'TEST-') ? 'sandbox' : 'producao') : (!empty($chavePix) ? 'pix_direto' : 'nao_configurado'),
             'oauth_disponivel' => !empty(config('services.mercadopago.client_id')),

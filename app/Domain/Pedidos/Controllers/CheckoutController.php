@@ -389,4 +389,95 @@ final class CheckoutController
             'pedido' => new PedidoPublicoTrackingResource($pedido),
         ]);
     }
+
+    /**
+     * POST /api/p/{slug}/pedidos/{codigo}/confirmar-pix
+     * Permite ao cliente confirmar o pagamento PIX (e opcionalmente anexar comprovante)
+     * para lojas que usam apenas Chave PIX (sem Access Token do Mercado Pago).
+     */
+    public function confirmarPixCliente(Request $request, string $slug, string $codigo): JsonResponse
+    {
+        $loja = $this->context->getLoja();
+        if ($loja === null) {
+            return response()->json(['error' => 'LOJA_NOT_FOUND'], Response::HTTP_NOT_FOUND);
+        }
+
+        /** @var Pedido|null $pedido */
+        $pedido = Pedido::where('loja_id', $loja->id)
+            ->where('codigo_publico', $codigo)
+            ->with(['cliente', 'itens', 'pagamento', 'eventos'])
+            ->first();
+
+        if ($pedido === null) {
+            return response()->json(['error' => 'PEDIDO_NAO_ENCONTRADO'], Response::HTTP_NOT_FOUND);
+        }
+
+        $signature = (string) ($request->query('t') ?: $request->input('t', ''));
+        $expectedSignature = hash_hmac('sha256', (string) $pedido->tracking_token_hash, (string) config('app.key'));
+
+        if ($signature === '' || !hash_equals($expectedSignature, $signature)) {
+            return response()->json([
+                'error' => 'ASSINATURA_INVALIDA',
+                'message' => 'Token de segurança inválido.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        if ($pedido->pagamento_status === 'aprovado') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pagamento PIX já confirmado! Seu pedido está em preparo.',
+                'status' => $pedido->status,
+                'pagamento_status' => 'aprovado',
+            ]);
+        }
+
+        $cfg = is_array($loja->config_json) ? $loja->config_json : [];
+        $autoConfirmarPixChave = (bool) ($cfg['auto_confirmar_pix_chave'] ?? true);
+        $autoAceitar = (bool) ($cfg['auto_aceitar_pedidos'] ?? true);
+
+        // Atualiza status do pagamento
+        $pedido->update(['pagamento_status' => 'aprovado']);
+        if ($pedido->pagamento !== null) {
+            $pedido->pagamento->update([
+                'status' => 'aprovado',
+                'aprovado_em' => now(),
+            ]);
+        }
+
+        if ($autoConfirmarPixChave && $autoAceitar && $pedido->status === 'novo') {
+            try {
+                $this->fluxoService->transicionar(
+                    $pedido,
+                    'em_preparo',
+                    null,
+                    null,
+                    null,
+                    'PIX confirmado pelo cliente — pedido enviado automaticamente para a cozinha.'
+                );
+            } catch (\Throwable $e) {
+                PedidoEvento::create([
+                    'pedido_id' => $pedido->id,
+                    'status_de' => $pedido->status,
+                    'status_para' => $pedido->status,
+                    'observacao' => 'Cliente confirmou o pagamento PIX.',
+                ]);
+            }
+        } else {
+            PedidoEvento::create([
+                'pedido_id' => $pedido->id,
+                'status_de' => $pedido->status,
+                'status_para' => $pedido->status,
+                'observacao' => 'Cliente confirmou o pagamento PIX.',
+            ]);
+        }
+
+        $pedido->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pagamento PIX confirmado com sucesso! Seu pedido já está na cozinha.',
+            'status' => $pedido->status,
+            'pagamento_status' => $pedido->pagamento_status,
+        ]);
+    }
 }

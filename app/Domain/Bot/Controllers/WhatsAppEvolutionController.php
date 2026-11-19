@@ -311,10 +311,20 @@ final class WhatsAppEvolutionController
                 $dados['text']
                 ?? $dados['message']['conversation']
                 ?? $dados['message']['extendedTextMessage']['text']
+                ?? $dados['message']['imageMessage']['caption']
+                ?? $dados['message']['documentMessage']['caption']
                 ?? $dados['message']['buttonsResponseMessage']['selectedDisplayText']
                 ?? $dados['message']['listResponseMessage']['title']
                 ?? (is_string($dados['message'] ?? null) ? $dados['message'] : '')
             );
+
+            $isMidiaComprovante = isset($dados['message']['imageMessage'])
+                || isset($dados['message']['documentMessage'])
+                || !empty($dados['is_media']);
+
+            if ($isMidiaComprovante && trim($textoMensagem) === '') {
+                $textoMensagem = '[COMPROVANTE_PIX_ENVIADO]';
+            }
 
             $isAudio = (bool) ($dados['is_audio'] ?? isset($dados['message']['audioMessage']));
             $audioBase64 = (string) ($dados['audio_base64'] ?? ($dados['message']['base64'] ?? ''));
@@ -353,6 +363,7 @@ final class WhatsAppEvolutionController
             try {
                 $meta = [
                     'foi_audio' => $isAudio,
+                    'is_comprovante_midia' => $isMidiaComprovante,
                     'timestamp' => $dados['messageTimestamp'] ?? time(),
                 ];
 

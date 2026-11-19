@@ -196,8 +196,10 @@
                         <div class="flex items-center gap-2">
                             <h3 class="text-base font-bold text-white">Status de Recebimento PIX</h3>
                             <span class="text-xs font-bold px-3 py-0.5 rounded-full border"
-                                  :class="mpStatus?.conectado ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'"
-                                  x-text="mpStatus?.conectado ? 'Ativo (' + (mpStatus.mp_conta_nome || mpStatus.chave_pix || 'Configurado') + ')' : 'Ainda Não Configurado'">
+                                  :class="(mpStatus?.conectado || mpStatus?.chave_pix) ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'"
+                                  x-text="mpStatus?.conectado
+                                      ? 'API Mercado Pago Ativa (' + (mpStatus.mp_conta_nome || 'Conectado') + ')'
+                                      : (mpStatus?.chave_pix ? 'PIX Ativo (' + mpStatus.chave_pix + ')' : 'Ainda Não Configurado')">
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">

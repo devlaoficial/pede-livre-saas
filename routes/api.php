@@ -90,6 +90,7 @@ Route::prefix('p/{slug}')
         Route::post('cupom/validar', [CheckoutController::class, 'validarCupom']);
         Route::post('pedidos', [CheckoutController::class, 'criarPedido']);
         Route::get('pedidos/{codigo}', [CheckoutController::class, 'acompanharPedido']);
+        Route::post('pedidos/{codigo}/confirmar-pix', [CheckoutController::class, 'confirmarPixCliente'])->middleware('throttle:10,1');
     });
 
 // 4. Authenticated Merchant Panel, Staff & Super Admin API

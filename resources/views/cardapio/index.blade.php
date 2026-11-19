@@ -937,7 +937,11 @@
                                 <textarea readonly x-text="pedidoCriado.pix.copia_e_cola" class="w-full text-[11px] font-mono bg-[#0a0b0e] text-white p-2.5 rounded-xl border border-[#232631] h-20"></textarea>
                                 <button type="button" @click="navigator.clipboard.writeText(pedidoCriado.pix.copia_e_cola); copiado = true" 
                                     class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 rounded-xl text-sm shadow-md">
-                                    <span x-text="copiado ? 'Código PIX Copiado!' : 'Copiar PIX Copia e Cola'"></span>
+                                    <span x-text="copiado ? 'Código PIX Copiado!' : '1. Copiar PIX Copia e Cola'"></span>
+                                </button>
+                                <button type="button" @click="confirmarPixCriado()" :disabled="confirmandoPixCriado"
+                                    class="w-full bg-[#18221e] hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 font-extrabold py-3 rounded-xl text-xs transition">
+                                    <span x-text="confirmandoPixCriado ? 'Confirmando PIX...' : '✅ 2. Já paguei o PIX — Liberar Pedido na Cozinha'"></span>
                                 </button>
                             </div>
                         </template>
@@ -1202,6 +1206,7 @@
                 pedidoCriado: null,
                 ultimoPedido: null,
                 copiado: false,
+                confirmandoPixCriado: false,
                 toastCardapio: '',
                 observacaoItem: '',
                 qtdModal: 1,
@@ -1886,6 +1891,31 @@
                     })
                     .finally(() => {
                         this.enviandoPedido = false;
+                    });
+                },
+
+                confirmarPixCriado() {
+                    if (!this.pedidoCriado || !this.pedidoCriado.codigo_publico) return;
+                    let tokenTrack = '';
+                    try {
+                        const u = new URL(this.pedidoCriado.tracking_url, window.location.origin);
+                        tokenTrack = u.searchParams.get('t') || '';
+                    } catch (e) {}
+                    this.confirmandoPixCriado = true;
+                    fetch(`/api/p/${this.lojaSlug}/pedidos/${this.pedidoCriado.codigo_publico}/confirmar-pix?t=${encodeURIComponent(tokenTrack)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ t: tokenTrack })
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        this.confirmandoPixCriado = false;
+                        if (d && d.success && this.pedidoCriado.tracking_url) {
+                            window.location.href = this.pedidoCriado.tracking_url;
+                        }
+                    })
+                    .catch(() => {
+                        this.confirmandoPixCriado = false;
                     });
                 }
             };

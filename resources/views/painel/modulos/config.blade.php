@@ -241,35 +241,34 @@
             </div>
 
             <!-- ============================================================== -->
-            <!-- SUB-ABA 4: RECEBIMENTO PIX (MERCADO PAGO OU CHAVE DIRETA BCB)  -->
+            <!-- SUB-ABA 4: RECEBIMENTO PIX (ZERO ACCESS TOKEN OBRIGATÓRIO)     -->
             <!-- ============================================================== -->
             <div x-show="abaConfig === 'pix'" class="max-w-3xl bg-[#0d1322] border-2 rounded-3xl p-6 space-y-5"
-                 :class="mpStatus?.conectado ? 'border-emerald-500/40' : 'border-amber-500/40'">
+                 :class="(mpStatus?.conectado || mpStatus?.chave_pix) ? 'border-emerald-500/40' : 'border-amber-500/40'">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                     <div>
                         <div class="flex flex-wrap items-center gap-2">
                             <h3 class="text-base font-bold text-white">Recebimento PIX dos Clientes</h3>
                             <span class="text-xs font-bold px-3 py-0.5 rounded-full border"
-                                  :class="mpStatus?.conectado ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'"
-                                  x-text="mpStatus?.conectado ? 'Ativo (' + (mpStatus.mp_conta_nome || mpStatus.chave_pix || 'Configurado') + ')' : 'Aguardando Configuração'">
+                                  :class="(mpStatus?.conectado || mpStatus?.chave_pix) ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'"
+                                  x-text="mpStatus?.conectado
+                                      ? 'API Mercado Pago Ativa (' + (mpStatus.mp_conta_nome || 'Conectado') + ')'
+                                      : (mpStatus?.chave_pix ? 'PIX Ativo (' + mpStatus.chave_pix + ')' : 'Aguardando Chave PIX')">
                             </span>
                         </div>
                         <p class="text-xs text-slate-400 mt-1">
-                            Informe sua <strong>Chave PIX Principal</strong> (para gerar QR Code PIX Copia e Cola direto para sua conta) ou conecte seu <strong>Mercado Pago</strong> para baixa automática via Webhook.
+                            Basta informar sua <strong>Chave PIX de qualquer banco</strong> (Nubank, Inter, Itaú, Sicredi, Mercado Pago, Caixa). O dinheiro cai 100% direto na sua conta sem taxas!
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2 shrink-0">
-                        <template x-if="mpStatus?.conectado">
-                            <button @click="testarPixMercadoPago()" :disabled="testandoPix" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2.5 rounded-xl">
-                                <span x-text="testandoPix ? 'Gerando...' : 'Testar PIX (R$ 1,00)'"></span>
+                        <template x-if="mpStatus?.conectado || mpStatus?.chave_pix">
+                            <button @click="testarPixMercadoPago()" :disabled="testandoPix" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2.5 rounded-xl shadow">
+                                <span x-text="testandoPix ? 'Gerando...' : 'Testar QR Code PIX (R$ 1,00)'"></span>
                             </button>
                         </template>
-                        <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs px-3.5 py-2.5 rounded-xl">
-                            OAuth Mercado Pago
-                        </button>
-                        <template x-if="mpStatus?.conectado">
-                            <button @click="desconectarMercadoPago()" class="bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700 font-bold text-xs px-3 py-2.5 rounded-xl">
-                                Desconectar
+                        <template x-if="mpStatus?.oauth_disponivel">
+                            <button @click="conectarMercadoPago()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs px-3.5 py-2.5 rounded-xl">
+                                Conectar Mercado Pago (1-Clique)
                             </button>
                         </template>
                     </div>
@@ -293,18 +292,50 @@
                 </template>
 
                 <form @submit.prevent="salvarTokenMercadoPago()" class="space-y-4 text-xs">
-                    <div>
-                        <label class="font-bold text-slate-300 block mb-1">Chave PIX Principal (CNPJ, CPF, E-mail, Celular ou Aleatória)</label>
-                        <input type="text" x-model="formMp.chave_pix" placeholder="Ex: 00.000.000/0001-00 ou pix@loja.com.br"
-                               class="w-full bg-[#080c17] border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold">
+                    <!-- Campo Único e Simples para Qualquer Lojista -->
+                    <div class="bg-[#080c17] border border-slate-800 rounded-2xl p-4 space-y-3.5">
+                        <div>
+                            <label class="font-bold text-white text-sm block mb-1">Sua Chave PIX Principal (Qualquer Banco)</label>
+                            <p class="text-[11px] text-slate-400 mb-2">Digite seu CNPJ, CPF, Celular, E-mail ou Chave Aleatória onde deseja receber o dinheiro dos pedidos:</p>
+                            <input type="text" x-model="formMp.chave_pix" placeholder="Ex: 00.000.000/0001-00, celular ou seuemail@gmail.com"
+                                   class="w-full bg-[#0d1322] border border-slate-700 focus:border-emerald-500 rounded-xl px-4 py-3 text-white font-bold text-sm focus:outline-none">
+                        </div>
+
+                        <!-- Switch de Baixa Automática sem Access Token -->
+                        <label class="flex items-center justify-between bg-emerald-950/20 p-3.5 rounded-xl border border-emerald-500/30 cursor-pointer">
+                            <div class="pr-3">
+                                <span class="font-bold text-emerald-300 block">⚡ Baixa Automática de PIX sem Access Token (Recomendado)</span>
+                                <span class="text-[11px] text-slate-400">Quando o cliente envia o comprovante no WhatsApp ou clica em "Já paguei o PIX" na tela do pedido, o sistema libera o pedido para a cozinha automaticamente.</span>
+                            </div>
+                            <input type="checkbox" x-model="formMp.auto_confirmar_pix_chave" class="w-5 h-5 text-emerald-500 rounded">
+                        </label>
                     </div>
-                    <div>
-                        <label class="font-bold text-slate-300 block mb-1">Access Token Mercado Pago (<code class="text-emerald-400">APP_USR-...</code>) (Opcional para baixa automática)</label>
-                        <input type="password" x-model="formMp.access_token" placeholder="APP_USR-0000000000000000-..."
-                               class="w-full bg-[#080c17] border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono">
-                    </div>
-                    <button type="submit" :disabled="salvandoMp" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm shadow-lg transition">
-                        <span x-text="salvandoMp ? 'Salvando...' : 'Salvar Configuração de Recebimento PIX'"></span>
+
+                    <!-- Opção Avançada Oculta (Só abre quem quiser colar token de API do Mercado Pago) -->
+                    <details class="bg-[#080c17]/70 border border-slate-800/80 rounded-2xl px-4 py-3 group">
+                        <summary class="font-bold text-slate-400 hover:text-slate-200 cursor-pointer select-none flex items-center justify-between text-xs">
+                            <span>⚙️ Opção avançada: Usar token de API do Mercado Pago (Opcional)</span>
+                            <span class="text-[10px] text-slate-500">Clique para expandir</span>
+                        </summary>
+                        <div class="pt-3 mt-3 border-t border-slate-800/80 space-y-3">
+                            <p class="text-[11px] text-slate-400">
+                                Se você possui uma conta Mercado Pago e deseja conciliação bancária via API direta (Webhook), cole seu Access Token de produção abaixo. Caso contrário, <strong>deixe em branco</strong> e use apenas sua Chave PIX acima.
+                            </p>
+                            <div>
+                                <label class="font-bold text-slate-300 block mb-1">Access Token Mercado Pago (<code class="text-emerald-400">APP_USR-...</code>)</label>
+                                <input type="password" x-model="formMp.access_token" placeholder="Opcional — deixe em branco para usar apenas sua Chave PIX"
+                                       class="w-full bg-[#0d1322] border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono">
+                            </div>
+                            <template x-if="mpStatus?.conectado">
+                                <button type="button" @click="desconectarMercadoPago()" class="bg-slate-800 hover:bg-rose-600/20 text-slate-300 hover:text-rose-300 border border-slate-700 font-bold text-xs px-3 py-2 rounded-xl">
+                                    Remover Access Token do Mercado Pago
+                                </button>
+                            </template>
+                        </div>
+                    </details>
+
+                    <button type="submit" :disabled="salvandoMp" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg shadow-emerald-600/20 transition">
+                        <span x-text="salvandoMp ? 'Salvando...' : 'Salvar Chave PIX e Ativar Recebimento'"></span>
                     </button>
                 </form>
             </div>

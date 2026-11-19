@@ -90,10 +90,14 @@
                 </div>
             @endif
             @if($pedido->pagamento->pix_copia_cola)
-                <div class="space-y-2 max-w-md mx-auto">
+                <div class="space-y-2.5 max-w-md mx-auto">
                     <textarea readonly class="w-full text-xs font-mono bg-slate-950 text-slate-300 p-3 rounded-xl border border-slate-800 h-20">{{ $pedido->pagamento->pix_copia_cola }}</textarea>
                     <button @click="navigator.clipboard.writeText(@js($pedido->pagamento->pix_copia_cola)); copiado = true" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
-                        <span x-text="copiado ? 'Código PIX Copiado!' : 'Copiar Código PIX'"></span>
+                        <span x-text="copiado ? 'Código PIX Copiado!' : '1. Copiar Código PIX'"></span>
+                    </button>
+                    <button @click="confirmarPagamentoPix()" :disabled="confirmandoPix" class="w-full bg-slate-800 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl text-sm border border-emerald-500/40 transition flex items-center justify-center gap-2">
+                        <span x-show="!confirmandoPix">✅ 2. Já paguei o PIX — Liberar Pedido</span>
+                        <span x-show="confirmandoPix">Confirmando pagamento...</span>
                     </button>
                 </div>
             @endif
@@ -170,12 +174,34 @@
                 pagamentoStatus: @json($pedido->pagamento_status),
                 eventos: @json($pedido->eventos->map(fn($e) => ['status_para' => $e->status_para, 'observacao' => $e->observacao, 'horario' => $e->created_at?->format('H:i')])->values()),
                 copiado: false,
+                confirmandoPix: false,
                 token: new URLSearchParams(window.location.search).get('t') || '',
 
                 iniciar() {
                     if (this.token) {
                         setInterval(() => this.atualizar(), 5000);
                     }
+                },
+
+                confirmarPagamentoPix() {
+                    this.confirmandoPix = true;
+                    fetch(`/api/p/{{ $loja->slug }}/pedidos/{{ $pedido->codigo_publico }}/confirmar-pix?t=${encodeURIComponent(this.token)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ t: this.token })
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        this.confirmandoPix = false;
+                        if (d && d.success) {
+                            this.pagamentoStatus = 'aprovado';
+                            if (d.status) this.status = d.status;
+                            this.atualizar();
+                        }
+                    })
+                    .catch(() => {
+                        this.confirmandoPix = false;
+                    });
                 },
 
                 atualizar() {

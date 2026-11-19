@@ -46,6 +46,12 @@ final class EvolutionBotService
     private const MENU_KEYWORDS = ['CARDAPIO', 'CARDÁPIO', 'VER CARDAPIO', 'VER CARDÁPIO', 'LINK DO CARDAPIO', 'MANDA O CARDAPIO', 'MANDA O CARDÁPIO', 'ENVIAR CARDAPIO', 'MENU', 'CATALOGO', 'CATÁLOGO', 'VER O MENU'];
     private const THANKS_KEYWORDS = ['OBRIGADO', 'OBRIGADA', 'VALEU', 'TOP', 'OBG', 'TMJ', 'SHOW', 'MUITO BOM', 'DELICIA', 'DELÍCIA', 'MARAVILHA', 'EXCELENTE'];
     private const PIX_KEYWORDS = ['PIX', 'MANDA O PIX', 'CHAVE PIX', 'CODIGO PIX', 'CÓDIGO PIX', 'QR CODE', 'QRCODE', 'COPIA E COLA'];
+    private const PIX_CONFIRMED_KEYWORDS = [
+        'COMPROVANTE_PIX_ENVIADO', 'JA PAGUEI', 'JÁ PAGUEI', 'PAGUEI O PIX', 'FIZ O PIX',
+        'JA FIZ O PIX', 'JÁ FIZ O PIX', 'PIX FEITO', 'PIX PAGO', 'COMPROVANTE',
+        'TA PAGO', 'TÁ PAGO', 'ACABEI DE PAGAR', 'ENVIEI O PIX', 'MANDEI O PIX',
+        'PAGAMENTO FEITO', 'PAGAMENTO REALIZADO',
+    ];
     private const CARTAO_KEYWORDS = ['CARTAO', 'CARTÃO', 'MAQUININHA', 'MAQUINA', 'MÁQUINA', 'DEBITO', 'DÉBITO', 'CREDITO', 'CRÉDITO'];
     private const DINHEIRO_KEYWORDS = ['DINHEIRO', 'NOTA', 'TROCO'];
     private const RECOMPRA_KEYWORDS = ['REPETIR', 'DE SEMPRE', 'O DE SEMPRE', 'PEDIR O DE SEMPRE', 'QUERO O DE SEMPRE', 'REPETIR PEDIDO'];
@@ -146,6 +152,19 @@ final class EvolutionBotService
             if ($respostaConfirmacaoEntrega !== null) {
                 $this->registrarResposta($loja, $conversa, $respostaConfirmacaoEntrega);
                 return $respostaConfirmacaoEntrega;
+            }
+
+            // 1.6 CONFIRMAÇÃO AUTOMÁTICA DE PIX / COMPROVANTE NO WHATSAPP (SEM ACCESS TOKEN)
+            $respostaConfirmacaoPix = $this->tratarConfirmacaoPixPeloCliente(
+                $loja,
+                $pedidoRecente,
+                $primeiroNome,
+                $textoUpper,
+                (bool) ($meta['is_comprovante_midia'] ?? false)
+            );
+            if ($respostaConfirmacaoPix !== null) {
+                $this->registrarResposta($loja, $conversa, $respostaConfirmacaoPix);
+                return $respostaConfirmacaoPix;
             }
 
             // 2. Transbordo para Humano
@@ -551,6 +570,78 @@ final class EvolutionBotService
             $this->registrarResposta($loja, $conversa, $resposta);
             return $resposta;
         });
+    }
+
+    /**
+     * Quando a loja usa apenas Chave PIX (sem Access Token) e o cliente envia a foto/PDF
+     * do comprovante ou avisa que acabou de pagar o PIX, dá baixa automática e envia para a cozinha.
+     */
+    private function tratarConfirmacaoPixPeloCliente(
+        Loja $loja,
+        ?Pedido $pedido,
+        string $primeiroNome,
+        string $textoUpper,
+        bool $isMidiaComprovante = false
+    ): ?string {
+        if ($pedido === null || $pedido->forma_pagamento !== 'pix' || $pedido->pagamento_status === 'aprovado') {
+            return null;
+        }
+        if (in_array($pedido->status, ['cancelado', 'entregue', 'retirado', 'servido'], true)) {
+            return null;
+        }
+
+        $cfg = is_array($loja->config_json) ? $loja->config_json : [];
+        $autoConfirmarPix = (bool) ($cfg['auto_confirmar_pix_chave'] ?? true);
+        if (!$autoConfirmarPix) {
+            return null;
+        }
+
+        $ehConfirmacaoPix = $isMidiaComprovante;
+        if (!$ehConfirmacaoPix) {
+            foreach (self::PIX_CONFIRMED_KEYWORDS as $kw) {
+                if (str_contains($textoUpper, $kw)) {
+                    $ehConfirmacaoPix = true;
+                    break;
+                }
+            }
+        }
+
+        if (!$ehConfirmacaoPix) {
+            return null;
+        }
+
+        $pedido->update(['pagamento_status' => 'aprovado']);
+        if ($pedido->pagamento !== null) {
+            $pedido->pagamento->update([
+                'status' => 'aprovado',
+                'aprovado_em' => now(),
+            ]);
+        }
+
+        $autoAceitar = (bool) ($cfg['auto_aceitar_pedidos'] ?? true);
+        if ($autoAceitar && $pedido->status === 'novo') {
+            try {
+                /** @var FluxoStatusPedidoService $fluxo */
+                $fluxo = app(FluxoStatusPedidoService::class);
+                $fluxo->transicionar(
+                    $pedido,
+                    'em_preparo',
+                    null,
+                    null,
+                    null,
+                    'Comprovante/Confirmação PIX recebida no WhatsApp — pedido enviado para a cozinha automaticamente.'
+                );
+            } catch (\Throwable) {
+                $pedido->update(['status' => 'em_preparo']);
+            }
+        }
+
+        $sig = hash_hmac('sha256', (string) $pedido->tracking_token_hash, (string) config('app.key'));
+        $urlTracking = url("/p/{$loja->slug}/pedidos/{$pedido->codigo_publico}?t={$sig}");
+
+        return "✅ *Pagamento PIX Confirmado, {$primeiroNome}!*\n\n"
+            . "Recebemos a confirmação do seu pedido *#{$pedido->codigo_publico}* e ele *já entrou em preparo na nossa cozinha*! 🍳🔥\n\n"
+            . "📍 *Acompanhe ao vivo aqui:*\n👉 {$urlTracking}";
     }
 
     /**

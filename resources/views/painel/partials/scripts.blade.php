@@ -110,11 +110,11 @@
                 entregadores: [],
                 areasEntrega: [],
                 relatorio: {},
-                mpStatus: { conectado: false, mp_conta_nome: '', mp_user_id: '', chave_pix: '', public_key: '' },
+                mpStatus: { conectado: false, pix_ativo: false, mp_conta_nome: '', mp_user_id: '', chave_pix: '', auto_confirmar_pix_chave: true, public_key: '' },
                 salvandoMp: false,
                 testandoPix: false,
                 pixTesteResultado: null,
-                formMp: { access_token: '', public_key: '', chave_pix: '' },
+                formMp: { access_token: '', public_key: '', chave_pix: '', auto_confirmar_pix_chave: true },
                 whatsappStatus: {
                     instance: '',
                     connected: false,
@@ -1331,6 +1331,7 @@
                             if (d) {
                                 this.mpStatus = d;
                                 if (d.chave_pix && !this.formMp.chave_pix) this.formMp.chave_pix = d.chave_pix;
+                                if (typeof d.auto_confirmar_pix_chave === 'boolean') this.formMp.auto_confirmar_pix_chave = d.auto_confirmar_pix_chave;
                                 if (d.public_key && !this.formMp.public_key) this.formMp.public_key = d.public_key;
                             }
                         })
