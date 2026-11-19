@@ -114,7 +114,20 @@
                 salvandoMp: false,
                 testandoPix: false,
                 pixTesteResultado: null,
-                formMp: { access_token: '', public_key: '', chave_pix: '', auto_confirmar_pix_chave: true },
+                formMp: {
+                    access_token: '',
+                    public_key: '',
+                    chave_pix: '',
+                    auto_confirmar_pix_chave: true,
+                    pagamento_pix: true,
+                    pagamento_cartao_credito_entrega: true,
+                    pagamento_cartao_debito_entrega: true,
+                    pagamento_cartao_online: false,
+                    pagamento_dinheiro: true,
+                    pagamento_voucher: false,
+                    bandeiras_aceitas: 'Visa, Mastercard, Elo, Hipercard',
+                    link_pagamento_cartao_online: ''
+                },
                 whatsappStatus: {
                     instance: '',
                     connected: false,
@@ -1332,6 +1345,14 @@
                                 this.mpStatus = d;
                                 if (d.chave_pix && !this.formMp.chave_pix) this.formMp.chave_pix = d.chave_pix;
                                 if (typeof d.auto_confirmar_pix_chave === 'boolean') this.formMp.auto_confirmar_pix_chave = d.auto_confirmar_pix_chave;
+                                if (typeof d.pagamento_pix === 'boolean') this.formMp.pagamento_pix = d.pagamento_pix;
+                                if (typeof d.pagamento_cartao_credito_entrega === 'boolean') this.formMp.pagamento_cartao_credito_entrega = d.pagamento_cartao_credito_entrega;
+                                if (typeof d.pagamento_cartao_debito_entrega === 'boolean') this.formMp.pagamento_cartao_debito_entrega = d.pagamento_cartao_debito_entrega;
+                                if (typeof d.pagamento_cartao_online === 'boolean') this.formMp.pagamento_cartao_online = d.pagamento_cartao_online;
+                                if (typeof d.pagamento_dinheiro === 'boolean') this.formMp.pagamento_dinheiro = d.pagamento_dinheiro;
+                                if (typeof d.pagamento_voucher === 'boolean') this.formMp.pagamento_voucher = d.pagamento_voucher;
+                                if (typeof d.bandeiras_aceitas === 'string') this.formMp.bandeiras_aceitas = d.bandeiras_aceitas;
+                                if (typeof d.link_pagamento_cartao_online === 'string') this.formMp.link_pagamento_cartao_online = d.link_pagamento_cartao_online;
                                 if (d.public_key && !this.formMp.public_key) this.formMp.public_key = d.public_key;
                             }
                         })
@@ -1339,8 +1360,8 @@
                 },
 
                 salvarTokenMercadoPago() {
-                    if (!this.formMp.access_token.trim() && !this.formMp.chave_pix.trim()) {
-                        alert('Informe seu Access Token do Mercado Pago ou sua Chave PIX Principal.');
+                    if (this.formMp.pagamento_pix && !this.formMp.access_token.trim() && !this.formMp.chave_pix.trim()) {
+                        alert('Como o pagamento via PIX está ativo, informe sua Chave PIX Principal.');
                         return;
                     }
                     this.salvandoMp = true;

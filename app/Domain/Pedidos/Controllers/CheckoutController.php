@@ -221,6 +221,13 @@ final class CheckoutController
             }
 
             $observacaoGeral = $dados['observacao'] ?? ($request->input('observacoes') ? (string) $request->input('observacoes') : null);
+            $tipoCartaoEntrega = (string) ($dados['tipo_cartao_entrega'] ?? $request->input('tipo_cartao_entrega', ''));
+            if ($dados['forma_pagamento'] === 'cartao_maquina' && in_array($tipoCartaoEntrega, ['credito', 'debito'], true)) {
+                $tagCartao = $tipoCartaoEntrega === 'debito' ? '[Cartão de Débito na Entrega]' : '[Cartão de Crédito na Entrega]';
+                if (!$observacaoGeral || !str_contains($observacaoGeral, 'Cartão de')) {
+                    $observacaoGeral = trim($tagCartao . ($observacaoGeral ? ' ' . $observacaoGeral : ''));
+                }
+            }
 
             // Execute atomic persistence in DB Transaction
             $pedido = DB::transaction(function () use ($loja, $cliente, $dados, $calculo, $mesaId, $comandaId, $idempotencyKey, $observacaoGeral): Pedido {
@@ -289,20 +296,28 @@ final class CheckoutController
                 $cliente->increment('total_pedidos');
                 $cliente->update(['ultimo_pedido_em' => now()]);
 
+                $sigTrack = hash_hmac('sha256', $pedido->tracking_token_hash, (string) config('app.key'));
+                $urlTrack = url("/p/{$loja->slug}/pedidos/{$pedido->codigo_publico}?t={$sigTrack}");
+
                 if ($dados['forma_pagamento'] === 'pix') {
                     $pagamento = $pedido->pagamento;
                     if ($pagamento !== null) {
                         $this->pixService->gerarPix($loja, $pedido, $pagamento);
+                    }
+                } elseif ($dados['forma_pagamento'] === 'cartao_online') {
+                    $pagamento = $pedido->pagamento;
+                    if ($pagamento !== null) {
+                        $this->pixService->gerarCheckoutCartaoOnline($loja, $pedido, $pagamento, $urlTrack);
                     }
                 }
 
                 return $pedido;
             });
 
-            // Modo 100% Autônomo: Pedidos com pagamento presencial (dinheiro, cartão na entrega)
+            // Modo 100% Autônomo: Pedidos com pagamento presencial (dinheiro, cartão na entrega, vale)
             // são aceitos e avançados para preparo imediatamente na cozinha sem depender de atendente humano.
             $autoAceitar = (bool) ($loja->config_json['auto_aceitar_pedidos'] ?? true);
-            if ($autoAceitar && $pedido->forma_pagamento !== 'pix') {
+            if ($autoAceitar && !in_array($pedido->forma_pagamento, ['pix', 'cartao_online'], true)) {
                 try {
                     $this->fluxoService->transicionar(
                         $pedido,
@@ -319,7 +334,7 @@ final class CheckoutController
                     } catch (\Throwable) {}
                 }
             } else {
-                // Pedidos PIX (aguardando webhook de pagamento) ou lojas sem auto-aceite
+                // Pedidos PIX / Cartão Online (aguardando pagamento) ou lojas sem auto-aceite
                 try {
                     $this->evolutionApi->notificarMudancaStatus($pedido->load(['cliente', 'itens', 'pagamento', 'loja']), 'novo');
                 } catch (\Throwable) {}
@@ -347,6 +362,10 @@ final class CheckoutController
                     'copia_e_cola' => $pagamentoAtual->pix_copia_cola,
                     'qr_code_base64' => $pagamentoAtual->pix_qr_base64,
                     'expira_em' => $pagamentoAtual->expira_em?->toIso8601String(),
+                ] : null,
+                'cartao_online' => $pagamentoAtual && $pedido->forma_pagamento === 'cartao_online' ? [
+                    'checkout_url' => $pagamentoAtual->pix_copia_cola,
+                    'preference_id' => $pagamentoAtual->mp_payment_id,
                 ] : null,
             ], Response::HTTP_CREATED);
         } catch (DomainException $e) {

@@ -26,8 +26,8 @@
                 <button type="button" @click="abaConfig = 'pix'"
                     class="px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition flex items-center gap-2"
                     :class="abaConfig === 'pix' ? 'bg-sky-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span>4. Recebimento PIX</span>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                    <span>4. Formas de Pagamento &amp; PIX</span>
                 </button>
 
                 <button type="button" @click="abaConfig = 'assinatura'"
@@ -241,14 +241,14 @@
             </div>
 
             <!-- ============================================================== -->
-            <!-- SUB-ABA 4: RECEBIMENTO PIX (ZERO ACCESS TOKEN OBRIGATÓRIO)     -->
+            <!-- SUB-ABA 4: FORMAS DE PAGAMENTO & RECEBIMENTO PIX               -->
             <!-- ============================================================== -->
-            <div x-show="abaConfig === 'pix'" class="max-w-3xl bg-[#0d1322] border-2 rounded-3xl p-6 space-y-5"
-                 :class="(mpStatus?.conectado || mpStatus?.chave_pix) ? 'border-emerald-500/40' : 'border-amber-500/40'">
+            <div x-show="abaConfig === 'pix'" class="max-w-4xl bg-[#0d1322] border-2 rounded-3xl p-6 space-y-6"
+                 :class="(mpStatus?.conectado || mpStatus?.chave_pix) ? 'border-emerald-500/40' : 'border-slate-800'">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                     <div>
                         <div class="flex flex-wrap items-center gap-2">
-                            <h3 class="text-base font-bold text-white">Recebimento PIX dos Clientes</h3>
+                            <h3 class="text-base font-bold text-white">Formas de Pagamento Aceitas &amp; PIX</h3>
                             <span class="text-xs font-bold px-3 py-0.5 rounded-full border"
                                   :class="(mpStatus?.conectado || mpStatus?.chave_pix) ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'"
                                   x-text="mpStatus?.conectado
@@ -257,7 +257,7 @@
                             </span>
                         </div>
                         <p class="text-xs text-slate-400 mt-1">
-                            Basta informar sua <strong>Chave PIX de qualquer banco</strong> (Nubank, Inter, Itaú, Sicredi, Mercado Pago, Caixa). O dinheiro cai 100% direto na sua conta sem taxas!
+                            Escolha quais formas de pagamento aparecem no seu cardápio digital (Online e Na Entrega) e configure sua Chave PIX.
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2 shrink-0">
@@ -291,11 +291,89 @@
                     </div>
                 </template>
 
-                <form @submit.prevent="salvarTokenMercadoPago()" class="space-y-4 text-xs">
-                    <!-- Campo Único e Simples para Qualquer Lojista -->
-                    <div class="bg-[#080c17] border border-slate-800 rounded-2xl p-4 space-y-3.5">
+                <form @submit.prevent="salvarTokenMercadoPago()" class="space-y-5 text-xs">
+
+                    <!-- 1. SELETOR DE FORMAS DE PAGAMENTO ACEITAS PELA LOJA (ONLINE E NA ENTREGA) -->
+                    <div class="bg-[#080c17] border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
                         <div>
-                            <label class="font-bold text-white text-sm block mb-1">Sua Chave PIX Principal (Qualquer Banco)</label>
+                            <h4 class="font-bold text-white text-sm">1. Quais formas de pagamento sua loja aceita no cardápio?</h4>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Marque as opções que seus clientes poderão escolher na hora de fechar o pedido:</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- PIX Online -->
+                            <label class="flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition"
+                                   :class="formMp.pagamento_pix ? 'bg-emerald-950/25 border-emerald-500/40' : 'bg-[#0d1322] border-slate-800'">
+                                <div class="pr-3">
+                                    <span class="font-bold text-white block">PIX Instantâneo (Online)</span>
+                                    <span class="text-[11px] text-slate-400">Gera QR Code e Copia e Cola na tela do cliente</span>
+                                </div>
+                                <input type="checkbox" x-model="formMp.pagamento_pix" class="w-5 h-5 text-emerald-500 rounded">
+                            </label>
+
+                            <!-- Cartão Online (Crédito / Débito pelo site) -->
+                            <label class="flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition"
+                                   :class="formMp.pagamento_cartao_online ? 'bg-sky-950/25 border-sky-500/40' : 'bg-[#0d1322] border-slate-800'">
+                                <div class="pr-3">
+                                    <span class="font-bold text-white block">Cartão de Crédito / Débito (Online)</span>
+                                    <span class="text-[11px] text-slate-400">Cliente paga pelo site antes do envio</span>
+                                </div>
+                                <input type="checkbox" x-model="formMp.pagamento_cartao_online" class="w-5 h-5 text-sky-500 rounded">
+                            </label>
+
+                            <!-- Cartão de Crédito na Entrega (Maquininha) -->
+                            <label class="flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition"
+                                   :class="formMp.pagamento_cartao_credito_entrega ? 'bg-amber-950/20 border-amber-500/40' : 'bg-[#0d1322] border-slate-800'">
+                                <div class="pr-3">
+                                    <span class="font-bold text-white block">Cartão de Crédito (Na Entrega / Maquininha)</span>
+                                    <span class="text-[11px] text-slate-400">Motoboy leva a maquininha para passar crédito</span>
+                                </div>
+                                <input type="checkbox" x-model="formMp.pagamento_cartao_credito_entrega" class="w-5 h-5 text-amber-500 rounded">
+                            </label>
+
+                            <!-- Cartão de Débito na Entrega (Maquininha) -->
+                            <label class="flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition"
+                                   :class="formMp.pagamento_cartao_debito_entrega ? 'bg-amber-950/20 border-amber-500/40' : 'bg-[#0d1322] border-slate-800'">
+                                <div class="pr-3">
+                                    <span class="font-bold text-white block">Cartão de Débito (Na Entrega / Maquininha)</span>
+                                    <span class="text-[11px] text-slate-400">Motoboy leva a maquininha para passar débito</span>
+                                </div>
+                                <input type="checkbox" x-model="formMp.pagamento_cartao_debito_entrega" class="w-5 h-5 text-amber-500 rounded">
+                            </label>
+
+                            <!-- Dinheiro na Entrega -->
+                            <label class="flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition"
+                                   :class="formMp.pagamento_dinheiro ? 'bg-emerald-950/20 border-emerald-500/40' : 'bg-[#0d1322] border-slate-800'">
+                                <div class="pr-3">
+                                    <span class="font-bold text-white block">Dinheiro em Espécie (Na Entrega)</span>
+                                    <span class="text-[11px] text-slate-400">Pergunta automaticamente se precisa de troco</span>
+                                </div>
+                                <input type="checkbox" x-model="formMp.pagamento_dinheiro" class="w-5 h-5 text-emerald-500 rounded">
+                            </label>
+
+                            <!-- Vale-Refeição / Alimentação -->
+                            <label class="flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition"
+                                   :class="formMp.pagamento_voucher ? 'bg-purple-950/25 border-purple-500/40' : 'bg-[#0d1322] border-slate-800'">
+                                <div class="pr-3">
+                                    <span class="font-bold text-white block">Vale-Refeição / Alimentação (Na Entrega)</span>
+                                    <span class="text-[11px] text-slate-400">VR, Sodexo/Pluxee, Alelo, Ticket na maquininha</span>
+                                </div>
+                                <input type="checkbox" x-model="formMp.pagamento_voucher" class="w-5 h-5 text-purple-500 rounded">
+                            </label>
+                        </div>
+
+                        <!-- Bandeiras Aceitas na Maquininha -->
+                        <div class="pt-1">
+                            <label class="font-bold text-slate-300 block mb-1">Bandeiras aceitas na maquininha (exibido para o cliente):</label>
+                            <input type="text" x-model="formMp.bandeiras_aceitas" placeholder="Ex: Visa, Mastercard, Elo, Hipercard, Amex"
+                                   class="w-full bg-[#0d1322] border border-slate-800 rounded-xl px-3.5 py-2 text-white">
+                        </div>
+                    </div>
+
+                    <!-- 2. CONFIGURAÇÃO DA CHAVE PIX (QUALQUER BANCO) -->
+                    <div x-show="formMp.pagamento_pix" class="bg-[#080c17] border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3.5">
+                        <div>
+                            <label class="font-bold text-white text-sm block mb-1">2. Sua Chave PIX Principal (Qualquer Banco)</label>
                             <p class="text-[11px] text-slate-400 mb-2">Digite seu CNPJ, CPF, Celular, E-mail ou Chave Aleatória onde deseja receber o dinheiro dos pedidos:</p>
                             <input type="text" x-model="formMp.chave_pix" placeholder="Ex: 00.000.000/0001-00, celular ou seuemail@gmail.com"
                                    class="w-full bg-[#0d1322] border border-slate-700 focus:border-emerald-500 rounded-xl px-4 py-3 text-white font-bold text-sm focus:outline-none">
@@ -311,6 +389,21 @@
                         </label>
                     </div>
 
+                    <!-- 3. CONFIGURAÇÃO DE CARTÃO ONLINE (QUANDO ATIVADO) -->
+                    <div x-show="formMp.pagamento_cartao_online" class="bg-[#080c17] border border-sky-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
+                        <div>
+                            <h4 class="font-bold text-sky-300 text-sm">3. Recebimento por Cartão de Crédito / Débito Online</h4>
+                            <p class="text-[11px] text-slate-400 mt-0.5">
+                                Se sua conta Mercado Pago estiver conectada, o sistema gera automaticamente o checkout seguro de Cartão de Crédito/Débito a cada pedido. Ou, se preferir, cole abaixo seu link de pagamento online (Mercado Pago, InfinitePay, Ton, PagBank):
+                            </p>
+                        </div>
+                        <div>
+                            <label class="font-bold text-slate-300 block mb-1">Link de Pagamento Cartão Online (Opcional — deixe em branco se usar Mercado Pago conectado)</label>
+                            <input type="url" x-model="formMp.link_pagamento_cartao_online" placeholder="Ex: https://link.mercadopago.com.br/sualoja ou https://pay.infinitepay.io/sualoja"
+                                   class="w-full bg-[#0d1322] border border-slate-800 rounded-xl px-3.5 py-2.5 text-white">
+                        </div>
+                    </div>
+
                     <!-- Opção Avançada Oculta (Só abre quem quiser colar token de API do Mercado Pago) -->
                     <details class="bg-[#080c17]/70 border border-slate-800/80 rounded-2xl px-4 py-3 group">
                         <summary class="font-bold text-slate-400 hover:text-slate-200 cursor-pointer select-none flex items-center justify-between text-xs">
@@ -319,7 +412,7 @@
                         </summary>
                         <div class="pt-3 mt-3 border-t border-slate-800/80 space-y-3">
                             <p class="text-[11px] text-slate-400">
-                                Se você possui uma conta Mercado Pago e deseja conciliação bancária via API direta (Webhook), cole seu Access Token de produção abaixo. Caso contrário, <strong>deixe em branco</strong> e use apenas sua Chave PIX acima.
+                                Se você possui uma conta Mercado Pago e deseja conciliação bancária via API direta (Webhook de PIX e Checkout Automático de Cartão Online), cole seu Access Token de produção abaixo. Caso contrário, <strong>deixe em branco</strong>.
                             </p>
                             <div>
                                 <label class="font-bold text-slate-300 block mb-1">Access Token Mercado Pago (<code class="text-emerald-400">APP_USR-...</code>)</label>
@@ -335,7 +428,7 @@
                     </details>
 
                     <button type="submit" :disabled="salvandoMp" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg shadow-emerald-600/20 transition">
-                        <span x-text="salvandoMp ? 'Salvando...' : 'Salvar Chave PIX e Ativar Recebimento'"></span>
+                        <span x-text="salvandoMp ? 'Salvando...' : 'Salvar Formas de Pagamento e Chave PIX'"></span>
                     </button>
                 </form>
             </div>

@@ -946,6 +946,22 @@
                             </div>
                         </template>
 
+                        <!-- Checkout de Cartão de Crédito / Débito Online -->
+                        <template x-if="pedidoCriado.cartao_online?.checkout_url">
+                            <div class="bg-[#0a0b0e] border border-sky-500/30 rounded-2xl p-4 space-y-3">
+                                <div class="text-xs font-extrabold text-sky-400 uppercase tracking-wider">Pagamento por Cartão Online</div>
+                                <p class="text-xs text-slate-300">Clique abaixo para concluir o pagamento seguro com seu Cartão de Crédito ou Débito:</p>
+                                <a :href="pedidoCriado.cartao_online.checkout_url" target="_blank"
+                                   class="block w-full bg-sky-600 hover:bg-sky-500 text-white font-extrabold py-3 rounded-xl text-sm shadow-md text-center transition">
+                                    💳 1. Pagar Agora com Cartão Online ↗
+                                </a>
+                                <button type="button" @click="confirmarPixCriado()" :disabled="confirmandoPixCriado"
+                                    class="w-full bg-[#151e28] hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 font-extrabold py-3 rounded-xl text-xs transition">
+                                    <span x-text="confirmandoPixCriado ? 'Confirmando...' : '✅ 2. Já paguei no Cartão — Liberar Pedido na Cozinha'"></span>
+                                </button>
+                            </div>
+                        </template>
+
                         <div class="flex flex-col sm:flex-row gap-2 pt-2">
                             <template x-if="pedidoCriado.tracking_url">
                                 <a :href="pedidoCriado.tracking_url" class="flex-1 bg-[#1e2029] hover:bg-[#252835] text-white font-extrabold py-3 rounded-xl text-xs text-center border border-[#232631]">
@@ -1069,26 +1085,84 @@
                             </template>
                         </div>
 
-                        <!-- Forma de Pagamento -->
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold uppercase text-slate-400 block">Forma de Pagamento</label>
-                            <div class="grid grid-cols-3 gap-2 text-xs">
-                                <button type="button" @click="checkout.forma_pagamento = 'pix'"
-                                    class="py-2.5 px-2 rounded-xl font-bold border transition text-center"
-                                    :class="checkout.forma_pagamento === 'pix' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-[#0a0b0e] border-[#232631] text-slate-400'">
-                                    PIX
-                                </button>
-                                <button type="button" @click="checkout.forma_pagamento = 'cartao_maquina'"
-                                    class="py-2.5 px-2 rounded-xl font-bold border transition text-center"
-                                    :class="checkout.forma_pagamento === 'cartao_maquina' ? 'bg-amber-500/20 border-amber-500 text-amber-400' : 'bg-[#0a0b0e] border-[#232631] text-slate-400'">
-                                    Cartão
-                                </button>
-                                <button type="button" @click="checkout.forma_pagamento = 'dinheiro'"
-                                    class="py-2.5 px-2 rounded-xl font-bold border transition text-center"
-                                    :class="checkout.forma_pagamento === 'dinheiro' ? 'bg-amber-500/20 border-amber-500 text-amber-400' : 'bg-[#0a0b0e] border-[#232631] text-slate-400'">
-                                    Dinheiro
-                                </button>
-                            </div>
+                        <!-- Forma de Pagamento (Configurada pelo Lojista: Online e Na Entrega) -->
+                        <div class="space-y-2.5">
+                            <label class="text-[11px] font-bold uppercase text-slate-400 block">Escolha a Forma de Pagamento</label>
+
+                            <!-- Grupo 1: Pagamento Online -->
+                            <template x-if="configPagamentos.pix || configPagamentos.cartao_online">
+                                <div class="space-y-1.5">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">⚡ Pagar Online Agora</span>
+                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                        <template x-if="configPagamentos.pix">
+                                            <button type="button" @click="checkout.forma_pagamento = 'pix'"
+                                                class="py-2.5 px-2.5 rounded-xl font-bold border transition text-center flex flex-col items-center gap-0.5"
+                                                :class="checkout.forma_pagamento === 'pix' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow' : 'bg-[#0a0b0e] border-[#232631] text-slate-300 hover:border-slate-700'">
+                                                <span>PIX Instantâneo</span>
+                                                <span class="text-[10px] font-normal text-slate-400">QR Code / Copia e Cola</span>
+                                            </button>
+                                        </template>
+                                        <template x-if="configPagamentos.cartao_online">
+                                            <button type="button" @click="checkout.forma_pagamento = 'cartao_online'"
+                                                class="py-2.5 px-2.5 rounded-xl font-bold border transition text-center flex flex-col items-center gap-0.5"
+                                                :class="checkout.forma_pagamento === 'cartao_online' ? 'bg-sky-500/20 border-sky-500 text-sky-300 shadow' : 'bg-[#0a0b0e] border-[#232631] text-slate-300 hover:border-slate-700'">
+                                                <span>Cartão Online</span>
+                                                <span class="text-[10px] font-normal text-slate-400">Crédito ou Débito no site</span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Grupo 2: Pagamento na Entrega / Retirada -->
+                            <template x-if="configPagamentos.cartao_credito_entrega || configPagamentos.cartao_debito_entrega || configPagamentos.dinheiro || configPagamentos.voucher">
+                                <div class="space-y-1.5 pt-1">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 block"
+                                          x-text="checkout.canal === 'retirada' ? '🏪 Pagar na Retirada (Maquininha / Balcão)' : '🛵 Pagar na Entrega (Motoboy leva Maquininha)'"></span>
+                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                        <template x-if="configPagamentos.cartao_credito_entrega">
+                                            <button type="button" @click="checkout.forma_pagamento = 'cartao_maquina'; checkout.tipo_cartao_entrega = 'credito'"
+                                                class="py-2.5 px-2.5 rounded-xl font-bold border transition text-center flex flex-col items-center gap-0.5"
+                                                :class="(checkout.forma_pagamento === 'cartao_maquina' && checkout.tipo_cartao_entrega === 'credito') ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow' : 'bg-[#0a0b0e] border-[#232631] text-slate-300 hover:border-slate-700'">
+                                                <span>Cartão de Crédito</span>
+                                                <span class="text-[10px] font-normal text-slate-400">Passar na entrega</span>
+                                            </button>
+                                        </template>
+                                        <template x-if="configPagamentos.cartao_debito_entrega">
+                                            <button type="button" @click="checkout.forma_pagamento = 'cartao_maquina'; checkout.tipo_cartao_entrega = 'debito'"
+                                                class="py-2.5 px-2.5 rounded-xl font-bold border transition text-center flex flex-col items-center gap-0.5"
+                                                :class="(checkout.forma_pagamento === 'cartao_maquina' && checkout.tipo_cartao_entrega === 'debito') ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow' : 'bg-[#0a0b0e] border-[#232631] text-slate-300 hover:border-slate-700'">
+                                                <span>Cartão de Débito</span>
+                                                <span class="text-[10px] font-normal text-slate-400">Passar na entrega</span>
+                                            </button>
+                                        </template>
+                                        <template x-if="configPagamentos.dinheiro">
+                                            <button type="button" @click="checkout.forma_pagamento = 'dinheiro'"
+                                                class="py-2.5 px-2.5 rounded-xl font-bold border transition text-center flex flex-col items-center gap-0.5"
+                                                :class="checkout.forma_pagamento === 'dinheiro' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow' : 'bg-[#0a0b0e] border-[#232631] text-slate-300 hover:border-slate-700'">
+                                                <span>Dinheiro</span>
+                                                <span class="text-[10px] font-normal text-slate-400">Espécie / Troco</span>
+                                            </button>
+                                        </template>
+                                        <template x-if="configPagamentos.voucher">
+                                            <button type="button" @click="checkout.forma_pagamento = 'voucher'"
+                                                class="py-2.5 px-2.5 rounded-xl font-bold border transition text-center flex flex-col items-center gap-0.5"
+                                                :class="checkout.forma_pagamento === 'voucher' ? 'bg-purple-500/20 border-purple-500 text-purple-300 shadow' : 'bg-[#0a0b0e] border-[#232631] text-slate-300 hover:border-slate-700'">
+                                                <span>Vale-Refeição</span>
+                                                <span class="text-[10px] font-normal text-slate-400">VR, Alelo, Sodexo, Ticket</span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Bandeiras Aceitas quando Cartão na Entrega for selecionado -->
+                            <template x-if="checkout.forma_pagamento === 'cartao_maquina' && configPagamentos.bandeiras">
+                                <div class="bg-[#0a0b0e] border border-amber-500/30 rounded-xl px-3 py-2 text-[11px] text-amber-300 flex items-center justify-between">
+                                    <span x-text="checkout.tipo_cartao_entrega === 'debito' ? '💳 Levaremos a maquininha (Débito)' : '💳 Levaremos a maquininha (Crédito)'"></span>
+                                    <span class="text-slate-400 text-[10px]" x-text="'Aceitamos: ' + configPagamentos.bandeiras"></span>
+                                </div>
+                            </template>
 
                             <template x-if="checkout.forma_pagamento === 'dinheiro'">
                                 <div class="bg-[#0a0b0e] border border-[#232631] rounded-xl p-2.5 flex items-center justify-between gap-2 mt-2">
@@ -1215,6 +1289,15 @@
                 validandoCupom: false,
                 mensagemCupom: '',
                 freteCentavos: taxaInicialPadrao,
+                configPagamentos: {
+                    pix: @json((bool) ($loja->config_json['pagamento_pix'] ?? true)),
+                    cartao_online: @json((bool) ($loja->config_json['pagamento_cartao_online'] ?? false)),
+                    cartao_credito_entrega: @json((bool) ($loja->config_json['pagamento_cartao_credito_entrega'] ?? true)),
+                    cartao_debito_entrega: @json((bool) ($loja->config_json['pagamento_cartao_debito_entrega'] ?? true)),
+                    dinheiro: @json((bool) ($loja->config_json['pagamento_dinheiro'] ?? true)),
+                    voucher: @json((bool) ($loja->config_json['pagamento_voucher'] ?? false)),
+                    bandeiras: @json((string) ($loja->config_json['bandeiras_aceitas'] ?? 'Visa, Mastercard, Elo, Hipercard'))
+                },
                 checkout: {
                     canal: mesaInicial ? 'mesa' : 'delivery',
                     nome: '',
@@ -1226,7 +1309,8 @@
                     bairro: '',
                     cidade: @json($loja->cidade ?? ''),
                     uf: @json($loja->uf ?? ''),
-                    forma_pagamento: 'pix',
+                    forma_pagamento: @json(((bool) ($loja->config_json['pagamento_pix'] ?? true)) ? 'pix' : (((bool) ($loja->config_json['pagamento_cartao_credito_entrega'] ?? true) || (bool) ($loja->config_json['pagamento_cartao_debito_entrega'] ?? true)) ? 'cartao_maquina' : 'dinheiro')),
+                    tipo_cartao_entrega: @json(((bool) ($loja->config_json['pagamento_cartao_credito_entrega'] ?? true)) ? 'credito' : 'debito'),
                     troco_reais: '',
                     observacoes: ''
                 },
@@ -1858,6 +1942,7 @@
                         })),
                         cupom_codigo: (this.cupomAplicado && this.descontoCupomCentavos > 0) ? this.cupomAplicado.codigo : null,
                         forma_pagamento: this.checkout.forma_pagamento,
+                        tipo_cartao_entrega: this.checkout.forma_pagamento === 'cartao_maquina' ? (this.checkout.tipo_cartao_entrega || 'credito') : null,
                         troco_para: trocoCentavos,
                         observacoes: this.checkout.observacoes ? this.checkout.observacoes.trim() : null
                     };

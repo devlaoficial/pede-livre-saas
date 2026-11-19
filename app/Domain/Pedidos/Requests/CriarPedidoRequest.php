@@ -23,6 +23,19 @@ final class CriarPedidoRequest extends FormRequest
                 response()->json(['error' => 'BOT_DETECTED'], 403)
             );
         }
+
+        $fp = (string) $this->input('forma_pagamento', '');
+        if ($fp === 'cartao_credito_entrega') {
+            $this->merge([
+                'forma_pagamento' => 'cartao_maquina',
+                'tipo_cartao_entrega' => 'credito',
+            ]);
+        } elseif ($fp === 'cartao_debito_entrega') {
+            $this->merge([
+                'forma_pagamento' => 'cartao_maquina',
+                'tipo_cartao_entrega' => 'debito',
+            ]);
+        }
     }
 
     /**
@@ -56,6 +69,7 @@ final class CriarPedidoRequest extends FormRequest
             'cupom_codigo' => ['nullable', 'string', 'max:50'],
             'cashback_resgate_centavos' => ['nullable', 'integer', 'min:0'],
             'forma_pagamento' => ['required', 'string', 'in:pix,cartao_online,cartao_maquina,dinheiro,voucher'],
+            'tipo_cartao_entrega' => ['nullable', 'string', 'in:credito,debito'],
             'troco_para' => ['nullable', 'integer', 'min:0'],
             'observacao' => ['nullable', 'string', 'max:500'],
         ];

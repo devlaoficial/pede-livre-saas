@@ -95,6 +95,86 @@ final class MercadoPagoPixService
      *
      * @return array{pix_copia_cola: string, pix_qr_base64: string, expira_em: string, mp_payment_id: string}
      */
+    public function gerarCheckoutCartaoOnline(Loja $loja, Pedido $pedido, Pagamento $pagamento, string $trackingUrl): array
+    {
+        $accessToken = $loja->mp_access_token;
+        $valorFloat = round($pedido->total / 100, 2);
+
+        if (!empty($accessToken) && !app()->environment('testing')) {
+            $cliente = $pedido->cliente;
+            $payload = [
+                'items' => [
+                    [
+                        'id' => (string) $pedido->id,
+                        'title' => "Pedido #{$pedido->codigo_publico} - {$loja->nome}",
+                        'quantity' => 1,
+                        'currency_id' => 'BRL',
+                        'unit_price' => $valorFloat,
+                    ],
+                ],
+                'payer' => [
+                    'name' => $cliente?->nome ?: 'Cliente',
+                    'email' => $cliente?->email ?: "cliente_{$pedido->id}@pedelivre.com.br",
+                ],
+                'payment_methods' => [
+                    'excluded_payment_types' => [
+                        ['id' => 'ticket'], // Exclude boleto so only Credit / Debit Card / Instant are shown
+                    ],
+                    'installments' => (int) ($loja->config_json['parcelas_max_cartao_online'] ?? 3),
+                ],
+                'external_reference' => (string) $pedido->id,
+                'notification_url' => url('/api/webhooks/mercadopago'),
+                'back_urls' => [
+                    'success' => $trackingUrl . '&cartao_pago=1',
+                    'pending' => $trackingUrl,
+                    'failure' => $trackingUrl,
+                ],
+                'auto_return' => 'approved',
+            ];
+
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => "Bearer {$accessToken}",
+                ])->timeout(12)->post('https://api.mercadopago.com/checkout/preferences', $payload);
+
+                if ($response->successful()) {
+                    $dados = $response->json();
+                    $prefId = (string) ($dados['id'] ?? ('PREF_' . $pedido->id));
+                    $initPoint = (string) ($dados['init_point'] ?? ($dados['sandbox_init_point'] ?? ''));
+
+                    $pagamento->update([
+                        'mp_payment_id' => $prefId,
+                        'pix_copia_cola' => $initPoint,
+                        'expira_em' => now()->addMinutes(30),
+                    ]);
+
+                    return [
+                        'checkout_url' => $initPoint,
+                        'mp_preference_id' => $prefId,
+                    ];
+                }
+            } catch (\Throwable) {
+                // Fallback below if preference creation fails
+            }
+        }
+
+        // Fallback link (custom merchant link or tracking page online card screen)
+        $linkCustom = trim((string) ($loja->config_json['link_pagamento_cartao_online'] ?? ''));
+        $checkoutUrl = $linkCustom !== '' ? $linkCustom : ($trackingUrl . '&pagar_cartao_online=1');
+        $prefId = 'CARD_ONLINE_' . $pedido->id . '_' . time();
+
+        $pagamento->update([
+            'mp_payment_id' => $prefId,
+            'pix_copia_cola' => $checkoutUrl,
+            'expira_em' => now()->addMinutes(30),
+        ]);
+
+        return [
+            'checkout_url' => $checkoutUrl,
+            'mp_preference_id' => $prefId,
+        ];
+    }
+
     public function gerarPixPadraoEmv(Loja $loja, Pedido $pedido, Pagamento $pagamento): array
     {
         $chaveBruta = trim((string) ($loja->config_json['chave_pix'] ?? $loja->cnpj_cpf ?? $loja->telefone_whatsapp ?? ''));

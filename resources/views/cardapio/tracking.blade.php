@@ -104,6 +104,26 @@
         </div>
         @endif
 
+        <!-- Bloco Cartão Online se ainda pendente -->
+        @if($pedido->forma_pagamento === 'cartao_online' && $pedido->pagamento)
+        <div x-show="pagamentoStatus !== 'aprovado'" class="bg-slate-900 border border-sky-500/30 rounded-3xl p-6 text-center space-y-4">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-sky-400">Pagamento por Cartão Online Aguardando Confirmação</span>
+            <p class="text-xs text-slate-300">Conclua o pagamento com seu Cartão de Crédito ou Débito para liberar o preparo do seu pedido:</p>
+            <div class="space-y-2.5 max-w-md mx-auto">
+                @if($pedido->pagamento->pix_copia_cola && str_starts_with($pedido->pagamento->pix_copia_cola, 'http'))
+                    <a href="{{ $pedido->pagamento->pix_copia_cola }}" target="_blank"
+                       class="block w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 rounded-xl text-sm transition">
+                        💳 1. Abrir Pagamento por Cartão Online ↗
+                    </a>
+                @endif
+                <button @click="confirmarPagamentoPix()" :disabled="confirmandoPix" class="w-full bg-slate-800 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl text-sm border border-emerald-500/40 transition flex items-center justify-center gap-2">
+                    <span x-show="!confirmandoPix">✅ 2. Já paguei no Cartão — Liberar Pedido</span>
+                    <span x-show="confirmandoPix">Confirmando pagamento...</span>
+                </button>
+            </div>
+        </div>
+        @endif
+
         <!-- Resumo dos Itens -->
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
             <h3 class="font-bold text-sm uppercase tracking-wider text-slate-400">Itens do Pedido</h3>
@@ -178,6 +198,10 @@
                 token: new URLSearchParams(window.location.search).get('t') || '',
 
                 iniciar() {
+                    const params = new URLSearchParams(window.location.search);
+                    if (params.get('cartao_pago') === '1' && this.pagamentoStatus !== 'aprovado') {
+                        this.confirmarPagamentoPix();
+                    }
                     if (this.token) {
                         setInterval(() => this.atualizar(), 5000);
                     }

@@ -63,15 +63,31 @@ final class MercadoPagoOAuthController
             'public_key' => ['nullable', 'string', 'max:255'],
             'chave_pix' => ['nullable', 'string', 'max:140'],
             'auto_confirmar_pix_chave' => ['nullable', 'boolean'],
+            'pagamento_pix' => ['nullable', 'boolean'],
+            'pagamento_cartao_credito_entrega' => ['nullable', 'boolean'],
+            'pagamento_cartao_debito_entrega' => ['nullable', 'boolean'],
+            'pagamento_cartao_online' => ['nullable', 'boolean'],
+            'pagamento_dinheiro' => ['nullable', 'boolean'],
+            'pagamento_voucher' => ['nullable', 'boolean'],
+            'bandeiras_aceitas' => ['nullable', 'string', 'max:180'],
+            'link_pagamento_cartao_online' => ['nullable', 'string', 'max:500'],
         ]);
 
         $token = trim((string) ($dados['access_token'] ?? ''));
         $chavePix = trim((string) ($dados['chave_pix'] ?? ''));
+        $temFlagsPagamento = $request->hasAny([
+            'pagamento_pix',
+            'pagamento_cartao_credito_entrega',
+            'pagamento_cartao_debito_entrega',
+            'pagamento_cartao_online',
+            'pagamento_dinheiro',
+            'pagamento_voucher',
+        ]);
 
-        if ($token === '' && $chavePix === '') {
+        if ($token === '' && $chavePix === '' && !$temFlagsPagamento) {
             return response()->json([
                 'error' => 'DADOS_OBRIGATORIOS',
-                'message' => 'Informe sua Chave PIX principal (CPF, CNPJ, Celular, E-mail ou Aleatória).',
+                'message' => 'Informe sua Chave PIX principal ou selecione as formas de pagamento aceitas.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -79,8 +95,10 @@ final class MercadoPagoOAuthController
         if (!empty($dados['public_key'])) {
             $configAtual['mp_public_key'] = trim((string) $dados['public_key']);
         }
-        if ($chavePix !== '') {
-            $configAtual['chave_pix'] = $chavePix;
+        if ($chavePix !== '' || $request->has('chave_pix')) {
+            if ($chavePix !== '') {
+                $configAtual['chave_pix'] = $chavePix;
+            }
         }
         if ($request->has('auto_confirmar_pix_chave')) {
             $configAtual['auto_confirmar_pix_chave'] = $request->boolean('auto_confirmar_pix_chave');
@@ -88,17 +106,39 @@ final class MercadoPagoOAuthController
             $configAtual['auto_confirmar_pix_chave'] = true;
         }
 
-        // Case 1: Only Chave PIX was provided (Direct BCB PIX mode without Mercado Pago token)
+        foreach ([
+            'pagamento_pix' => true,
+            'pagamento_cartao_credito_entrega' => true,
+            'pagamento_cartao_debito_entrega' => true,
+            'pagamento_cartao_online' => false,
+            'pagamento_dinheiro' => true,
+            'pagamento_voucher' => false,
+        ] as $campoFlag => $padraoFlag) {
+            if ($request->has($campoFlag)) {
+                $configAtual[$campoFlag] = $request->boolean($campoFlag);
+            } elseif (!isset($configAtual[$campoFlag])) {
+                $configAtual[$campoFlag] = $padraoFlag;
+            }
+        }
+
+        if ($request->has('bandeiras_aceitas')) {
+            $configAtual['bandeiras_aceitas'] = trim((string) $request->input('bandeiras_aceitas', ''));
+        }
+        if ($request->has('link_pagamento_cartao_online')) {
+            $configAtual['link_pagamento_cartao_online'] = trim((string) $request->input('link_pagamento_cartao_online', ''));
+        }
+
+        // Case 1: No new Access Token provided — save PIX key & accepted payment methods directly
         if ($token === '') {
             $loja->update([
                 'config_json' => $configAtual,
             ]);
 
             return response()->json([
-                'message' => "Chave PIX [{$chavePix}] ativada com sucesso! Seus clientes já podem pagar por PIX com validação automática de comprovante.",
+                'message' => 'Formas de pagamento e recebimento PIX salvos com sucesso!',
                 'conectado' => !empty($loja->mp_access_token),
-                'pix_ativo' => true,
-                'chave_pix' => $chavePix,
+                'pix_ativo' => !empty($loja->mp_access_token) || !empty($configAtual['chave_pix']),
+                'chave_pix' => $configAtual['chave_pix'] ?? null,
                 'auto_confirmar_pix_chave' => (bool) ($configAtual['auto_confirmar_pix_chave'] ?? true),
                 'modo' => !empty($loja->mp_access_token) ? 'producao' : 'pix_direto',
             ]);
@@ -291,6 +331,14 @@ final class MercadoPagoOAuthController
             'mp_conectado_em' => $cfg['mp_conectado_em'] ?? null,
             'chave_pix' => $chavePix,
             'auto_confirmar_pix_chave' => (bool) ($cfg['auto_confirmar_pix_chave'] ?? true),
+            'pagamento_pix' => (bool) ($cfg['pagamento_pix'] ?? true),
+            'pagamento_cartao_credito_entrega' => (bool) ($cfg['pagamento_cartao_credito_entrega'] ?? true),
+            'pagamento_cartao_debito_entrega' => (bool) ($cfg['pagamento_cartao_debito_entrega'] ?? true),
+            'pagamento_cartao_online' => (bool) ($cfg['pagamento_cartao_online'] ?? false),
+            'pagamento_dinheiro' => (bool) ($cfg['pagamento_dinheiro'] ?? true),
+            'pagamento_voucher' => (bool) ($cfg['pagamento_voucher'] ?? false),
+            'bandeiras_aceitas' => (string) ($cfg['bandeiras_aceitas'] ?? 'Visa, Mastercard, Elo, Hipercard'),
+            'link_pagamento_cartao_online' => (string) ($cfg['link_pagamento_cartao_online'] ?? ''),
             'public_key' => $cfg['mp_public_key'] ?? null,
             'modo' => $conectado ? (str_starts_with((string) $token, 'TEST-') ? 'sandbox' : 'producao') : (!empty($chavePix) ? 'pix_direto' : 'nao_configurado'),
             'oauth_disponivel' => !empty(config('services.mercadopago.client_id')),
