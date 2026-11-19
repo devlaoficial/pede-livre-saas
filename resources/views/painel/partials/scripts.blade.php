@@ -43,6 +43,8 @@
                 abaPedidoMobile: 'novo',
                 mostrarFiltrosMobile: false,
                 abaPdvMobile: 'produtos',
+                modoVisualizacaoPdv: 'grade',
+                mostrarOpcoesExtrasPdv: false,
                 menuMobileAberto: false,
                 modalInstrucoesPwa: false,
                 onlineStatus: navigator.onLine !== false,
@@ -1618,7 +1620,44 @@
                     this.buscaPdvProduto = '';
                     this.filtroPdvCategoria = '';
                     this.pdvItemCustomizando = null;
+                    this.mostrarOpcoesExtrasPdv = false;
                     this.salvandoPdv = false;
+                },
+
+                qtdProdutoNaSacolaPdv(produtoId) {
+                    return (this.pdv.itens || [])
+                        .filter(it => Number(it.produto_id) === Number(produtoId))
+                        .reduce((acc, it) => acc + (Number(it.qtd) || 0), 0);
+                },
+
+                decrementarProdutoSimplesPdv(prod) {
+                    const idx = (this.pdv.itens || []).findIndex(
+                        i => Number(i.produto_id) === Number(prod.id) && !i.variacao_id && (!i.adicionais || i.adicionais.length === 0)
+                    );
+                    if (idx === -1) return;
+                    if (this.pdv.itens[idx].qtd > 1) {
+                        this.alterarQtdItemPdv(idx, -1);
+                    } else {
+                        this.removerItemPdv(idx);
+                    }
+                },
+
+                selecionarBairroPdv(areaId) {
+                    if (!areaId) return;
+                    const area = (this.areasEntrega || []).find(a => Number(a.id) === Number(areaId));
+                    if (area) {
+                        this.pdv.endereco.bairro = area.nome_bairro || '';
+                        this.pdv.taxa_entrega_reais = ((area.taxa_centavos || 0) / 100).toFixed(2).replace('.', ',');
+                    }
+                },
+
+                definirTrocoRapidoPdv(valorNota) {
+                    if (!valorNota || valorNota <= 0) {
+                        const totalCent = this.calcularTotalPdvCentavos();
+                        this.pdv.troco_para_reais = (totalCent / 100).toFixed(2).replace('.', ',');
+                    } else {
+                        this.pdv.troco_para_reais = Number(valorNota).toFixed(2).replace('.', ',');
+                    }
                 },
 
                 clicarProdutoPdv(prod) {
